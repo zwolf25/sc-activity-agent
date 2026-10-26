@@ -1,3 +1,6 @@
+import sys
+
+import pytest
 import plistlib
 from pathlib import Path
 
@@ -9,6 +12,7 @@ def test_labels_differ_per_data_dir_and_env(tmp_path):
     assert a.label(tmp_path, "sb2").startswith("com.sc-activity-agent.sb2.")
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="launchctl plan uses os.getuid")
 def test_macos_plan_runs_this_instance_at_load_and_keeps_alive(tmp_path):
     path, data, cmds = a.plan(tmp_path, "prod", "darwin")
     pl = plistlib.loads(data)

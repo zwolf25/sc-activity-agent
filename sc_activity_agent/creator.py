@@ -137,8 +137,8 @@ class Creator:
         app, user = self._sub(loc)
         r = app.call(user, "POST", "/workorders", body=body, action="create_wo", write=True)
         ctx = dict(trade=issue["trade"], issue=issue["problem"], location=loc["name"] or loc["store_id"],
-                   sched_day=sched.strftime("%A"), eta=sched.strftime("%-I:%M %p"),
-                   eta_end=(sched + dt.timedelta(hours=2)).strftime("%-I:%M %p"), area="sales floor",
+                   sched_day=sched.strftime("%A"), eta=sched.strftime("%I:%M %p").lstrip("0"),
+                   eta_end=(sched + dt.timedelta(hours=2)).strftime("%I:%M %p").lstrip("0"), area="sales floor",
                    equipment=issue["item"], amount="", nte=issue["nte"], category=issue["category"])
         add_plan(self.store, loc["store_id"], issue["trade"], r["id"], plan, ctx, now)
         return r["id"]
