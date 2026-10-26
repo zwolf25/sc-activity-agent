@@ -64,6 +64,11 @@ td.num,th.num{text-align:right}
 .sl:last-child{border-bottom:0}
 .sl small{display:block;color:var(--muted);font-size:12px}
 .sl output{font-family:var(--mono);text-align:right}
+select{width:auto;max-width:100%}
+.sl.set{grid-template-columns:minmax(150px,1fr) minmax(0,260px);justify-items:start}
+.sl.set select{width:100%}
+.hours{display:flex;align-items:center;gap:8px;grid-column:span 1}
+.hours select{width:auto}
 input[type=range]{width:100%;accent-color:var(--accent)}
 input[type=text],input[type=password],select{font:inherit;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:6px 9px;width:100%}
 label.f{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)}

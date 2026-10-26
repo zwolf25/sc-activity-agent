@@ -5,9 +5,9 @@
 <div class="top">
   <span class="brand">SC Activity Agent</span>
   <span class="env {{ 'sb2' if env == 'sb2' else '' }}">{{ 'SB2' if env == 'sb2' else 'PRODUCTION' }}</span>
-  <span class="pill {{ 'warn' if paused else 'good' }}">{{ 'Paused' if paused else 'Running' }}</span>
   <div class="ctrl">
     {% if env == 'sb2' and twin_port %}<a href="http://127.0.0.1:{{ twin_port }}/dashboard"><button type="button">Open Production</button></a>{% endif %}
+    <span class="pill {{ 'warn' if paused else 'good' }}">{{ 'Paused' if paused else 'Running' }}</span>
     <form method="post" action="{{ '/resume' if paused else '/pause' }}"><button class="{{ 'primary' if paused else '' }}">{{ 'Resume' if paused else 'Pause' }}</button></form>
   </div>
 </div>

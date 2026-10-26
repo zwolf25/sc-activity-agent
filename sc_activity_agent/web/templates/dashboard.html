@@ -2,8 +2,14 @@
 {% for g in gaps %}<div class="banner warn">The agent was offline from {{ g.start|int }} to {{ g.end|int }}. {{ g.steps }} steps were moved forward.</div>{% endfor %}
 {% if setup|rejectattr(1)|list %}<div class="banner warn">Setup is not finished. <a href="/setup">See the checklist</a>.</div>{% endif %}
 <div class="grid3">{% for s, n in stages.items() %}<div class="card stat"><span class="n">{{ n }}</span><span class="l">{{ s }}</span></div>{% endfor %}</div>
-<div class="card"><h3>Today</h3><table><thead><tr><th>Action</th><th class="num">Done</th><th class="num">To do</th></tr></thead><tbody>
-{% for k in kinds %}<tr><td>{{ k.replace('_', ' ') }}</td><td class="num mono">{{ done.get(k, 0) }}</td><td class="num mono">{{ todo.get(k, 0) }}</td></tr>{% else %}<tr><td colspan="3">No activity planned today.</td></tr>{% endfor %}
-</tbody></table></div>
-<div class="card stat"><span class="n">{{ calls_hour }}</span><span class="l">API calls in the last hour</span></div>
+<div class="card tbl"><div class="row"><h3>This week</h3>
+<form method="get" class="tog"><label class="tog"><input type="checkbox" name="hide_done" value="1" {{ 'checked' if hide_done }} onchange="this.form.submit()"> Hide done</label></form></div>
+<table><thead><tr><th>When</th><th>Action</th><th>WO</th><th>Location</th><th>Trade</th><th>Status</th></tr></thead><tbody>
+{% for r in week %}<tr><td class="mono">{{ r.when }}</td><td>{{ r.kind.replace('_', ' ') }}</td><td class="mono">{{ r.sc_id or '' }}</td><td>{{ r.location }}</td><td>{{ r.trade or '' }}</td>
+<td><span class="pill {{ {'done': 'good', 'failed': 'bad'}.get(r.state, '') }}">{{ r.state }}</span></td></tr>{% else %}<tr><td colspan="6">Nothing planned this week.</td></tr>{% endfor %}
+</tbody></table>
+{% if pages > 1 %}<div class="row"><span class="mono">Page {{ cur }} of {{ pages }} ({{ total }} steps)</span><span>
+{% if cur > 1 %}<a href="?page={{ cur - 1 }}{{ '&hide_done=1' if hide_done }}"><button type="button" class="sm">Previous</button></a>{% endif %}
+{% if cur < pages %}<a href="?page={{ cur + 1 }}{{ '&hide_done=1' if hide_done }}"><button type="button" class="sm">Next</button></a>{% endif %}</span></div>{% endif %}
+</div>
 {% endblock %}

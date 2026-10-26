@@ -64,7 +64,7 @@ One Python process runs two things: an engine loop and a localhost web console. 
 **Localhost only, secrets encrypted.** The console binds to 127.0.0.1 with no login. Secrets are Fernet-encrypted in SQLite with a key file in the data folder.
 
 ## Data model
-`connections` and `users` hold integration apps and their users. `roles` maps actions to users per location. `locations` describes where the agent works. `work_orders` and `steps` hold each WO and its plan. `api_log` is the audit trail. `settings` holds everything else as JSON.
+`connections` and `users` hold integration apps and their users. `roles` maps actions to users per location (the Roles page offers one user per cell as a drop-down; the `pick` column still allows a random choice among several). `locations` describes where the agent works. `work_orders` and `steps` hold each WO and its plan. `api_log` is the audit trail. `settings` holds everything else as JSON.
 
 ## Known limits
 - Proposal create body, invoice details and several provider endpoints are written from the API reference. They have not been run against an SB2 provider app yet. See `docs/api-notes.md` for what is verified.

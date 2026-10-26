@@ -1,6 +1,11 @@
 # Changelog
 
 ## Unreleased
+- Dashboard: the "Today" table is now "This week". It lists every step planned for the current calendar week (Monday to Sunday), 10 per page, with a "Hide done" filter. The "API calls in the last hour" tile is gone.
+- Behavior: activity start and end are two time drop-downs in one row instead of two sliders. The end is always after the start.
+- Roles: each cell is a single drop-down. A cell that held several users before keeps only the first on the next save.
+- Settings: the drop-down is no longer full width; each setting is a label with a hint and its control.
+- Header: the Running/Paused status sits next to the Pause button.
 - Fixed work orders being worked at night and on weekends. Every planned step now falls inside your activity hours on a business day, and the order of steps is unchanged. Plans created before this update keep their old times.
 - Locations page: the trades table now shows the trades where your provider is Rank 1 at each location. It always said "Not synced yet" before.
 

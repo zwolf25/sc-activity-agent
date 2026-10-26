@@ -36,13 +36,16 @@ def by_stage(db):
     return counts
 
 
-def today(db, tz="America/New_York", now=None):
-    """({kind: done today}, {kind: still to do today}) for pending/done steps in the local calendar day."""
+def week(db, tz="America/New_York", now=None, hide_done=False, page=1, size=10):
+    """Steps planned for the local calendar week (Monday to Sunday), oldest first: (rows, total, pages, page)."""
     z = ZoneInfo(tz)
     d = dt.datetime.fromtimestamp(now, z) if now else dt.datetime.now(z)
-    lo = d.replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
-    hi = lo + 86400
-    q = lambda sql: {r[0]: r[1] for r in db.execute(sql, (lo, hi))}
-    done = q("SELECT kind, COUNT(*) FROM steps WHERE state='done' AND done_at>=? AND done_at<? GROUP BY kind")
-    todo = q("SELECT kind, COUNT(*) FROM steps WHERE state='pending' AND due_at>=? AND due_at<? GROUP BY kind")
-    return done, todo
+    mon = (d - dt.timedelta(days=d.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+    lo, hi = mon.timestamp(), (mon + dt.timedelta(days=7)).timestamp()
+    where = "s.due_at>=? AND s.due_at<?" + (" AND s.state!='done'" if hide_done else "")
+    total = db.execute(f"SELECT COUNT(*) FROM steps s WHERE {where}", (lo, hi)).fetchone()[0]
+    pages = max(1, -(-total // size))
+    page = min(max(1, page), pages)
+    rows = db.execute(f"SELECT s.kind, s.state, s.due_at, w.sc_id, w.location, w.trade FROM steps s JOIN work_orders w ON w.id=s.wo_id "
+                      f"WHERE {where} ORDER BY s.due_at, s.id LIMIT ? OFFSET ?", (lo, hi, size, (page - 1) * size)).fetchall()
+    return rows, total, pages, page

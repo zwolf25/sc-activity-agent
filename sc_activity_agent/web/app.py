@@ -3,9 +3,11 @@ import json
 import subprocess
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, Form, Query, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -78,11 +80,13 @@ def create_app(store, engine=None, rt=None):
         return page(request, "setup")
 
     @app.get("/dashboard")
-    def dashboard(request: Request):
-        done, todo = status.today(db, store.get("tz", "America/New_York"))
-        kinds = sorted(set(done) | set(todo))
-        return page(request, "dashboard", stages=status.by_stage(db), done=done, todo=todo, kinds=kinds,
-                    calls_hour=store.count_calls_since(time.time() - 3600), gaps=[g for g in store.get("gaps", []) if not g["acked"]])
+    def dashboard(request: Request, page_no: int = Query(1, alias="page"), hide_done: str = ""):
+        tz = store.get("tz", "America/New_York")
+        rows, total, pages, cur = status.week(db, tz, hide_done=bool(hide_done), page=page_no)
+        z = ZoneInfo(tz)
+        week = [dict(r, when=datetime.fromtimestamp(r["due_at"], z).strftime("%a %b %d, %H:%M")) for r in rows]
+        return page(request, "dashboard", stages=status.by_stage(db), week=week, total=total, pages=pages, cur=cur, hide_done=bool(hide_done),
+                    gaps=[g for g in store.get("gaps", []) if not g["acked"]])
 
     @app.get("/connections")
     def connections(request: Request, msg: str = ""):
@@ -212,6 +216,8 @@ def create_app(store, engine=None, rt=None):
     async def save_behavior(request: Request):
         form = await request.form()
         vals = {k: float(form[k]) for k, *_ in SLIDERS if k in form}
+        if "hours_start" in vals and "hours_end" in vals:
+            vals["hours_end"] = max(vals["hours_end"], vals["hours_start"] + 1)
         store.put("behavior", vals)
         for k in ("hours_start", "hours_end"):
             if k in vals:
@@ -278,7 +284,7 @@ def create_app(store, engine=None, rt=None):
         for key in form:
             if key.count("|") == 1:
                 loc, action = key.split("|")
-                ids = [int(v) for v in form.getlist(key) if v]
+                ids = [int(v) for v in form.getlist(key)[:1] if v]
                 if ids:
                     db.execute("INSERT INTO roles(location,action,user_ids) VALUES(?,?,?) ON CONFLICT(location,action) DO UPDATE SET user_ids=excluded.user_ids",
                                (loc, action, json.dumps(ids)))

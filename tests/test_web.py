@@ -125,3 +125,36 @@ def test_locations_page_lists_rank_one_trades(tmp_path):
     s.put("rank1", {"HQ": {"at": 1, "trades": ["HVAC", "DOORS"]}})
     page = c.get("/locations").text
     assert "HVAC" in page and "DOORS" in page
+
+
+def test_dashboard_this_week_paginates_and_hides_done(tmp_path):
+    s, c = client(tmp_path)
+    s.put("tz", "UTC")
+    s.db.execute("INSERT INTO work_orders(id,sc_id,location,trade,state,created_at) VALUES(1,999,'HQ','HVAC','active',0)")
+    # Wednesday noon of the current week, UTC, so every row sits inside the Monday-to-Sunday window
+    import datetime as dt
+    d = dt.datetime.now(dt.timezone.utc)
+    wed = (d - dt.timedelta(days=d.weekday() - 2)).replace(hour=12, minute=0, second=0, microsecond=0).timestamp()
+    for i in range(12):
+        s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,state) VALUES(1,?,?,?,?)", (i, "prov_note", wed + i, "done" if i < 3 else "pending"))
+    s.db.commit()
+    p1, p2 = c.get("/dashboard").text, c.get("/dashboard?page=2").text
+    assert "This week" in p1 and "Page 1 of 2" in p1 and p1.count("prov note") == 10 and p2.count("prov note") == 2
+    hidden = c.get("/dashboard?hide_done=1").text
+    assert hidden.count("prov note") == 9 and "Page 1 of" not in hidden and "done</span>" not in hidden
+    assert "API calls in the last hour" not in p1
+
+
+def test_activity_hours_are_one_row_of_selects_and_end_follows_start(tmp_path):
+    s, c = client(tmp_path)
+    page = c.get("/behavior").text
+    assert 'name="hours_start"' in page and 'type="range" name="hours_start"' not in page
+    c.post("/behavior", data={"hours_start": "10", "hours_end": "9"})
+    assert s.get("hours_start") == 10 and s.get("hours_end") == 11
+
+
+def test_roles_use_single_dropdowns(tmp_path):
+    s, c = client(tmp_path)
+    c.post("/connections/add", data={"side": "subscriber", "name": "m", "client_id": "a", "client_secret": "b"})
+    c.post("/connections/1/users", data={"username": "u1", "password": "p"})
+    assert "multiple" not in c.get("/roles").text

@@ -1,6 +1,7 @@
 {% extends "base.html" %}{% block body %}
 <form method="post" class="card"><h3>Settings</h3>
-<label class="f">After a pause or sleep gap<select name="resume_policy">
-{% for v, t in [('catch_up', 'Catch up: spread overdue steps over the next hour'), ('push', 'Shift forward: move remaining steps by the gap'), ('skip_stale', 'Skip stale notes, then shift')] %}<option value="{{ v }}" {{ 'selected' if policy == v }}>{{ t }}</option>{% endfor %}</select></label>
-<label class="tog"><input type="checkbox" name="login" value="on" {{ 'checked' if login }}> Start at login (does not wake a sleeping machine)</label>
+<div class="sl set"><div>After a pause or sleep gap<small>What happens to steps that came due while the agent was away</small></div>
+<select name="resume_policy">
+{% for v, t in [('catch_up', 'Catch up over the next hour'), ('push', 'Shift forward by the gap'), ('skip_stale', 'Skip stale notes, then shift')] %}<option value="{{ v }}" {{ 'selected' if policy == v }}>{{ t }}</option>{% endfor %}</select></div>
+<div class="sl set"><div>Start at login<small>Does not wake a sleeping machine</small></div><input type="checkbox" name="login" value="on" {{ 'checked' if login }}></div>
 <div class="row"><span></span><button class="primary">Save</button></div></form>{% endblock %}
