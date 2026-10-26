@@ -50,7 +50,8 @@ def test_new_pages_render_and_save(tmp_path):
         assert c.get(p).status_code == 200
     c.post("/behavior", data={"wo_per_month": "60", "hours_start": "9"})
     assert s.get("behavior")["wo_per_month"] == 60 and s.get("hours_start") == 9
-    c.post("/locations/add", data={"store_id": "HQ", "db_id": "1", "subscriber_id": "2", "lat": "1", "lon": "2"})
+    s.put("locations_cache", [{"store_id": "HQ", "db_id": 1, "subscriber_id": 2, "name": "", "lat": 1, "lon": 2, "tz": "America/New_York", "city": "", "state": "", "status": ""}])
+    c.post("/locations/add", data={"store_id": "HQ"})
     c.post("/connections/add", data={"side": "subscriber", "name": "m", "client_id": "a", "client_secret": "b"})
     c.post("/connections/1/users", data={"username": "u1", "password": "p"})
     c.post("/roles", data={"*|accept": "1", "HQ|accept": ""})
@@ -94,3 +95,26 @@ def test_audit_failures_filter(tmp_path):
     assert "/okpath" in c.get("/audit").text
     t = c.get("/audit?failed=1").text
     assert "/badpath" in t and "/okpath" not in t
+
+
+def test_locations_load_search_add(tmp_path, monkeypatch):
+    from sc_activity_agent import locations
+    s, c = client(tmp_path)
+    rows = [{"Id": 11, "SubscriberId": 5, "StoreId": "HQ-NYC", "Name": "Union Square", "Latitude": 40.7, "Longitude": -73.9,
+             "TimeZoneIanaName": "America/New_York", "City": "New York", "State": "NY", "Status": "Open"},
+            {"Id": 12, "SubscriberId": 5, "StoreId": "ST-2", "Name": "Other", "Latitude": 1.0, "Longitude": 2.0, "City": "Austin", "State": "TX"}]
+    assert "Add a Subscriber user" in c.post("/locations/load", follow_redirects=True).text
+    s.put("locations_cache", locations.fetch(lambda path, params: rows if params["$skip"] == 0 else [], 5))
+    page = c.get("/locations?q=austin").text
+    assert "ST-2" in page and "HQ-NYC" not in page
+    c.post("/locations/add", data={"store_id": "HQ-NYC"})
+    row = s.db.execute("SELECT * FROM locations").fetchone()
+    assert (row["db_id"], row["subscriber_id"], row["tz"]) == (11, 5, "America/New_York")
+    assert "HQ-NYC" not in c.get("/locations?q=nyc").text.split("Add locations")[1]
+
+
+def test_fetch_pages_and_filters_other_subscribers():
+    from sc_activity_agent import locations
+    data = [{"Id": i, "SubscriberId": 5 if i % 2 else 9, "StoreId": f"S{i}", "Latitude": 1, "Longitude": 2} for i in range(120)]
+    got = locations.fetch(lambda path, p: data[p["$skip"]:p["$skip"] + p["$top"]], 5)
+    assert len(got) == 60 and all(g["subscriber_id"] == 5 for g in got)

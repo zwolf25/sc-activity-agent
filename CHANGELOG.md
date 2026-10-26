@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Locations page: load every location the Subscriber can see, search it and add or remove with one click. You no longer type the location id, coordinates or time zone.
 - Fixed a log message that repeated every 30 seconds (`update loop error: TypeError`). It was harmless but filled the log.
 
 ## v0.1.0 - 2026-10-26

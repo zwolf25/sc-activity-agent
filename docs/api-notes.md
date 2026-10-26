@@ -133,3 +133,6 @@ Provider app and user (SydeTech, Production app does not exist on SB2; a separat
 - User approved a proposal first: the planned `assignWO` returns 400 error 503 `Proposal already approved`. The step retried, so a plan stalls on its own proposal step. The agent must read the proposal status before acting.
 - User rejected a proposal and the plan still said approve: `assignWO` returned 204 and `approve` returned 204, so the agent silently approved a proposal the user had rejected (proposal 26954064 ended Approved). The API allows approve after reject. The agent must never act on a proposal that is no longer in its pending state.
 - Read a proposal's status with `GET /odata/proposals?$filter=Id eq {id}` (`Status.Primary`: Approved, Rejected, ...). `GET /proposals/{id}` returns 500.
+
+## Locations list (B-43, not yet verified)
+The picker calls `GET /odata/locations` with `$select=Id,SubscriberId,StoreId,Name,Latitude,Longitude,TimeZoneIanaName,Status,City,State`, `$top=50`, `$skip`, `$orderby=StoreId`. The field names come from the Swagger `Location` model. On 2026-10-26 SB2 returned 500 for this and for every other call (including a work order GET that worked an hour earlier), so paging, `$select` and the response wrapper (`value` or bare array) still need a live check.

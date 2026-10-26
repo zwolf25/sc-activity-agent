@@ -24,7 +24,7 @@ You need Python 3.11 or newer.
    1. Add one **Subscriber** connection (an integration app: client ID and secret) and a Subscriber user.
    2. Enter the Subscriber ID, load your dashboards and choose the issue list dashboard. The dashboard must be assigned to that Subscriber user in ServiceChannel.
    3. Add one **Provider** connection per provider you play, with its Provider ID and users.
-   4. Add your locations.
+   4. Add your locations: on the Locations page click Load, search the list and click Add. Ids, coordinates and time zone come from ServiceChannel.
    5. Map each action to a user on the **Roles** page.
    6. Review the **Behavior** sliders.
 5. Optional: **Settings** has a Start at login switch, so the agent keeps running after a restart. It cannot wake a sleeping machine.

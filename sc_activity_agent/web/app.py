@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .. import __version__, autostart, planner, status, update
+from .. import locations as locations_mod
 from ..client import ScApp, ScError
 from ..handlers import ACTION, cancel_wo
 
@@ -218,16 +219,37 @@ def create_app(store, engine=None, rt=None):
         return RedirectResponse("/behavior", 303)
 
     @app.get("/locations")
-    def locations(request: Request):
+    def locations(request: Request, q: str = "", msg: str = ""):
         locs = db.execute("SELECT * FROM locations ORDER BY store_id").fetchall()
         con = db.execute("SELECT * FROM contracts ORDER BY location, trade").fetchall()
-        return page(request, "locations", locs=locs, contracts=con)
+        have = {l["store_id"] for l in locs}
+        pool = [c for c in store.get("locations_cache", []) if c["store_id"] not in have]
+        ql = q.strip().lower()
+        if ql:
+            pool = [c for c in pool if ql in f"{c['store_id']} {c['name']} {c['city']} {c['state']}".lower()]
+        return page(request, "locations", locs=locs, contracts=con, pool=pool[:50], pool_n=len(pool), q=q, msg=msg,
+                    loaded=store.get("locations_cache") is not None)
+
+    @app.post("/locations/load")
+    def load_locations():
+        sa = sub_app()
+        if not sa:
+            return RedirectResponse("/locations?msg=Add a Subscriber user first on Connections", 303)
+        try:
+            rows = locations_mod.fetch(lambda path, params: sa[0].call(sa[1], "GET", path, params, action="locations"),
+                                       store.get("subscriber_id"))
+        except ScError as e:
+            return RedirectResponse(f"/locations?msg=Could not load locations: {e.body or e}", 303)
+        store.put("locations_cache", rows)
+        return RedirectResponse(f"/locations?msg=Loaded {len(rows)} locations", 303)
 
     @app.post("/locations/add")
-    def add_location(store_id: str = Form(...), db_id: int = Form(...), subscriber_id: int = Form(...), name: str = Form(""),
-                     lat: float = Form(...), lon: float = Form(...), tz: str = Form("America/New_York")):
+    def add_location(store_id: str = Form(...)):
+        c = next((c for c in store.get("locations_cache", []) if c["store_id"] == store_id), None)
+        if not c or c["lat"] is None or c["lon"] is None:
+            return RedirectResponse("/locations?msg=Location not found or has no coordinates. Reload the list", 303)
         db.execute("INSERT OR REPLACE INTO locations(store_id,db_id,subscriber_id,name,lat,lon,tz) VALUES(?,?,?,?,?,?,?)",
-                   (store_id.strip(), db_id, subscriber_id, name, lat, lon, tz))
+                   (c["store_id"], c["db_id"], c["subscriber_id"], c["name"], c["lat"], c["lon"], c["tz"]))
         db.commit()
         return RedirectResponse("/locations", 303)
 
