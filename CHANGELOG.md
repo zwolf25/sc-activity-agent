@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Fixed a log message that repeated every 30 seconds (`update loop error: TypeError`). It was harmless but filled the log.
 
 ## v0.1.0 - 2026-10-26
 First release. Runs on macOS, Windows and Linux (checked in CI). Restart is needed to run it; nothing is paused. There is no older version to migrate from.

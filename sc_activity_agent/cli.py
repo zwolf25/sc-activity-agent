@@ -83,7 +83,7 @@ def cmd_run(args, store):
         while True:
             engine.paused_at = store.get("paused_at")
             # one failing piece must not stop the others, or the whole agent
-            for name, fn in (("step", engine.tick), ("update", lambda: update.check(store) and []),
+            for name, fn in (("step", engine.tick), ("update", lambda: (update.check(store), [])[1]),
                              ("create", creator.tick)):
                 try:
                     for key, outcome in fn():
