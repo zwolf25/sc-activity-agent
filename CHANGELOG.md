@@ -3,7 +3,7 @@
 ## Unreleased
 
 ## v0.1.0 - 2026-10-26
-First release. Restart is needed to run it; nothing is paused. There is no older version to migrate from.
+First release. Runs on macOS, Windows and Linux (checked in CI). Restart is needed to run it; nothing is paused. There is no older version to migrate from.
 
 - Work order lifecycle engine: create from the dashboard issue list, notes, check-in and check-out, proposals, review, invoice and approval, all from a saved plan per work order.
 - Rank 1 contract check, so work orders are created only for trades our provider connections hold.
