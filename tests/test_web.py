@@ -118,3 +118,10 @@ def test_fetch_pages_and_filters_other_subscribers():
     data = [{"Id": i, "SubscriberId": 5 if i % 2 else 9, "StoreId": f"S{i}", "Latitude": 1, "Longitude": 2} for i in range(120)]
     got = locations.fetch(lambda path, p: data[p["$skip"]:p["$skip"] + p["$top"]], 5)
     assert len(got) == 60 and all(g["subscriber_id"] == 5 for g in got)
+
+
+def test_locations_page_lists_rank_one_trades(tmp_path):
+    s, c = client(tmp_path)
+    s.put("rank1", {"HQ": {"at": 1, "trades": ["HVAC", "DOORS"]}})
+    page = c.get("/locations").text
+    assert "HVAC" in page and "DOORS" in page

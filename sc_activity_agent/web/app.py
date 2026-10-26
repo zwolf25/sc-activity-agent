@@ -221,7 +221,7 @@ def create_app(store, engine=None, rt=None):
     @app.get("/locations")
     def locations(request: Request, q: str = "", msg: str = ""):
         locs = db.execute("SELECT * FROM locations ORDER BY store_id").fetchall()
-        con = db.execute("SELECT * FROM contracts ORDER BY location, trade").fetchall()
+        con = [{"location": k, "trade": t} for k, v in sorted(store.get("rank1", {}).items()) for t in v["trades"]]
         have = {l["store_id"] for l in locs}
         pool = [c for c in store.get("locations_cache", []) if c["store_id"] not in have]
         ql = q.strip().lower()

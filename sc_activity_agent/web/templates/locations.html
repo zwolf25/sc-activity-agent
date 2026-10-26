@@ -11,6 +11,6 @@
 {% for c in pool %}<tr><td>{{ c.store_id }}</td><td>{{ c.name }}</td><td>{{ c.city }}{{ ', ' + c.state if c.state }}</td><td>{{ c.status }}</td>
 <td><form method="post" action="/locations/add"><input type="hidden" name="store_id" value="{{ c.store_id }}"><button class="sm">Add</button></form></td></tr>{% else %}<tr><td colspan="5">No matching locations.</td></tr>{% endfor %}
 </tbody></table>{% if pool_n > 50 %}<p class="muted">Showing 50 of {{ pool_n }}. Search to narrow the list.</p>{% endif %}{% endif %}</div>
-<div class="card tbl"><h3>Contracts</h3><table><thead><tr><th>Location</th><th>Trade</th><th>Provider</th><th class="num">Rank</th></tr></thead><tbody>
-{% for c in contracts %}<tr><td>{{ c.location }}</td><td>{{ c.trade }}</td><td class="mono">{{ c.provider_id }}</td><td class="num">{{ c.rank }}</td></tr>{% else %}<tr><td colspan="4">Not synced yet.</td></tr>{% endfor %}
+<div class="card tbl"><h3>Trades we can create</h3><p class="muted">Trades where one of your provider connections is Rank 1 at the location. Refreshed daily when the agent creates work orders.</p><table><thead><tr><th>Location</th><th>Trade</th></tr></thead><tbody>
+{% for c in contracts %}<tr><td>{{ c.location }}</td><td>{{ c.trade }}</td></tr>{% else %}<tr><td colspan="2">Not checked yet. Appears after the agent's first creation pass.</td></tr>{% endfor %}
 </tbody></table></div>{% endblock %}
