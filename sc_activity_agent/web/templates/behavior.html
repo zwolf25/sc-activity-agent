@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block body %}
+<form method="post" class="card">
+{% for k, label, hint, lo, hi, step in sliders %}<div class="sl"><div>{{ label }}<small>{{ hint }}</small></div>
+<input type="range" name="{{ k }}" min="{{ lo }}" max="{{ hi }}" step="{{ step }}" value="{{ cur[k] }}" oninput="this.nextElementSibling.value=this.value"><output>{{ cur[k] }}</output></div>{% endfor %}
+<div class="row"><span></span><button class="primary">Save</button></div></form>{% endblock %}

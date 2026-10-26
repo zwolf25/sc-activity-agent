@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block body %}
+<div class="banner warn">Cancel sets the WO to Completed / Canceled. The API cannot set VOID.</div>{% if msg %}<div class="note">{{ msg }}</div>{% endif %}
+<div class="card tbl"><table><thead><tr><th>WO</th><th>Location</th><th>Trade</th><th>State</th><th></th></tr></thead><tbody>
+{% for r in rows %}<tr><td class="mono">{{ r.sc_id }}</td><td>{{ r.location }}</td><td>{{ r.trade }}</td><td>{{ r.state }}</td><td>{% if r.state != 'cancelled' %}<form method="post" action="/cleanup/{{ r.id }}/cancel"><button class="sm">Cancel WO</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="5">No work orders created yet.</td></tr>{% endfor %}
+</tbody></table></div>{% endblock %}

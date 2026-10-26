@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block body %}
+<div class="card" style="overflow-x:auto"><table><thead><tr><th>WO</th><th>Step</th><th>Error</th><th></th></tr></thead><tbody>
+{% for r in rows %}<tr><td class="mono"><a href="/audit?q={{ r.sc_id }}">{{ r.sc_id }}</a></td><td>{{ r.kind.replace('_', ' ') }}</td><td>{{ r.error }}</td><td class="row">
+<form method="post" action="/steps/{{ r.id }}/retry"><button class="sm primary">Retry</button></form><form method="post" action="/steps/{{ r.id }}/skip"><button class="sm">Skip</button></form></td></tr>{% else %}<tr><td colspan="4">No failed steps.</td></tr>{% endfor %}
+</tbody></table></div>
+{% if create_errors %}<div class="card tbl"><h3>Work order creation errors</h3><table><thead><tr><th>Time</th><th>Location</th><th>Error</th></tr></thead><tbody>
+{% for e in create_errors %}<tr><td class="mono">{{ e.at|int }}</td><td>{{ e.location }}</td><td>{{ e.error }}</td></tr>{% endfor %}</tbody></table>
+<small><a href="/audit?failed=1">See failed calls in the audit log.</a> A failed create is skipped, never retried, because SC leaves a VOID shell WO behind.</small></div>{% endif %}{% endblock %}

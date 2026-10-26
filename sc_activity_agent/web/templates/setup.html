@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block body %}
+<div class="card"><h2>Set up this instance</h2>
+<p>Finish these steps, then the agent starts creating activity. You can come back to any step.</p>
+<table><tbody>{% for label, ok, href in setup %}<tr><td>{{ label }}</td><td><span class="pill {{ 'good' if ok else 'warn' }}">{{ 'Done' if ok else 'To do' }}</span></td><td><a href="{{ href }}">Open</a></td></tr>{% endfor %}</tbody></table>
+<div class="row">{% set nxt = setup|rejectattr(1)|list %}{% if nxt %}<a href="{{ nxt[0][2] }}"><button class="primary" type="button">Next: {{ nxt[0][0] }}</button></a>{% else %}<a href="/dashboard"><button class="primary" type="button">All set. Open Dashboard</button></a>{% endif %}
+<a href="/dashboard"><button type="button">Skip to Dashboard</button></a></div></div>
+{% endblock %}

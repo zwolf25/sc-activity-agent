@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SC Activity Agent</title><link rel="stylesheet" href="/static/app.css"></head>
+<body><div class="wrap">
+<div class="top">
+  <span class="brand">SC Activity Agent</span>
+  <span class="env {{ 'sb2' if env == 'sb2' else '' }}">{{ 'SB2' if env == 'sb2' else 'PRODUCTION' }}</span>
+  <span class="pill {{ 'warn' if paused else 'good' }}">{{ 'Paused' if paused else 'Running' }}</span>
+  <div class="ctrl">
+    {% if env == 'sb2' and twin_port %}<a href="http://127.0.0.1:{{ twin_port }}/dashboard"><button type="button">Open Production</button></a>{% endif %}
+    <form method="post" action="{{ '/resume' if paused else '/pause' }}"><button class="{{ 'primary' if paused else '' }}">{{ 'Resume' if paused else 'Pause' }}</button></form>
+  </div>
+</div>
+{% if update %}<div class="banner warn row"><span>Update {{ update.tag }} is available. The agent pauses, installs it and restarts.</span><form method="post" action="/update"><button class="primary">Update now</button></form></div>{% endif %}
+<div class="layout"><nav>
+  {% for key, label in nav %}<a href="/{{ key }}" class="{{ 'on' if here == key }}">{{ label }}{% if key == 'errors' and failed %}<span class="badge">{{ failed }}</span>{% endif %}</a>{% endfor %}
+  <small class="mono" style="color:var(--muted);padding:8px 12px">v{{ version }}</small>
+</nav><main><div class="page on">{% block body %}{% endblock %}</div></main></div>
+</div></body></html>

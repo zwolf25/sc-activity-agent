@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% block body %}
+<div class="banner warn">This instance is <b>{{ 'SB2' if env == 'sb2' else 'Production' }}</b>. The environment was chosen when it was set up and cannot be changed here.</div>
+{% if msg %}<div class="note">{{ msg }}</div>{% endif %}
+<div class="card"><h3>Issue list dashboard</h3>
+<p>New WOs use this dashboard's issue list for trade, category, priority and NTE. The dashboard must be assigned to the Subscriber user.</p>
+<form method="post" action="/dashboards/load" class="row" style="justify-content:flex-start;flex-wrap:wrap">
+<label class="f">Subscriber ID<input type="text" name="subscriber_id" value="{{ subscriber_id }}" required></label><button>Load dashboards</button></form>
+{% if dashboards %}<form method="post" action="/dashboards/select" class="row" style="justify-content:flex-start;flex-wrap:wrap">
+<label class="f">Dashboard<select name="dashboard_id">{% for d in dashboards %}<option value="{{ d.id }}" {{ 'selected' if d.id == dashboard }}>{{ d.id }} - {{ d.name }}</option>{% endfor %}</select></label>
+<button class="primary">Save dashboard</button></form>{% endif %}</div>
+{% if env != 'sb2' %}<div class="card"><h3>Test instance (advanced)</h3>
+<p>A separate SB2 copy of this app, with its own data, logins and port. It does not change this instance. You need an SB2 integration app to use it.</p>
+<form method="post" action="/test-instance"><button>Open SB2 test instance</button></form></div>{% endif %}
+{% for c in conns %}<div class="card"><div class="row"><h3>{{ c.side }} · {{ c.name }}</h3>
+<form method="post" action="/connections/{{ c.id }}/delete"><button class="sm">Remove</button></form></div>
+<div class="mono">Client ID {{ c.client_id }}{% if c.provider_id %} · Provider {{ c.provider_id }}{% endif %}</div>
+<table><thead><tr><th>User</th><th>Label</th><th></th></tr></thead><tbody>
+{% for u in c.users %}<tr><td>{{ u.username }}</td><td>{{ u.label }}</td><td class="row"><form method="post" action="/users/{{ u.id }}/test"><button class="sm">Test</button></form>
+<form method="post" action="/users/{{ u.id }}/delete"><button class="sm">Remove</button></form></td></tr>{% endfor %}</tbody></table>
+<form method="post" action="/connections/{{ c.id }}/users" class="row" style="justify-content:flex-start;flex-wrap:wrap">
+<label class="f">Username<input type="text" name="username" required></label><label class="f">Password<input type="password" name="password" required></label>
+<label class="f">Label<input type="text" name="label"></label><button class="primary">Add user</button></form></div>{% endfor %}
+<div class="card"><h3>Add connection</h3><form method="post" action="/connections/add" class="row" style="justify-content:flex-start;flex-wrap:wrap">
+<label class="f">Side<select name="side"><option value="subscriber">Subscriber</option><option value="provider">Provider</option></select></label>
+<label class="f">Name<input type="text" name="name" required></label><label class="f">Client ID<input type="text" name="client_id" required></label>
+<label class="f">Client secret<input type="password" name="client_secret" required></label><label class="f">Provider ID (provider only)<input type="text" name="provider_id"></label>
+<button class="primary">Add connection</button></form></div>
+{% endblock %}

@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block body %}
+<form method="get" class="row"><input type="text" name="q" value="{{ q }}" placeholder="Search user, path, action or WO"><label><input type="checkbox" name="failed" value="1" {{ 'checked' if failed }}> Failures only</label><button>Search</button></form>
+<div class="card" style="overflow-x:auto"><table><thead><tr><th>Time</th><th>Role</th><th>User</th><th>WO</th><th>Action</th><th>Call</th><th class="num">HTTP</th><th class="num">ms</th></tr></thead><tbody>
+{% for r in rows %}<tr><td class="mono">{{ r.ts|int }}</td><td>{{ r.role }}</td><td>{{ r.user }}</td><td class="mono">{{ r.sc_wo or '' }}</td><td>{{ r.action }}</td><td class="mono">{{ r.method }} {{ r.path }}</td><td class="num mono">{{ r.http }}</td><td class="num mono">{{ r.ms }}</td></tr>{% else %}<tr><td colspan="8">No calls yet.</td></tr>{% endfor %}
+</tbody></table></div>{% endblock %}

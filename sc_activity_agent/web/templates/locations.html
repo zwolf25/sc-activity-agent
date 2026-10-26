@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block body %}
+<div class="card tbl"><h3>Locations</h3><table><thead><tr><th>Store</th><th>Name</th><th>DB id</th><th>Time zone</th><th>Enabled</th><th></th></tr></thead><tbody>
+{% for l in locs %}<tr><td>{{ l.store_id }}</td><td>{{ l.name }}</td><td class="mono">{{ l.db_id }}</td><td>{{ l.tz }}</td><td><span class="pill {{ 'good' if l.enabled else '' }}">{{ 'On' if l.enabled else 'Off' }}</span></td>
+<td class="row"><form method="post" action="/locations/{{ l.store_id }}/toggle"><button class="sm">Toggle</button></form><form method="post" action="/locations/{{ l.store_id }}/delete"><button class="sm">Remove</button></form></td></tr>{% else %}<tr><td colspan="6">No locations yet.</td></tr>{% endfor %}
+</tbody></table></div>
+<div class="card"><h3>Add location</h3><form method="post" action="/locations/add" class="two">
+<label class="f">Store ID<input type="text" name="store_id" required></label><label class="f">Name<input type="text" name="name"></label>
+<label class="f">Location DB id<input type="text" name="db_id" required></label><label class="f">Subscriber id<input type="text" name="subscriber_id" required></label>
+<label class="f">Latitude<input type="text" name="lat" required></label><label class="f">Longitude<input type="text" name="lon" required></label>
+<label class="f">Time zone<input type="text" name="tz" value="America/New_York"></label><button class="primary">Add</button></form></div>
+<div class="card tbl"><h3>Contracts</h3><table><thead><tr><th>Location</th><th>Trade</th><th>Provider</th><th class="num">Rank</th></tr></thead><tbody>
+{% for c in contracts %}<tr><td>{{ c.location }}</td><td>{{ c.trade }}</td><td class="mono">{{ c.provider_id }}</td><td class="num">{{ c.rank }}</td></tr>{% else %}<tr><td colspan="4">Not synced yet.</td></tr>{% endfor %}
+</tbody></table></div>{% endblock %}
