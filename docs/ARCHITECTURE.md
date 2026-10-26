@@ -69,7 +69,7 @@ One Python process runs two things: an engine loop and a localhost web console. 
 ## Known limits
 - Proposal create body, invoice details and several provider endpoints are written from the API reference. They have not been run against an SB2 provider app yet. See `docs/api-notes.md` for what is verified.
 - Production API URLs are listed in `client.ENVS` and need checking before the first Production run.
-- Locations come from a list the app loads from the Subscriber (`GET /odata/locations`, paged 50 at a time, cached in the `locations_cache` setting). The user adds or removes from it, so nobody types ids; a typed Prod id that differs from SB2 would break the contract check and every create. Not yet verified live: SB2 returned 500 on every call during the first attempt (see api-notes).
+- Locations come from a list the app loads from the Subscriber (`GET /odata/locations`, paged 50 at a time, cached in the `locations_cache` setting). The user adds or removes from it, so nobody types ids; a typed Prod id that differs from SB2 would break the contract check and every create.  Verified on SB2: 50 locations, response wrapped in `value`, paging stops on an empty page.
 
 - **Step failures:** the engine fails any step whose handler raises, not only API errors, so a handler bug cannot loop on one step forever. Each loop in `agent run` (steps, update check, creator) also catches its own errors so one failure never stops the others.
 - **Proposals:** the Provider creates the proposal (it has no WO field), and the Subscriber links it with assignWO before approving, because assignWO is Subscriber-only.
