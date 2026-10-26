@@ -64,7 +64,7 @@ One Python process runs two things: an engine loop and a localhost web console. 
 **Localhost only, secrets encrypted.** The console binds to 127.0.0.1 with no login. Secrets are Fernet-encrypted in SQLite with a key file in the data folder.
 
 ## Data model
-`connections` and `users` hold integration apps and their users. `roles` maps actions to users per location. `locations` and `contracts` describe where the agent works. `work_orders` and `steps` hold each WO and its plan. `api_log` is the audit trail. `settings` holds everything else as JSON.
+`connections` and `users` hold integration apps and their users. `roles` maps actions to users per location. `locations` describes where the agent works. `work_orders` and `steps` hold each WO and its plan. `api_log` is the audit trail. `settings` holds everything else as JSON.
 
 ## Known limits
 - Proposal create body, invoice details and several provider endpoints are written from the API reference. They have not been run against an SB2 provider app yet. See `docs/api-notes.md` for what is verified.
@@ -75,3 +75,4 @@ One Python process runs two things: an engine loop and a localhost web console. 
 - **Proposals:** the Provider creates the proposal (it has no WO field), and the Subscriber links it with assignWO before approving, because assignWO is Subscriber-only.
 - **The user may act first:** `proposal_decide` and `invoice_decide` read the live status before acting. If the user already did what the plan wanted, the step is done and the plan continues. If the user rejected a proposal the plan meant to approve, the plan adds a revised proposal and decision (at most 3 times, then the step fails for the Errors page). A decision the user already made is never overturned, because the API allows an approve after a reject. Other steps do not yet check live state (B-39).
 - **One command surface for changes:** settings and plan edits (`get`, `set`, `plan`, `step`) go through the CLI and the same SQLite store the console uses, and each change is logged in the `changes` setting. A person, the console or an assistant acting for the user all use it, so nobody edits the database by hand. The handlers also stop at a WO the user cancelled or completed (`guarded` in `handlers.py`).
+- The `contracts` table is unused. Rank 1 trades live in the `rank1` setting (written by the creator, cached a day), and the Locations page reads them from there. Drop the table with a migration when convenient.
