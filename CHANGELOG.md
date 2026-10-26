@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+
+## v0.2.0 - 2026-10-26
+Restart the agent after updating. Nothing is paused and no data changes.
 - Locations page: load every location the Subscriber can see, search it and add or remove with one click. You no longer type the location id, coordinates or time zone.
 - Fixed a log message that repeated every 30 seconds (`update loop error: TypeError`). It was harmless but filled the log.
 
