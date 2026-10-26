@@ -27,6 +27,23 @@ def _at(day, hour_float, tz):
     return datetime.combine(day, dtime(h, int((hour_float - h) * 60)), tzinfo=ZoneInfo(tz)).timestamp()
 
 
+def _fit(ts, prev, c, tz, rng):
+    """Moves ts inside activity hours on a business day, keeping it after prev. A step outside the window moves to the start of the
+    next one, and the order rule spreads consecutive moved steps a few minutes apart."""
+    z = ZoneInfo(tz)
+    d = datetime.fromtimestamp(ts, z)
+    h0, h1 = c["hours_start"], c["hours_end"]
+    new = ts
+    if not (d.weekday() < 5 and _at(d.date(), h0, tz) <= ts <= _at(d.date(), h1, tz)):
+        day = d.date() if d.weekday() < 5 and ts < _at(d.date(), h0, tz) else _biz_day(d.date(), 1)
+        new = _at(day, h0, tz)
+    if new <= prev:
+        new = prev + rng.randint(60, 600)
+        if new > _at(datetime.fromtimestamp(new, z).date(), h1, tz):
+            return _fit(new, prev, c, tz, rng)
+    return new
+
+
 def build_plan(rng, now, cfg, tz="America/New_York"):
     """now: epoch seconds when the WO is created. Returns list of dicts {kind, due_at, payload}, sorted by due_at.
     Times are epoch seconds. Kinds: accept, prov_note, sub_note, proposal_create, proposal_decide, check_in, check_out,
@@ -103,6 +120,9 @@ def build_plan(rng, now, cfg, tz="America/New_York"):
     for _ in range(max(0, _poisson(rng, c["prov_notes"]) - 2)):  # ack/eta/onsite notes already count
         add("prov_note", rng.uniform(lo, hi), situation=rng.choice(["access", "eta"]))
     steps.sort(key=lambda s: s["due_at"])
+    prev = 0
+    for st in steps:   # planned times can fall at night or on a weekend: fit them to the activity window, order unchanged
+        prev = st["due_at"] = _fit(st["due_at"], prev, c, tz, rng)
     return steps
 
 

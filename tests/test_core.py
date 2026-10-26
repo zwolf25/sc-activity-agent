@@ -142,3 +142,23 @@ def test_check_out_never_before_check_in_with_rejected_proposal():
             if st["kind"] in ("check_in", "check_out"):
                 by.setdefault(st["payload"]["visit"], {})[st["kind"]] = st["due_at"]
         assert all(v["check_in"] < v["check_out"] for v in by.values()), seed
+
+
+def test_every_step_falls_in_activity_hours_on_a_weekday():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    tz = ZoneInfo("America/New_York")
+    # created Mon evening, Sat night, Sun noon and Wed morning
+    for created in (datetime(2026, 10, 26, 19, 44), datetime(2026, 10, 24, 2, 0), datetime(2026, 10, 25, 12, 0), datetime(2026, 10, 28, 9, 0)):
+        now = created.replace(tzinfo=tz).timestamp()
+        for seed in range(150):
+            plan = planner.build_plan(random.Random(seed), now, {"proposal_rate": 40, "first_time_fix": 50})
+            times = [s["due_at"] for s in plan]
+            assert times == sorted(times)
+            for s in plan:
+                d = datetime.fromtimestamp(s["due_at"], tz)
+                assert d.weekday() < 5 and 8 <= d.hour + d.minute / 60 <= 17, (seed, s["kind"], d)
+            ins = [s for s in plan if s["kind"] == "check_in"]
+            outs = [s for s in plan if s["kind"] == "check_out"]
+            assert all(o["due_at"] > i["due_at"] and datetime.fromtimestamp(o["due_at"], tz).date() == datetime.fromtimestamp(i["due_at"], tz).date()
+                       for i, o in zip(ins, outs))

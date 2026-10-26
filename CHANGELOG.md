@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Fixed work orders being worked at night and on weekends. Every planned step now falls inside your activity hours on a business day, and the order of steps is unchanged. Plans created before this update keep their old times.
 - Locations page: the trades table now shows the trades where your provider is Rank 1 at each location. It always said "Not synced yet" before.
 
 ## v0.2.0 - 2026-10-26
