@@ -74,6 +74,8 @@ def png(size=512):
 
 def _icns(png_path, out):
     """macOS only: build an .icns from one PNG with sips + iconutil."""
+    if not (shutil.which("sips") and shutil.which("iconutil")):
+        return
     iconset = out.parent / "icon.iconset"
     iconset.mkdir(exist_ok=True)
     for s in (16, 32, 64, 128, 256, 512):
