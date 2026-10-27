@@ -145,7 +145,8 @@ def test_dashboard_this_week_paginates_and_hides_done(tmp_path):
     assert "API calls in the last hour" not in p1
     s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,state) VALUES(1,99,'sub_note',?, 'skipped')", (wed,))
     s.db.commit()
-    assert "skipped" not in c.get("/dashboard").text
+    assert "skipped</span>" not in c.get("/dashboard").text
+    assert "skipped</span>" in c.get("/dashboard?f=1").text and "skipped</span>" not in c.get("/dashboard?f=1&hide_skipped=1").text
 
 
 def test_activity_hours_are_one_row_of_selects_and_end_follows_start(tmp_path):

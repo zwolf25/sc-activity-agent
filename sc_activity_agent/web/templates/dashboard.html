@@ -3,13 +3,15 @@
 {% if setup|rejectattr(1)|list %}<div class="banner warn">Setup is not finished. <a href="/setup">See the checklist</a>.</div>{% endif %}
 <div class="grid3">{% for s, n in stages.items() %}<div class="card stat"><span class="n">{{ n }}</span><span class="l">{{ s }}</span></div>{% endfor %}</div>
 <div class="card tbl"><div class="row"><h3>This week</h3>
-<form method="get" class="tog"><label class="tog"><input type="checkbox" name="hide_done" value="1" {{ 'checked' if hide_done }} onchange="this.form.submit()"> Hide done</label></form></div>
+<form method="get" class="tog"><input type="hidden" name="f" value="1">
+<label class="tog"><input type="checkbox" name="hide_done" value="1" {{ 'checked' if hide_done }} onchange="this.form.submit()"> Hide done</label>
+<label class="tog"><input type="checkbox" name="hide_skipped" value="1" {{ 'checked' if hide_skipped }} onchange="this.form.submit()"> Hide skipped</label></form></div>
 <table><thead><tr><th>When</th><th>Action</th><th>WO</th><th>Location</th><th>Trade</th><th>Status</th></tr></thead><tbody>
 {% for r in week %}<tr><td class="mono">{{ r.when }}</td><td>{{ r.kind.replace('_', ' ') }}</td><td class="mono">{{ r.sc_id or '' }}</td><td>{{ r.location }}</td><td>{{ r.trade or '' }}</td>
 <td><span class="pill {{ {'done': 'good', 'failed': 'bad'}.get(r.state, '') }}">{{ r.state }}</span></td></tr>{% else %}<tr><td colspan="6">Nothing planned this week.</td></tr>{% endfor %}
 </tbody></table>
 {% if pages > 1 %}<div class="row"><span class="mono">Page {{ cur }} of {{ pages }} ({{ total }} steps)</span><span>
-{% if cur > 1 %}<a href="?page={{ cur - 1 }}{{ '&hide_done=1' if hide_done }}"><button type="button" class="sm">Previous</button></a>{% endif %}
-{% if cur < pages %}<a href="?page={{ cur + 1 }}{{ '&hide_done=1' if hide_done }}"><button type="button" class="sm">Next</button></a>{% endif %}</span></div>{% endif %}
+{% if cur > 1 %}<a href="?page={{ cur - 1 }}&f=1{{ '&hide_done=1' if hide_done }}{{ '&hide_skipped=1' if hide_skipped }}"><button type="button" class="sm">Previous</button></a>{% endif %}
+{% if cur < pages %}<a href="?page={{ cur + 1 }}&f=1{{ '&hide_done=1' if hide_done }}{{ '&hide_skipped=1' if hide_skipped }}"><button type="button" class="sm">Next</button></a>{% endif %}</span></div>{% endif %}
 </div>
 {% endblock %}

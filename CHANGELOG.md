@@ -1,7 +1,7 @@
 # Changelog
 
 ## Unreleased
-- Dashboard: "This week" no longer lists skipped steps (left over when a WO is cancelled), and the activity-hours drop-downs sit side by side on the Behavior page.
+- Dashboard: "This week" has a "Hide skipped" filter, on by default, for steps left over when a WO is cancelled. Also, the activity-hours drop-downs sit side by side on the Behavior page.
 
 ## v0.2.1 - 2026-10-26
 Restart the agent after updating. Nothing is paused and no data changes.

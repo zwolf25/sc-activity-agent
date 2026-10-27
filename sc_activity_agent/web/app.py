@@ -80,12 +80,13 @@ def create_app(store, engine=None, rt=None):
         return page(request, "setup")
 
     @app.get("/dashboard")
-    def dashboard(request: Request, page_no: int = Query(1, alias="page"), hide_done: str = ""):
+    def dashboard(request: Request, page_no: int = Query(1, alias="page"), hide_done: str = "", hide_skipped: str = "", f: str = ""):
+        hide_skipped = hide_skipped or ("" if f else "1")  # f marks a submitted filter form, so unchecked means off
         tz = store.get("tz", "America/New_York")
-        rows, total, pages, cur = status.week(db, tz, hide_done=bool(hide_done), page=page_no)
+        rows, total, pages, cur = status.week(db, tz, hide_done=bool(hide_done), hide_skipped=bool(hide_skipped), page=page_no)
         z = ZoneInfo(tz)
         week = [dict(r, when=datetime.fromtimestamp(r["due_at"], z).strftime("%a %b %d, %H:%M")) for r in rows]
-        return page(request, "dashboard", stages=status.by_stage(db), week=week, total=total, pages=pages, cur=cur, hide_done=bool(hide_done),
+        return page(request, "dashboard", stages=status.by_stage(db), week=week, total=total, pages=pages, cur=cur, hide_done=bool(hide_done), hide_skipped=bool(hide_skipped),
                     gaps=[g for g in store.get("gaps", []) if not g["acked"]])
 
     @app.get("/connections")
