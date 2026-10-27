@@ -188,8 +188,12 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("build app");
     app.run(|app, event| {
-        if let RunEvent::Exit = event {
-            stop_agent(app);
+        match event {
+            RunEvent::Exit => stop_agent(app),
+            // Clicking the Dock or Finder icon while the window is hidden in the tray.
+            #[cfg(target_os = "macos")]
+            RunEvent::Reopen { .. } => show_window(app),
+            _ => {}
         }
     });
 }

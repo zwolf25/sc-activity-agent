@@ -3136,7 +3136,7 @@ dependencies = [
 
 [[package]]
 name = "sc-activity-agent-desktop"
-version = "0.3.4"
+version = "0.3.5"
 dependencies = [
  "serde_json",
  "tauri",

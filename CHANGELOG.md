@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v0.3.5 - 2026-10-27
+- Fix (macOS): clicking the app icon while the window is hidden in the menu bar now brings the window back. Before, only the tray menu did.
+- Docs: the README explains how to move an existing command-line instance into the desktop app.
+
 ## v0.3.4 - 2026-10-27
 - New: the Setup page has a Check-in permission card. It shows, for each Provider, whether check-in works yet (Confirmed after the first successful check-in, Blocked after error 804) and a ready-to-send request for ServiceChannel support with your real Subscriber and Provider IDs. A blocked pair also shows a banner on the Dashboard. It never blocks setup.
 - Fix: when an invoice is rejected, the resubmitted invoice now gets its own number (INV-<WO>-2) instead of repeating the first one. Plans already in flight keep working.

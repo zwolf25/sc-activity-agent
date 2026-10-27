@@ -42,6 +42,12 @@ Work order creation only runs while the agent runs. If the machine sleeps, the a
 
 Production and SB2 are two separate instances with their own data, keys and ports (8080 and 8081). Nothing switches between them. On a Production instance, Connections has an **Open SB2 test instance** button that starts the SB2 copy. Integration apps are registered per environment, so the SB2 copy needs SB2 apps.
 
+### Moving a command-line instance into the desktop app
+
+1. Pause the instance and stop it (and remove its login item, so only one agent acts on the plans).
+2. Install the app, quit it before the welcome page, and copy `agent.db` and `secret.key` from the old data folder into the app's data folder (macOS: `~/Library/Application Support/com.zackwolf.sc-activity-agent`, Windows: `%APPDATA%\com.zackwolf.sc-activity-agent`). Copy both files; the key decrypts the saved credentials.
+3. Start the app. It skips the welcome page, keeps the saved environment and port, and resumes from the saved plans.
+
 ## Commands
 
 | Command | What it does |
