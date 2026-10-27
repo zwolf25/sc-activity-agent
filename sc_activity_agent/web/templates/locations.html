@@ -7,10 +7,12 @@
 <div class="card"><h3>Add locations</h3>
 <form method="post" action="/locations/load" class="row"><button class="primary">{{ 'Reload' if loaded else 'Load' }} locations from ServiceChannel</button></form>
 {% if loaded %}<form method="get" action="/locations" class="row"><label class="f">Search<input type="text" name="q" value="{{ q }}" placeholder="Store ID, name, city or state"></label><button class="sm">Search</button></form>
-<table><thead><tr><th>Store</th><th>Name</th><th>City</th><th>Status</th><th></th></tr></thead><tbody>
-{% for c in pool %}<tr><td>{{ c.store_id }}</td><td>{{ c.name }}</td><td>{{ c.city }}{{ ', ' + c.state if c.state }}</td><td>{{ c.status }}</td>
-<td><form method="post" action="/locations/add"><input type="hidden" name="store_id" value="{{ c.store_id }}"><button class="sm">Add</button></form></td></tr>{% else %}<tr><td colspan="5">No matching locations.</td></tr>{% endfor %}
-</tbody></table>{% if pool_n > 50 %}<p class="muted">Showing 50 of {{ pool_n }}. Search to narrow the list.</p>{% endif %}{% endif %}</div>
-<div class="card tbl"><h3>Trades we can create</h3><p class="muted">Trades where one of your provider connections is Rank 1 at the location. Refreshed daily when the agent creates work orders.</p><table><thead><tr><th>Location</th><th>Trade</th></tr></thead><tbody>
+<form method="post" action="/locations/add-many" class="grpform">
+<table><thead><tr><th></th><th>Store</th><th>Name</th><th>City</th><th>Status</th></tr></thead><tbody>
+{% for c in pool %}<tr><td><input type="checkbox" name="store_ids" value="{{ c.store_id }}"></td><td>{{ c.store_id }}</td><td>{{ c.name }}</td><td>{{ c.city }}{{ ', ' + c.state if c.state }}</td><td>{{ c.status }}</td></tr>{% else %}<tr><td colspan="5">No matching locations.</td></tr>{% endfor %}
+</tbody></table>{% if pool_n > 50 %}<p class="muted">Showing 50 of {{ pool_n }}. Search to narrow the list.</p>{% endif %}
+<label class="f">Or paste store IDs (a list or CSV; commas, spaces or lines)<textarea name="pasted" rows="2" placeholder="1001, 1002, 1003"></textarea></label>
+<button class="primary">Add selected and pasted</button></form>{% endif %}</div>
+<div class="card tbl"><h3>Trades we can create</h3><p class="muted">Trades where one of your provider connections is Rank 1 at the location. Refreshed daily when the agent creates work orders.{% if checked %} Last read {{ checked }}.{% endif %}</p><form method="post" action="/locations/resync"><button class="sm">Refresh now</button></form><table><thead><tr><th>Location</th><th>Trade</th></tr></thead><tbody>
 {% for c in contracts %}<tr><td>{{ c.location }}</td><td>{{ c.trade }}</td></tr>{% else %}<tr><td colspan="2">Not checked yet. Appears after the agent's first creation pass.</td></tr>{% endfor %}
-</tbody></table></div>{% endblock %}
+</tbody></table>{% if skipped %}<h3>Skipped trades</h3><p class="muted">On the location's issue list, but another provider is Rank 1, so the agent never creates them.</p><table><thead><tr><th>Location</th><th>Skipped trades</th></tr></thead><tbody>{% for s in skipped %}<tr><td>{{ s.location }}</td><td>{{ s.trades|join(", ") }}</td></tr>{% endfor %}</tbody></table>{% endif %}</div>{% endblock %}

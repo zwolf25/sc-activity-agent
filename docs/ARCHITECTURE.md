@@ -65,7 +65,7 @@ Not done on purpose: Apple notarization and Windows code signing (cost; same cho
 
 **Subscriber and Provider act separately.** `handlers.py` takes the user for each action from the Roles table (per-location override, then the default). Subscriber steps use Subscriber users, Provider steps use Provider users.
 
-**Only trades where we are Rank 1.** SC assigns a new WO to the Rank 1 provider for that trade and location. If another provider holds Rank 1, SC accepts the WO without error and assigns it to them, and the agent could not move it forward. So `creator.our_trades` checks Rank 1 through the rank endpoints (cached for a day) and never creates other trades.
+**Only trades where we are Rank 1.** SC assigns a new WO to the Rank 1 provider for that trade and location. If another provider holds Rank 1, SC accepts the WO without error and assigns it to them, and the agent could not move it forward. So `creator.our_trades` checks Rank 1 through the rank endpoints (cached for a day) and never creates other trades. `creator.resync` forces that read (the Locations page Refresh now button) and also records the issue-list trades we skip, so a Rank 1 change shows up without waiting a day and the skipped trades are visible instead of silent. Adding many locations goes through one `add-many` route that takes ticked rows and pasted IDs and never resets an existing location's enabled flag.
 
 **Never retry a failed create.** A rejected create leaves a VOID shell WO that the API cannot remove. The creator drops the slot on failure and records the error. Steps for existing WOs do retry, with backoff.
 

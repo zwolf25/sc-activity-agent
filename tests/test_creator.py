@@ -88,3 +88,13 @@ def test_unresolvable_issue_is_redrawn_not_posted(tmp_path):
     assert c.tick() == [("HQ", 9001)]
     posts = [b for m, p, b in app.calls if m == "POST"]
     assert len(posts) == 1 and posts[0]["IssueRequestInfo"]["AssetType"] == "Automatic Door"
+
+
+def test_resync_rereads_rank_one_and_records_skipped_trades(tmp_path):
+    s, app, c = setup(tmp_path)
+    loc = s.db.execute("SELECT * FROM locations").fetchone()
+    s.put("rank1", {"HQ": {"at": NOW + 9 * 3600, "trades": ["STALE"]}})   # fresh cache: normal reads would trust it
+    assert c.our_trades(loc) == {"STALE"}
+    assert c.resync(loc) == {"DOORS"}
+    hit = s.get("rank1")["HQ"]
+    assert hit["trades"] == ["DOORS"] and hit["skipped"] == ["ELECTRICAL"]

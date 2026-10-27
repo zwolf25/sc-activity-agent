@@ -41,11 +41,11 @@ class Creator:
             f.write_text(json.dumps(self._get(loc, f"/api/subscribers/{loc['subscriber_id']}/storedashboards/{dashboard}/issuelist")))
         return generator.issues(json.loads(f.read_text()))
 
-    def our_trades(self, loc):
-        """Trades where Rank 1 at this location is one of our provider connections. Cached for RANK_TTL."""
+    def our_trades(self, loc, force=False):
+        """Trades where Rank 1 at this location is one of our provider connections. Cached for RANK_TTL; force re-reads now."""
         cache = self.store.get("rank1", {})
         hit = cache.get(loc["store_id"])
-        if hit and self.clock() - hit["at"] < RANK_TTL:
+        if hit and not force and self.clock() - hit["at"] < RANK_TTL:
             return set(hit["trades"])
         trades = set()
         get = lambda p: self._get(loc, p)
@@ -55,6 +55,16 @@ class Creator:
             cache[loc["store_id"]] = {"at": self.clock(), "trades": sorted(trades)}
             self.store.put("rank1", cache)
         return trades
+
+    def resync(self, loc):
+        """Re-read Rank 1 now and record which trades on the location's issue list are skipped because another provider is Rank 1."""
+        ours = self.our_trades(loc, force=True)
+        listed = {i["trade"] for i in self._issues(loc, self.store.get("dashboard_id", DEFAULT_DASHBOARD))}
+        cache = self.store.get("rank1", {})
+        if loc["store_id"] in cache:
+            cache[loc["store_id"]]["skipped"] = sorted(listed - ours)
+            self.store.put("rank1", cache)
+        return ours
 
     def _resolves(self, loc, issue):
         """True if POST /workorders can resolve this issue. The POST looks the issue up on the location's own dashboard, not the

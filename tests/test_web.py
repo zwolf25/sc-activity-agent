@@ -248,3 +248,23 @@ def test_packaged_sb2_twin_lives_inside_the_data_folder_and_follows_updates(tmp_
     assert calls == [f"http://127.0.0.1:{twin.get('port')}/update/prepare?cascade=0"]
     c.post("/update/prepare?cascade=0")
     assert len(calls) == 1   # a cascaded call does not bounce back
+
+
+def test_add_many_locations_from_ticks_and_pasted_ids(tmp_path):
+    s, c = client(tmp_path)
+    s.put("locations_cache", [{"store_id": f"S{i}", "db_id": i, "subscriber_id": 5, "name": f"Store {i}", "lat": 1.0, "lon": 2.0,
+                               "tz": "America/New_York", "city": "X", "state": "NY", "status": "Open"} for i in range(1, 6)])
+    r = c.post("/locations/add-many", data={"store_ids": ["S1", "S2"], "pasted": "S2, S3\nS4 NOPE"}, follow_redirects=True)
+    assert {r["store_id"] for r in s.db.execute("SELECT store_id FROM locations")} == {"S1", "S2", "S3", "S4"}
+    assert "Added 4" in r.text and "NOPE" in r.text
+    s.db.execute("UPDATE locations SET enabled=0 WHERE store_id='S1'")
+    s.db.commit()
+    c.post("/locations/add-many", data={"store_ids": ["S1"]})
+    assert s.db.execute("SELECT enabled FROM locations WHERE store_id='S1'").fetchone()[0] == 0   # re-adding keeps the flag
+
+
+def test_locations_page_shows_skipped_trades_and_refresh_button(tmp_path):
+    s, c = client(tmp_path)
+    s.put("rank1", {"HQ": {"at": 1, "trades": ["HVAC"], "skipped": ["ROOFING"]}})
+    page = c.get("/locations").text
+    assert "ROOFING" in page and "Refresh now" in page

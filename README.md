@@ -32,7 +32,7 @@ On first launch the app asks whether it works in **Production** or **SB2** (the 
 1. Add one **Subscriber** connection (an integration app: client ID and secret) and a Subscriber user.
 2. Enter the Subscriber ID, load your dashboards and choose the issue list dashboard. The dashboard must be assigned to that Subscriber user in ServiceChannel.
 3. Add one **Provider** connection per provider you play, with its Provider ID and users.
-4. Add your locations: on the Locations page click Load, search the list and click Add. Ids, coordinates and time zone come from ServiceChannel.
+4. Add your locations: on the Locations page click Load, search the list, tick several rows (or paste store IDs as a list or CSV) and click Add selected. Ids, coordinates and time zone come from ServiceChannel. The Locations page also shows the trades the agent can create, the trades it skips because another provider is Rank 1, and a Refresh now button that re-reads Rank 1 straight away (otherwise it refreshes daily).
 5. Map each action to a user on the **Roles** page.
 6. Review the **Behavior** settings.
 
