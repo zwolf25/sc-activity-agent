@@ -1,10 +1,16 @@
 """ServiceChannel HTTP client: OAuth password grant per user, token cache, per-app rate limit, audit logging."""
 import base64
 import json
+import ssl
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
+
+import certifi
+
+# the packaged desktop app has no system CA bundle, so verify against certifi's
+SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 ENVS = {
     "sb2": ("https://sb2login.servicechannel.com/oauth/token", "https://sb2api.servicechannel.com/v3"),
@@ -54,7 +60,7 @@ class ScApp:
                 return None  # bad client id/secret returns a 302 to an HTML login page
 
         try:
-            r = urllib.request.build_opener(NoRedirect).open(req, timeout=90)
+            r = urllib.request.build_opener(NoRedirect, urllib.request.HTTPSHandler(context=SSL_CONTEXT)).open(req, timeout=90)
             return r.status, r.read().decode()
         except urllib.error.HTTPError as e:
             return e.code, e.read().decode()

@@ -40,6 +40,8 @@ The shell starts `agent-core --data-dir <app data folder> run` with `SC_AGENT_PA
 
 Updates use the Tauri updater with the Hub's design: `latest.json` on the latest GitHub Release, signed with a minisign key whose public half is in `tauri.conf.json` and whose private half is a repo secret. The console's Update now button calls `/update/prepare` (pause, copy the database, set `resume_after_update`), runs the updater, calls `/shutdown`, then relaunches. The new version resumes the agent on start only if the update paused it. A page served from `127.0.0.1` can call the updater because `capabilities/default.json` lists that origin as remote.
 
+TLS: the frozen Python has no system CA bundle, so `client.SSL_CONTEXT` verifies against `certifi` for both the ServiceChannel calls and the update check. This was found when the 0.3.0 app never showed the update banner.
+
 Why a shell and not PyInstaller alone: replacing a running executable on Windows is the hard part of an updater, and Tauri already solves it. The macOS sidecar needs the `disable-library-validation` entitlement (`entitlements.plist`): Tauri re-signs it ad hoc, and macOS then refuses to load the Python framework PyInstaller unpacks.
 
 Not done on purpose: Apple notarization and Windows code signing (cost; same choice as the Hub), an Intel Mac build (`macos-latest` runners are Apple silicon), Linux. The updater has not run a real update cycle yet.

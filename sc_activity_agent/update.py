@@ -9,6 +9,7 @@ import time
 import urllib.request
 
 from . import __version__
+from .client import SSL_CONTEXT
 
 REPO = "zwolf25/sc-activity-agent"
 CHECK_EVERY = 24 * 3600
@@ -16,7 +17,7 @@ CHECK_EVERY = 24 * 3600
 
 def _fetch(url):
     req = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json", "User-Agent": "sc-activity-agent"})
-    with urllib.request.urlopen(req, timeout=15) as r:
+    with urllib.request.urlopen(req, timeout=15, context=SSL_CONTEXT) as r:
         return json.load(r)
 
 
