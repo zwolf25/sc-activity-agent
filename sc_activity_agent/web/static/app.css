@@ -90,3 +90,9 @@ form.tg .grp{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border
 form.tg h4{margin:0;font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 label.chk{display:flex;align-items:flex-start;gap:8px;font-size:13.5px}
 label.chk input{margin-top:3px}
+ol.steps{display:flex;flex-direction:column;gap:18px;padding-left:22px;margin:0}
+ol.steps li>form{margin-top:8px}
+ol.steps li>form.tg{margin-top:10px}
+form.tg>button{align-self:flex-start}
+ol.steps li.ok::marker{color:var(--good,#1a7f37);font-weight:700}
+ol.steps button{white-space:nowrap}

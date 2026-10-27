@@ -16,11 +16,11 @@
 <li>Send a test message and check that it arrives. <form method="post" action="/alerts/test"><button {{ 'disabled' if not al.chat_id }}>Send test message</button></form></li>
 <li>Choose what to be told about, then save.
 <form method="post" action="/alerts/save" class="tg">
-<div class="grp"><h4>1. Turn alerts on or off</h4>
+<div class="grp"><h4>A. Turn alerts on or off</h4>
 <label class="chk"><input type="checkbox" name="enabled" {{ 'checked' if al.enabled }} {{ 'disabled' if not al.chat_id }}> <span><b>Send Telegram alerts</b><br><span class="muted">Master switch. Off means nothing is sent, whatever is ticked below.{% if not al.chat_id %} Finish steps 1 and 2 first.{% endif %}</span></span></label></div>
-<div class="grp"><h4>2. Which alerts to send</h4>
+<div class="grp"><h4>B. Which alerts to send</h4>
 {% for k, label in events.items() %}<label class="chk"><input type="checkbox" name="ev_{{ k }}" {{ 'checked' if al.events.get(k, True) }}> <span>{{ label }}</span></label>{% endfor %}</div>
-<div class="grp"><h4>3. Action buttons (optional)</h4>
+<div class="grp"><h4>C. Action buttons (optional)</h4>
 <label class="chk"><input type="checkbox" name="buttons" {{ 'checked' if al.buttons }}> <span>Add buttons under each alert: Retry, Skip step, Pause agent, Cancel WO<br><span class="muted">Only this chat can use them. Cancel WO asks for a yes first. Needs one bot per instance.</span></span></label></div>
 <button class="primary">Save</button></form></li></ol>
 <p class="muted">Limits: the same alert is not repeated within 6 hours, and at most 10 are sent per hour. Alerts only go out while the agent is running. {% if alert_error %}Last send problem: {{ alert_error }}{% endif %}</p>

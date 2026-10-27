@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Fix: the console now loads its stylesheet with the version in the address, so an update shows its new look right away instead of the old cached styles. The Telegram setup steps have clear spacing and its option groups are lettered A to C.
 
 ## v0.4.2 - 2026-10-27
 - Fix: a new release now shows the Update banner within an hour. The check was cached for a day, so a fresh release could stay hidden.
