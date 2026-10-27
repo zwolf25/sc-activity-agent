@@ -12,7 +12,7 @@ from . import __version__
 from .client import SSL_CONTEXT
 
 REPO = "zwolf25/sc-activity-agent"
-CHECK_EVERY = 24 * 3600
+CHECK_EVERY = 3600   # hourly: a day-long cache hid a fresh release from the banner for up to a day
 
 
 def _fetch(url):
