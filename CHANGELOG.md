@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+
+## v0.2.1 - 2026-10-26
+Restart the agent after updating. Nothing is paused and no data changes.
 - Dashboard: the "Today" table is now "This week". It lists every step planned for the current calendar week (Monday to Sunday), 10 per page, with a "Hide done" filter. The "API calls in the last hour" tile is gone.
 - Behavior: activity start and end are two time drop-downs in one row instead of two sliders. The end is always after the start.
 - Roles: each cell is a single drop-down. A cell that held several users before keeps only the first on the next save.
