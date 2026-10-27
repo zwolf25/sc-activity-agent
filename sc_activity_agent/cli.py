@@ -2,6 +2,7 @@
 import argparse
 import os
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -99,6 +100,13 @@ def cmd_run(args, store):
         store.put("resume_after_update", False)
         engine.paused_at = store.get("paused_at")
         engine.resume(store.get("resume_policy", "catch_up"))
+    if PACKAGED and store.get("env") == "prod":
+        from .launcher import ensure_running, twin_dir
+        d = twin_dir(store.dir)
+        if (d / "agent.db").exists():   # an update stopped the SB2 copy too; bring it back if it was running
+            twin = Store(d)
+            if twin.get("resume_after_update"):
+                threading.Thread(target=ensure_running, args=(d, twin.get("port")), daemon=True).start()
     print(f"agent {__version__} running ({store.get('env')}). Ctrl+C to stop.")
     try:
         while True:

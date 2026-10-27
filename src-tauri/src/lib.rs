@@ -110,15 +110,33 @@ fn show_window(app: &AppHandle) {
     }
 }
 
+/// Point the window at Production's console or the SB2 copy's. The SB2 copy is started from Production's Connections page,
+/// so when it is not running the window goes there instead.
+fn open_console(app: &AppHandle, sb2: bool) {
+    let dir = data_dir(app);
+    let prod = app.state::<Agent>().port.lock().unwrap().or_else(|| read_port(&dir));
+    let target = match (sb2, read_port(&dir.join("sb2"))) {
+        (true, Some(p)) if port_open(p) => Some(format!("http://127.0.0.1:{p}/dashboard")),
+        (true, _) => prod.map(|p| format!("http://127.0.0.1:{p}/connections")),
+        (false, _) => prod.map(|p| format!("http://127.0.0.1:{p}/dashboard")),
+    };
+    if let (Some(w), Some(u)) = (app.get_webview_window("main"), target.and_then(|u| u.parse().ok())) {
+        let _ = w.navigate(u);
+    }
+    show_window(app);
+}
+
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     let open = MenuItem::with_id(app, "open", "Open console", true, None::<&str>)?;
+    let prod_console = MenuItem::with_id(app, "console_prod", "Production console", true, None::<&str>)?;
+    let sb2_console = MenuItem::with_id(app, "console_sb2", "SB2 console", true, None::<&str>)?;
     let login = CheckMenuItem::with_id(app, "login", "Start at login", true, app.autolaunch().is_enabled().unwrap_or(false), None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "Quit (stops the agent)", true, None::<&str>)?;
-    let menu = Menu::with_items(app, &[&open, &login, &quit])?;
+    let menu = Menu::with_items(app, &[&open, &prod_console, &sb2_console, &login, &quit])?;
     let login_item = login.clone();
     let awake = CheckMenuItem::with_id(app, "awake", "Keep Mac awake (while plugged in)", true, awake_wanted(app), None::<&str>)?;
     #[cfg(target_os = "macos")]
-    menu.insert(&awake, 2)?;
+    menu.insert(&awake, 4)?;
     let awake_item = awake.clone();
     TrayIconBuilder::with_id("agent")
         .icon(app.default_window_icon().cloned().expect("icon"))
@@ -132,6 +150,8 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
                 let _ = if al.is_enabled().unwrap_or(false) { al.disable() } else { al.enable() };
                 let _ = login_item.set_checked(al.is_enabled().unwrap_or(false));
             }
+            "console_prod" => open_console(app, false),
+            "console_sb2" => open_console(app, true),
             "awake" => {
                 let on = !awake_wanted(app);
                 set_awake(app, on);

@@ -40,7 +40,7 @@ Work order creation only runs while the agent runs. If the machine sleeps, the a
 
 ## Production and test
 
-Production and SB2 are two separate instances with their own data, keys and ports (8080 and 8081). Nothing switches between them. On a Production instance, Connections has an **Open SB2 test instance** button that starts the SB2 copy. Integration apps are registered per environment, so the SB2 copy needs SB2 apps.
+Production and SB2 are two separate instances with their own data, keys and ports (8080 and 8081). Nothing switches between them. On a Production instance, Connections has an **Open SB2 test instance** button that starts the SB2 copy. In the desktop app the SB2 copy lives in an `sb2` folder inside the app's data folder, starts only when you ask, and is switched with the tray menu (Production console, SB2 console). One install, one update and one Quit cover both. Integration apps are registered per environment, so the SB2 copy needs SB2 apps.
 
 ### Moving a command-line instance into the desktop app
 

@@ -10,7 +10,7 @@ import time
 import zlib
 from pathlib import Path
 
-from . import autostart
+from . import PACKAGED, autostart
 
 
 def name(env):
@@ -19,6 +19,19 @@ def name(env):
 
 def open_cmd(data_dir):
     return [sys.executable, "-m", "sc_activity_agent.cli", "--data-dir", str(Path(data_dir).resolve()), "open"]
+
+
+def twin_dir(data_dir):
+    """Where the SB2 copy lives: inside the desktop app's data folder, or beside the data folder in a source install."""
+    d = Path(data_dir)
+    return d / "sb2" if PACKAGED else d.with_name(d.name + "-sb2")
+
+
+def run_cmd(data_dir):
+    """The frozen desktop program is the agent itself; a source install runs the module."""
+    if PACKAGED:
+        return [sys.executable, "--data-dir", str(Path(data_dir).resolve()), "run"]
+    return [sys.executable, "-m", "sc_activity_agent.cli", "--data-dir", str(Path(data_dir).resolve()), "run"]
 
 
 def port_open(port):
@@ -32,8 +45,7 @@ def ensure_running(data_dir, port):
     if not port_open(port):
         data_dir = Path(data_dir)
         log = open(data_dir / "agent.log", "a")
-        subprocess.Popen([sys.executable, "-m", "sc_activity_agent.cli", "--data-dir", str(data_dir.resolve()), "run"],
-                         stdout=log, stderr=log, start_new_session=True)
+        subprocess.Popen(run_cmd(data_dir), stdout=log, stderr=log, start_new_session=True)
         for _ in range(60):
             if port_open(port):
                 break

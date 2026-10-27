@@ -5,6 +5,7 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -215,11 +216,27 @@ def create_app(store, engine=None, rt=None):
         db.commit()
         return RedirectResponse("/errors", 303)
 
+    def to_peer(path):
+        """Desktop app: one app update or quit covers both instances, so pass the call on to the other one if it is running."""
+        from ..launcher import port_open, twin_dir
+        peer = twin_dir(store.dir) if store.get("env") != "sb2" else store.dir.parent
+        try:
+            port = int((peer / "port").read_text())
+        except (OSError, ValueError):
+            return
+        if port_open(port):
+            try:
+                urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:{port}{path}?cascade=0", method="POST"), timeout=10).read()
+            except OSError:
+                pass   # a peer that does not answer must not hold up this one
+
     @app.post("/update/prepare")
-    def prepare_update():
+    def prepare_update(cascade: str = "1"):
         """Desktop app only: pause and back up the database right before the shell installs a new version."""
         if not PACKAGED:
             return JSONResponse({"ok": False}, 404)
+        if cascade != "0":
+            to_peer("/update/prepare")
         was_paused = store.get("paused_at") is not None
         store.put("resume_after_update", not was_paused)
         if not was_paused:
@@ -228,10 +245,12 @@ def create_app(store, engine=None, rt=None):
         return {"ok": True}
 
     @app.post("/shutdown")
-    def shutdown():
+    def shutdown(cascade: str = "1"):
         """Desktop app only: the shell asks the agent to stop when the app quits or restarts for an update."""
         if not PACKAGED:
             return JSONResponse({"ok": False}, 404)
+        if cascade != "0":
+            to_peer("/shutdown")
         threading.Timer(0.3, os._exit, args=(0,)).start()
         return {"ok": True}
 
@@ -246,15 +265,16 @@ def create_app(store, engine=None, rt=None):
     @app.post("/test-instance")
     def test_instance():
         """Production instance only: create (first time) and start the SB2 twin in <data dir>-sb2, then go to it."""
-        from ..launcher import ensure_running
+        from ..cli import free_port
+        from ..launcher import ensure_running, twin_dir
         from ..store import Store
-        twin_dir = store.dir.with_name(store.dir.name + "-sb2")
-        twin = Store(twin_dir)
+        d = twin_dir(store.dir)
+        twin = Store(d)
         if not twin.get("env"):
             twin.put("env", "sb2")
-            twin.put("port", 8081)
+            twin.put("port", free_port(8081) if PACKAGED else 8081)
             twin.put("twin_port", store.get("port"))
-        if not ensure_running(twin_dir, twin.get("port")):
+        if not ensure_running(d, twin.get("port")):
             return RedirectResponse("/connections?msg=The SB2 instance did not start. See agent.log in its data folder.", 303)
         return RedirectResponse(f"http://127.0.0.1:{twin.get('port')}/dashboard", 303)
 
