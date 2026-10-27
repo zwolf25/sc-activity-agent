@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- New (macOS): the tray menu has Keep Mac awake (while plugged in), on by default and remembered. It stops the Mac from idle-sleeping so plans keep their times; it ends when the app quits. It does not stop sleep when the lid is closed or on battery.
 - Fix: the Dashboard notice about time the agent was not running now shows readable local times, how long it was, and what was done about it. It has a Dismiss button, and Dismiss all when there are several. Before, it showed raw numbers and could not be cleared.
 - Fix: a laptop that sleeps and wakes again and again (about every 17 minutes overnight) no longer adds one notice per wake. One notice now covers the whole stretch.
 

@@ -15,6 +15,7 @@ use tauri_plugin_autostart::ManagerExt;
 struct Agent {
     child: Mutex<Option<Child>>,
     port: Mutex<Option<u16>>,
+    awake: Mutex<Option<Child>>,
 }
 
 fn data_dir(app: &AppHandle) -> PathBuf {
@@ -83,6 +84,24 @@ fn start_agent(app: &AppHandle) -> std::io::Result<()> {
     Ok(())
 }
 
+/// Keep the Mac from idle-sleeping while plugged in: plans only run while the machine is awake, and each sleep shifts them later.
+/// `caffeinate -w` exits when this app does, so nothing is left behind. macOS only; the choice is remembered in `keep-awake`.
+fn set_awake(app: &AppHandle, on: bool) {
+    let _ = fs::write(data_dir(app).join("keep-awake"), if on { "1" } else { "0" });
+    let state = app.state::<Agent>();
+    let mut slot = state.awake.lock().unwrap();
+    if let Some(mut c) = slot.take() {
+        let _ = c.kill();
+    }
+    if on && cfg!(target_os = "macos") {
+        *slot = Command::new("caffeinate").args(["-i", "-s", "-w", &std::process::id().to_string()]).spawn().ok();
+    }
+}
+
+fn awake_wanted(app: &AppHandle) -> bool {
+    fs::read_to_string(data_dir(app).join("keep-awake")).map(|s| s.trim() != "0").unwrap_or(true)
+}
+
 fn show_window(app: &AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.show();
@@ -97,6 +116,10 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     let quit = MenuItem::with_id(app, "quit", "Quit (stops the agent)", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&open, &login, &quit])?;
     let login_item = login.clone();
+    let awake = CheckMenuItem::with_id(app, "awake", "Keep Mac awake (while plugged in)", true, awake_wanted(app), None::<&str>)?;
+    #[cfg(target_os = "macos")]
+    menu.insert(&awake, 2)?;
+    let awake_item = awake.clone();
     TrayIconBuilder::with_id("agent")
         .icon(app.default_window_icon().cloned().expect("icon"))
         .tooltip("SC Activity Agent")
@@ -108,6 +131,11 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
                 let al = app.autolaunch();
                 let _ = if al.is_enabled().unwrap_or(false) { al.disable() } else { al.enable() };
                 let _ = login_item.set_checked(al.is_enabled().unwrap_or(false));
+            }
+            "awake" => {
+                let on = !awake_wanted(app);
+                set_awake(app, on);
+                let _ = awake_item.set_checked(on);
             }
             "quit" => {
                 stop_agent(app);
@@ -159,7 +187,7 @@ pub fn run() {
         .plugin(tauri_plugin_autostart::init(tauri_plugin_autostart::MacosLauncher::LaunchAgent, Some(vec!["--hidden"])))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        .manage(Agent { child: Mutex::new(None), port: Mutex::new(None) })
+        .manage(Agent { child: Mutex::new(None), port: Mutex::new(None), awake: Mutex::new(None) })
         .on_window_event(|w, e| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = e {
                 api.prevent_close(); // the agent keeps working from the tray
@@ -176,6 +204,7 @@ pub fn run() {
                 let _ = fs::write(&flag, "1");
             }
             build_tray(&handle)?;
+            set_awake(&handle, awake_wanted(&handle));
             if let Err(e) = start_agent(&handle) {
                 eprintln!("could not start the agent program: {e}");
             }
