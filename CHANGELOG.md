@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Fix: the daily clean-up choice now has its own Save button with a confirm box, and saving it never starts a run: the first run is a day later. Before, saving the setting from the Preview button could start a sweep within minutes. "Finish ours" is no longer offered on Production and never runs automatically there. Finishing plans no longer start with an accept step, because most idle work orders are past acceptance and the API refuses it (error 904).
 
 ## v0.5.0 - 2026-10-27
 - New: the daily sweep (B-40). Choose on the Cleanup page what happens to idle work orders every weekday: nothing, cancel them, or finish the ones held by your own providers and cancel the rest. At most 100 work orders a day.

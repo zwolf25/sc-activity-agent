@@ -414,18 +414,28 @@ def create_app(store, engine=None, rt=None):
         prev = store.get("cleanup_preview")
         if prev:
             prev = {**prev, "when": datetime.fromtimestamp(prev["at"], ZoneInfo(store.get("tz", "America/New_York"))).strftime("%b %d %H:%M")}
-        return page(request, "cleanup", rows=rows, msg=msg, cfg=cleanup_mod.settings(store), prev=prev, runstate=store.get("cleanup_run"))
+        return page(request, "cleanup", rows=rows, msg=msg, cfg=cleanup_mod.settings(store), env=store.get("env"), prev=prev, runstate=store.get("cleanup_run"))
 
     @app.post("/cleanup/preview")
-    def cleanup_preview(days: int = Form(14), protect: str = Form("do not touch"), sweep: str = Form("off")):
+    def cleanup_preview(days: int = Form(14), protect: str = Form("do not touch")):
         if not rt:
             return RedirectResponse("/cleanup?msg=The agent is not running", 303)
-        store.put("cleanup", {"days": max(1, min(days, 3650)), "protect": protect.strip(), "sweep": sweep if sweep in ("off", "cancel", "finish") else "off"})
+        store.put("cleanup", {**cleanup_mod.settings(store), "days": max(1, min(days, 3650)), "protect": protect.strip()})
         try:
             r = cleanup_mod.preview(store, rt)
         except ScError as e:
             return RedirectResponse(f"/cleanup?msg=Could not read work orders: {e.body or e}", 303)
         return RedirectResponse(f"/cleanup?msg=Found {len(r['items'])} work order(s) to cancel", 303)
+
+    @app.post("/cleanup/auto")
+    def cleanup_auto(sweep: str = Form("off"), confirm: str = Form("")):
+        if sweep not in ("off", "cancel", "finish") or (sweep == "finish" and store.get("env") == "prod"):
+            return RedirectResponse("/cleanup?msg=That choice is not allowed here", 303)
+        if sweep != "off" and not confirm:
+            return RedirectResponse("/cleanup?msg=Tick the box to confirm the daily choice", 303)
+        store.put("cleanup", {**cleanup_mod.settings(store), "sweep": sweep})
+        store.put("last_sweep", time.time())   # the first run is a day away, never minutes after saving
+        return RedirectResponse(f"/cleanup?msg=Daily choice saved: {sweep}. First run in about a day", 303)
 
     @app.post("/cleanup/now")
     def cleanup_now(confirm: str = Form("")):

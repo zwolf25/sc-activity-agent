@@ -71,7 +71,8 @@ def finish_plan(store, rt, w, now):
     loc = store.db.execute("SELECT * FROM locations WHERE store_id=?", (w["_location"],)).fetchone()
     c, rng, tz = {**planner.DEFAULTS, **store.get("behavior", {})}, rt.rng, loc["tz"] or "America/New_York"
     t, steps = now, []
-    for kind, lo, hi, payload in (("accept", 300, 1800, {"situation": "ack"}), ("check_in", 600, 3600, {"visit": 1, "situation": "onsite"}),
+    # no accept step: idle WOs are mostly past acceptance and the API refuses it with 904 (seen live on Prod, 2026-10-27)
+    for kind, lo, hi, payload in (("check_in", 600, 3600, {"visit": 1, "situation": "onsite"}),
                                   ("check_out", 5400, 10800, {"visit": 1, "final": True, "situation": "complete"}),
                                   ("review", 3600, 28800, {"situation": "review"}), ("invoice_submit", 7200, 21600, {"situation": "invoice"}),
                                   ("invoice_decide", 3600, 21600, {"approve": True})):
@@ -122,13 +123,15 @@ def run(store, rt, clock=time.time, finish=False):
 def now(store, rt, clock=time.time):
     """Select every idle WO and act on it right away, no review. Uses the daily-sweep choice for finish vs cancel."""
     preview(store, rt, clock)
-    return run(store, rt, clock, finish=settings(store)["sweep"] == "finish")
+    return run(store, rt, clock, finish=settings(store)["sweep"] == "finish" and store.get("env") != "prod")
 
 
 def sweep(store, rt, clock=time.time):
     """B-40: once a day on a weekday, when the setting is on, preview and run without a click. Cancels, or (finish) gives WOs held
     by our providers a short plan. Returns engine-style [(key, outcome)]."""
     mode = settings(store)["sweep"]
+    if mode == "finish" and store.get("env") == "prod":
+        mode = "off"   # finishing plans act as the Provider on real work orders: never automatic on Prod
     now = clock()
     day = dt.datetime.fromtimestamp(now, ZoneInfo(store.get("tz", "America/New_York")))
     if mode == "off" or store.get("paused_at") is not None or day.weekday() >= 5 or now - store.get("last_sweep", 0) < 20 * 3600 \

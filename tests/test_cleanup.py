@@ -93,7 +93,7 @@ def test_finish_gives_our_providers_wos_a_plan_and_cancels_the_rest(tmp_path):
     st = cleanup.run(s, rt, clock=lambda: NOW, finish=True)
     assert st["finished"] == 1 and st["cancelled"] == 1
     kinds = [r[0] for r in s.db.execute("SELECT kind FROM steps WHERE wo_id=(SELECT id FROM work_orders WHERE sc_id=1) ORDER BY seq")]
-    assert kinds == ["accept", "check_in", "check_out", "review", "invoice_submit", "invoice_decide"]
+    assert kinds == ["check_in", "check_out", "review", "invoice_submit", "invoice_decide"]
     assert [c[1] for c in app.calls if c[0] == "PUT"] == ["/workorders/2/status"]
 
 
@@ -110,3 +110,15 @@ def test_now_selects_every_idle_wo_without_review(tmp_path):
     s, app, rt = setup(tmp_path, [wo(1), wo(2), wo(3, upd=NEW)])
     st = cleanup.now(s, rt, clock=lambda: NOW)
     assert st["cancelled"] == 2 and [c[1] for c in app.calls if c[0] == "PUT"] == ["/workorders/1/status", "/workorders/2/status"]
+
+
+def test_finish_is_never_automatic_on_prod_and_saving_does_not_start_a_sweep(tmp_path):
+    s, app, rt = setup(tmp_path, [wo(1)])
+    s.put("env", "prod")
+    s.put("cleanup", {"sweep": "finish"})
+    assert cleanup.sweep(s, rt, clock=lambda: NOW) == []   # finish on prod acts as off
+    c = TestClient(create_app(s, rt=rt))
+    c.post("/cleanup/auto", data={"sweep": "cancel", "confirm": "1"})
+    assert s.get("cleanup")["sweep"] == "cancel" and cleanup.sweep(s, rt, clock=lambda: s.get("last_sweep") + 60) == []
+    c.post("/cleanup/auto", data={"sweep": "finish", "confirm": "1"})
+    assert s.get("cleanup")["sweep"] == "cancel"            # refused on prod
