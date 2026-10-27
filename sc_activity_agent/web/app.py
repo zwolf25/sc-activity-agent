@@ -39,6 +39,16 @@ SLIDERS = [("wo_per_month", "Work orders per month", "Per enabled location, week
            ("hours_end", "Activity ends (hour)", "", 1, 24, 1)]
 
 
+def gap_text(g, z):
+    """Readable offline notice: local times, how long, and what the agent did about it."""
+    a, b = (datetime.fromtimestamp(g[k], z) for k in ("start", "end"))
+    mins = max(1, round((g["end"] - g["start"]) / 60))
+    span = f"{mins} min" if mins < 120 else f"{mins / 60:.0f} h"
+    fmt = "%a %b %d, %H:%M"
+    moved = f"{g['steps']} scheduled steps were moved forward to make up for it." if g["steps"] else "No scheduled steps were affected."
+    return f"The agent was not running from {a.strftime(fmt)} to {b.strftime(fmt)} ({span}), for example while the computer slept or the app was updated. {moved}"
+
+
 def create_app(store, engine=None, rt=None):
     app = FastAPI(title="SC Activity Agent")
     app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
@@ -103,8 +113,16 @@ def create_app(store, engine=None, rt=None):
         z = ZoneInfo(tz)
         week = [dict(r, when=datetime.fromtimestamp(r["due_at"], z).strftime("%a %b %d, %H:%M"), detail=status.detail(r["kind"], json.loads(r["payload"]))) for r in rows]
         return page(request, "dashboard", stages=status.by_stage(db), week=week, total=total, pages=pages, cur=cur, hide_done=bool(hide_done), hide_skipped=bool(hide_skipped),
-                    gaps=[g for g in store.get("gaps", []) if not g["acked"]],
+                    gaps=[dict(g, i=i, text=gap_text(g, z)) for i, g in enumerate(store.get("gaps", [])) if not g["acked"]],
                     blocked=[p["name"] for p in pair_status() if p["state"] == "blocked"])
+
+    @app.post("/gap/{i}/dismiss")
+    def dismiss_gap(i: int):
+        gaps = store.get("gaps", [])
+        if 0 <= i < len(gaps):
+            gaps[i]["acked"] = True   # the shift already happened; dismissing only hides the notice
+            store.put("gaps", gaps)
+        return RedirectResponse("/dashboard", 303)
 
     @app.get("/connections")
     def connections(request: Request, msg: str = ""):

@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Fix: the Dashboard notice about time the agent was not running now shows readable local times, how long it was, and what was done about it. It has a Dismiss button. Before, it showed raw numbers and could not be cleared.
 
 ## v0.3.5 - 2026-10-27
 - Fix (macOS): clicking the app icon while the window is hidden in the menu bar now brings the window back. Before, only the tray menu did.

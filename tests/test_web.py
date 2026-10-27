@@ -216,3 +216,12 @@ def test_setup_shows_checkin_permission_request_and_status(tmp_path):
     s.log(ts=2, role="provider", user="pu", action="check_in", method="POST", path="/workorders/2/universalCheckIn", http=200)
     t = c.get("/setup").text
     assert "Confirmed" in t and "Please link" not in t and "Check-in is blocked" not in c.get("/dashboard").text
+
+
+def test_offline_notice_is_readable_and_can_be_dismissed(tmp_path):
+    s, c = client(tmp_path)
+    s.put("gaps", [{"start": 1793068087, "end": 1793069068, "policy": "shift", "steps": 0, "undo": [], "acked": False}])
+    text = c.get("/dashboard").text
+    assert "1793068087" not in text and "16 min" in text and "No scheduled steps were affected" in text
+    c.post("/gap/0/dismiss", follow_redirects=False)
+    assert "was not running" not in c.get("/dashboard").text
