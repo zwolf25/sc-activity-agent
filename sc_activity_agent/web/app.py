@@ -85,7 +85,7 @@ def create_app(store, engine=None, rt=None):
         tz = store.get("tz", "America/New_York")
         rows, total, pages, cur = status.week(db, tz, hide_done=bool(hide_done), hide_skipped=bool(hide_skipped), page=page_no)
         z = ZoneInfo(tz)
-        week = [dict(r, when=datetime.fromtimestamp(r["due_at"], z).strftime("%a %b %d, %H:%M")) for r in rows]
+        week = [dict(r, when=datetime.fromtimestamp(r["due_at"], z).strftime("%a %b %d, %H:%M"), detail=status.detail(r["kind"], json.loads(r["payload"]))) for r in rows]
         return page(request, "dashboard", stages=status.by_stage(db), week=week, total=total, pages=pages, cur=cur, hide_done=bool(hide_done), hide_skipped=bool(hide_skipped),
                     gaps=[g for g in store.get("gaps", []) if not g["acked"]])
 

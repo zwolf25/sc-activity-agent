@@ -93,7 +93,7 @@ def build_plan(rng, now, cfg, tz="America/New_York"):
         hours = max(0.5, rng.gauss(2.0, 0.7)) * c["time_on_site"]
         end_cap = _at(day, c["hours_end"], tz)
         out = min(t + hours * 3600, end_cap)
-        add("check_in", t, visit=v + 1, situation="onsite" if v == 0 else "return")
+        add("check_in", t, visit=v + 1, situation="onsite" if v == 0 else "return", **({"late": late} if v == 0 else {}))
         if rng.random() < 0.7:
             add("prov_note", t + 600, situation="onsite" if v == 0 else "return")
         last = v == visits - 1

@@ -162,3 +162,11 @@ def test_roles_use_single_dropdowns(tmp_path):
     c.post("/connections/add", data={"side": "subscriber", "name": "m", "client_id": "a", "client_secret": "b"})
     c.post("/connections/1/users", data={"username": "u1", "password": "p"})
     assert "multiple" not in c.get("/roles").text
+
+
+def test_step_context_text():
+    from sc_activity_agent.status import detail
+    assert detail("proposal_decide", {"approve": False}) == "Will reject"
+    assert detail("check_in", {"visit": 1, "late": True}) == "Visit 1, late" and detail("check_in", {"visit": 2}) == "Visit 2"
+    assert detail("prov_note", {"situation": "parts"}) == "Note: parts needed"
+    assert detail("check_out", {"visit": 1, "final": False}).endswith("return visit") and detail("review", {}) == ""

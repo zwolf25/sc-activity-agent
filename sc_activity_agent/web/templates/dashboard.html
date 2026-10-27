@@ -6,8 +6,8 @@
 <form method="get" class="tog"><input type="hidden" name="f" value="1">
 <label class="tog"><input type="checkbox" name="hide_done" value="1" {{ 'checked' if hide_done }} onchange="this.form.submit()"> Hide done</label>
 <label class="tog"><input type="checkbox" name="hide_skipped" value="1" {{ 'checked' if hide_skipped }} onchange="this.form.submit()"> Hide skipped</label></form></div>
-<table><thead><tr><th>When</th><th>Action</th><th>WO</th><th>Location</th><th>Trade</th><th>Status</th></tr></thead><tbody>
-{% for r in week %}<tr><td class="mono">{{ r.when }}</td><td>{{ r.kind.replace('_', ' ') }}</td><td class="mono">{{ r.sc_id or '' }}</td><td>{{ r.location }}</td><td>{{ r.trade or '' }}</td>
+<table><thead><tr><th>When</th><th>Action</th><th>WO</th><th>Location</th><th>Context</th><th>Status</th></tr></thead><tbody>
+{% for r in week %}<tr><td class="mono">{{ r.when }}</td><td>{{ r.kind.replace('_', ' ') }}</td><td class="mono">{{ r.sc_id or '' }}</td><td>{{ r.location }}</td><td>{{ r.detail }}</td>
 <td><span class="pill {{ {'done': 'good', 'failed': 'bad'}.get(r.state, '') }}">{{ r.state }}</span></td></tr>{% else %}<tr><td colspan="6">Nothing planned this week.</td></tr>{% endfor %}
 </tbody></table>
 {% if pages > 1 %}<div class="row"><span class="mono">Page {{ cur }} of {{ pages }} ({{ total }} steps)</span><span>

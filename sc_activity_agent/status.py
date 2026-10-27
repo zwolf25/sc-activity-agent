@@ -36,6 +36,26 @@ def by_stage(db):
     return counts
 
 
+NOTE = {"ack": "acknowledge", "eta": "ETA update", "onsite": "on site", "return": "return visit", "parts": "parts needed",
+        "access": "access", "followup": "follow-up", "created": "WO created"}
+
+
+def detail(kind, p):
+    """One-line context for a step, from its saved payload. Empty when there is nothing useful to add."""
+    if kind in ("prov_note", "sub_note"):
+        return "Note: " + NOTE.get(p.get("situation"), p.get("situation", ""))
+    if kind in ("proposal_decide", "invoice_decide"):
+        return "Will approve" if p.get("approve") else "Will reject"
+    if kind == "check_in":
+        late = {True: ", late", False: ", on time"}.get(p.get("late"), "")
+        return f"Visit {p.get('visit', 1)}{late}"
+    if kind == "check_out":
+        return f"Visit {p.get('visit', 1)}, " + ("work complete" if p.get("final") else "parts on order, return visit")
+    if kind == "invoice_submit":
+        return "Resubmission after reject" if p.get("situation") == "invoice_fix" else ""
+    return ""
+
+
 def week(db, tz="America/New_York", now=None, hide_done=False, hide_skipped=True, page=1, size=10):
     """Steps planned for the local calendar week (Monday to Sunday), oldest first; skipped steps (their WO was cancelled or ended) can be hidden: (rows, total, pages, page)."""
     z = ZoneInfo(tz)
@@ -46,6 +66,6 @@ def week(db, tz="America/New_York", now=None, hide_done=False, hide_skipped=True
     total = db.execute(f"SELECT COUNT(*) FROM steps s WHERE {where}", (lo, hi)).fetchone()[0]
     pages = max(1, -(-total // size))
     page = min(max(1, page), pages)
-    rows = db.execute(f"SELECT s.kind, s.state, s.due_at, w.sc_id, w.location, w.trade FROM steps s JOIN work_orders w ON w.id=s.wo_id "
+    rows = db.execute(f"SELECT s.kind, s.state, s.due_at, s.payload, w.sc_id, w.location FROM steps s JOIN work_orders w ON w.id=s.wo_id "
                       f"WHERE {where} ORDER BY s.due_at, s.id LIMIT ? OFFSET ?", (lo, hi, size, (page - 1) * size)).fetchall()
     return rows, total, pages, page
