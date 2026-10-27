@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## v0.3.3 - 2026-10-27
+- No behavior change. Exists to prove the desktop app's Update now button end to end.
+
 ## v0.3.2 - 2026-10-27
 - Fix: the desktop app could not verify HTTPS certificates, so the update banner never appeared and ServiceChannel calls would have failed. It now ships its own certificate bundle (`certifi`). Desktop users on 0.3.0 or 0.3.1 must reinstall once from the release page; later updates are one click.
 
