@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Fix: Telegram setup failed behind a company proxy (Zscaler) with a certificate error. Telegram connections now trust the operating system's certificates, so the token check works on managed networks.
 
 ## v0.4.0 - 2026-10-27
 - New: optional Telegram alerts. Settings > Telegram alerts has a step-by-step setup with a check at each step. You get a message when a step fails after its retries, check-in is blocked (804), a login fails, or the agent was offline over an hour. Optional action buttons: Retry, Skip step, Pause agent, Cancel WO (asks first). Off by default; the bot token is stored encrypted; each instance has its own bot; at most 10 messages an hour and no repeat of the same alert within 6 hours. Messages include the WO, location, step and error text.

@@ -2,12 +2,19 @@
 taps are read by long polling getUpdates, so no server or open port is needed. Each instance has its own bot, token and settings.
 Nothing here may stop the engine: sending never raises."""
 import json
+import ssl
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 
 from .client import SSL_CONTEXT, ScError
+
+try:   # api.telegram.org is often re-signed by a company proxy (Zscaler); the OS trust store knows that root, certifi does not
+    import truststore
+    TLS = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+except ImportError:
+    TLS = SSL_CONTEXT
 
 COOLDOWN = 6 * 3600    # the same alert key is sent at most once per this many seconds
 CAP, CAP_WINDOW = 10, 3600   # and at most this many messages per hour; one summary message says the rest are held back
@@ -26,7 +33,7 @@ def api(token, method, **params):
     data = urllib.parse.urlencode({k: json.dumps(v) if isinstance(v, (dict, list)) else v for k, v in params.items()}).encode()
     try:
         with urllib.request.urlopen(urllib.request.Request(f"https://api.telegram.org/bot{token}/{method}", data=data),
-                                    timeout=40, context=SSL_CONTEXT) as r:
+                                    timeout=40, context=TLS) as r:
             return json.load(r)["result"]
     except urllib.error.HTTPError as e:
         try:
