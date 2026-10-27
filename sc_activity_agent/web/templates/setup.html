@@ -4,4 +4,8 @@
 <table><tbody>{% for label, ok, href in setup %}<tr><td>{{ label }}</td><td><span class="pill {{ 'good' if ok else 'warn' }}">{{ 'Done' if ok else 'To do' }}</span></td><td><a href="{{ href }}">Open</a></td></tr>{% endfor %}</tbody></table>
 <div class="row">{% set nxt = setup|rejectattr(1)|list %}{% if nxt %}<a href="{{ nxt[0][2] }}"><button class="primary" type="button">Next: {{ nxt[0][0] }}</button></a>{% else %}<a href="/dashboard"><button class="primary" type="button">All set. Open Dashboard</button></a>{% endif %}
 <a href="/dashboard"><button type="button">Skip to Dashboard</button></a></div></div>
+{% if pairs %}<div class="card"><h2>Check-in permission</h2>
+<p>ServiceChannel support must enable check-in/out for each Subscriber and Provider pair. Without it, check-ins fail with error 804. This does not block setup. Send the request below, and the status turns to Confirmed after the first check-in succeeds.</p>
+<table><tbody>{% for p in pairs %}<tr><td>{{ p.name }}</td><td><span class="pill {{ 'good' if p.state == 'ok' else 'bad' if p.state == 'blocked' else 'warn' }}">{{ 'Confirmed' if p.state == 'ok' else 'Blocked (error 804)' if p.state == 'blocked' else 'Not confirmed yet' }}</span></td></tr>
+{% if p.state != 'ok' %}<tr><td colspan="2"><textarea readonly rows="3" style="width:100%" onclick="this.select()">{{ p.request }}</textarea></td></tr>{% endif %}{% endfor %}</tbody></table></div>{% endif %}
 {% endblock %}

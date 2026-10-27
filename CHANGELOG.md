@@ -3,6 +3,8 @@
 ## Unreleased
 
 ## v0.3.4 - 2026-10-27
+- New: the Setup page has a Check-in permission card. It shows, for each Provider, whether check-in works yet (Confirmed after the first successful check-in, Blocked after error 804) and a ready-to-send request for ServiceChannel support with your real Subscriber and Provider IDs. A blocked pair also shows a banner on the Dashboard. It never blocks setup.
+- Fix: when an invoice is rejected, the resubmitted invoice now gets its own number (INV-<WO>-2) instead of repeating the first one. Plans already in flight keep working.
 - Fix: after an update, the "Update available" banner kept showing the version you had just installed until the next daily check. It now disappears as soon as the running version matches.
 
 ## v0.3.3 - 2026-10-27

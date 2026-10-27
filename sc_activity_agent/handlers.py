@@ -107,11 +107,12 @@ def make_handlers(rt):
         c = ctx_of(wo)
         total = round(float(c.get("nte") or 0) * rt.rng.uniform(0.6, 1.0), 2)
         labor = round(total * 0.7, 2)
-        body = {"InvoiceNumber": f"INV-{wo['sc_id']}-{step['attempts'] + 1}", "WoIdentifier": str(wo["sc_id"]),
+        n = (c.get("invoice_count") or (1 if c.get("invoice_id") else 0)) + 1   # a resubmission after a reject must not reuse the first invoice's number
+        body = {"InvoiceNumber": f"INV-{wo['sc_id']}-{n}", "WoIdentifier": str(wo["sc_id"]),
                 "InvoiceDate": _iso(step["due_at"]), "InvoiceTotal": total,
                 "InvoiceAmountsDetails": {"LaborAmount": labor, "MaterialAmount": round(total - labor, 2)}}
         r = call(wo, step, "POST", "/invoices", body=body)
-        rt.save_ctx(wo, invoice_id=(r or {}).get("Id"), amount=f"${total:,.2f}")
+        rt.save_ctx(wo, invoice_id=(r or {}).get("Id"), amount=f"${total:,.2f}", invoice_count=n)
 
     def invoice_decide(engine, wo, step):
         p = json.loads(step["payload"])

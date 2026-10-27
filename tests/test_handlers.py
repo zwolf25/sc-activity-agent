@@ -15,6 +15,7 @@ class FakeApp:
     def __init__(self, name, calls):
         self.name, self.calls = name, calls
         self.pstatus, self.istatus = "Pending", "OPEN"
+        self.invoice_numbers = []
 
     def call(self, user, method, path, params=None, body=None, **kw):
         self.calls.append((self.name, user[0], method, path))
@@ -23,6 +24,7 @@ class FakeApp:
         if path.startswith("/invoices/") and method == "GET":
             return {"Status": self.istatus}
         if path == "/invoices":
+            self.invoice_numbers.append(body["InvoiceNumber"])
             return {"Id": 777}
         if path == "/proposals/CreateProposal":
             return 26954049
@@ -212,3 +214,15 @@ def test_user_completed_wo_skips_field_steps(tmp_path):
     s = _run_refused(tmp_path, {"Primary": "COMPLETED", "Extended": "CONFIRMED"})
     done = [r[0] for r in s.db.execute("SELECT kind FROM steps WHERE state='done'")]
     assert "accept" in done and "check_in" in done and "review" in done
+
+
+def test_resubmitted_invoice_gets_a_new_number(tmp_path):
+    s = setup(tmp_path)
+    prov = FakeApp("prov", [])
+    rt = Runtime(s, {1: FakeApp("sub", []), 2: prov}, random.Random(1))
+    plan = planner.build_plan(random.Random(4), NOW, {"proposal_rate": 0, "invoice_approval": 0})
+    add_plan(s, "HQ-NYC", "HVAC", 5001, plan, CTX, NOW)
+    e = Engine(s, make_handlers(rt), clock=lambda: plan[-1]["due_at"] + 10, per_tick=50)
+    for _ in range(len(plan) + 3):
+        e.tick()
+    assert prov.invoice_numbers == ["INV-5001-1", "INV-5001-2"]

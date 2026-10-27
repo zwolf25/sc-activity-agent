@@ -7,7 +7,7 @@ You run it on your own machine, connect your own integration apps, and choose yo
 ## Prerequisites
 
 - One Subscriber integration app and one Provider integration app per environment. Clients do not cross environments.
-- **Check-in/out permission for each Subscriber and Provider pair.** ServiceChannel must enable XML check-in/out (between that Subscriber and Provider) or GPS check-in/out (for the Subscriber). Without it, check-in returns 403 error 804 and the Errors page says so. Repeat for every new pair.
+- **Check-in/out permission for each Subscriber and Provider pair.** ServiceChannel must enable XML check-in/out (between that Subscriber and Provider) or GPS check-in/out (for the Subscriber). Without it, check-in returns 403 error 804 and the Errors page says so. Repeat for every new pair. The Setup page shows each pair's status and the request text to send.
 - **Provider billing exemption.** If the first invoice returns error 1145 (outstanding balance), a Super Admin must open Fixxbook > CSA Billing, mark the provider "paid by check" and extend its grace period. Demo providers hit this.
 
 A ServiceChannel support team member sets up the check-in/out permission, so ask early. Request text: "Please link Subscriber ID <subscriber id> with Provider ID <provider id> for API work and enable XML check-in/out (and GPS check-in/out if a radius is wanted) for this pair."

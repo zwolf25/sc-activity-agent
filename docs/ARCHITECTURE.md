@@ -60,7 +60,7 @@ Not done on purpose: Apple notarization and Windows code signing (cost; same cho
 
 **Check that an issue resolves before creating it.** `POST /workorders` looks the issue up on the location's own dashboard, not on the `IssueListHeaderId` we send. Dashboard 3151 holds many issues that the location's dashboard lacks, and creating one fails with "Cannot find issue choice" and leaves a permanent VOID shell. `GET /issuelist/issuechoice` without `setupId` does the same lookup read-only, so `creator._resolves` calls it first (400 means skip, cached) and redraws up to 8 times. The `setupId` form is not a valid check, because it validates against the named dashboard and passed for every failing issue.
 
-**Check-in needs a pair-level permission.** ServiceChannel enables XML or GPS check-in/out per Subscriber and Provider pair, not per user. Without it the API returns 403 (804). The handler turns that into an error that names the permission. A pre-flight check is not possible without a write, so the first check-in is the test.
+**Check-in needs a pair-level permission.** ServiceChannel enables XML or GPS check-in/out per Subscriber and Provider pair, not per user. Without it the API returns 403 (804). The handler turns that into an error that names the permission. A pre-flight check is not possible without a write, so the first check-in is the test. The Setup page reads the audit log: a pair is Confirmed after a successful `universalCheckIn` by one of its users, Blocked when the latest one returned 403, and otherwise not confirmed yet. It is a card, not a setup step, because the first check-in can be days away and the setup gate would trap new users on the Setup page.
 
 **Cancel is COMPLETED/CANCELED.** The API cannot set VOID. `handlers.cancel_wo` sets that status as the Subscriber and skips the plan's remaining steps. The Cleanup page uses it.
 
@@ -84,6 +84,7 @@ Not done on purpose: Apple notarization and Windows code signing (cost; same cho
 `connections` and `users` hold integration apps and their users. `roles` maps actions to users per location (the Roles page offers one user per cell as a drop-down; the `pick` column still allows a random choice among several). `locations` describes where the agent works. `work_orders` and `steps` hold each WO and its plan. `api_log` is the audit trail. `settings` holds everything else as JSON.
 
 ## Known limits
+- The invoice reject-then-resubmit path (B-37) is unit-tested but has not run live: no SB2 WO has rolled the 5% reject branch yet. The invoice number includes a per-WO counter so the resubmission is not a duplicate.
 - Proposal create body, invoice details and several provider endpoints are written from the API reference. They have not been run against an SB2 provider app yet. See `docs/api-notes.md` for what is verified.
 - Production API URLs are listed in `client.ENVS` and need checking before the first Production run.
 - Locations come from a list the app loads from the Subscriber (`GET /odata/locations`, paged 50 at a time, cached in the `locations_cache` setting). The user adds or removes from it, so nobody types ids; a typed Prod id that differs from SB2 would break the contract check and every create.  Verified on SB2: 50 locations, response wrapped in `value`, paging stops on an empty page.

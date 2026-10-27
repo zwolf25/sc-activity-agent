@@ -62,6 +62,20 @@ def create_app(store, engine=None, rt=None):
                 ("Roles mapped", n("SELECT COUNT(*) FROM roles") > 0, "/roles"),
                 ("Behavior reviewed", bool(store.get("behavior")), "/behavior")]
 
+    def pair_status():
+        """Check-in permission per Provider: ok after a successful check-in, blocked after a 403 (error 804), else not tried yet."""
+        sub, env = store.get("subscriber_id") or "<Subscriber ID>", "Production" if store.get("env") == "prod" else "SB2"
+        out = []
+        for c in db.execute("SELECT id,name,provider_id FROM connections WHERE side='provider' ORDER BY id"):
+            last = db.execute("SELECT http FROM api_log WHERE role='provider' AND path LIKE '%universalCheckIn' AND user IN "
+                              "(SELECT username FROM users WHERE conn_id=?) ORDER BY id DESC LIMIT 1", (c["id"],)).fetchone()
+            state = "pending" if not last else "ok" if 200 <= (last[0] or 0) < 300 else "blocked" if last[0] == 403 else "pending"
+            pid = c["provider_id"] or "<Provider ID>"
+            out.append(dict(name=c["name"], state=state, request=(
+                f"Please link Subscriber ID {sub} with Provider ID {pid} ({c['name']}) for API work in {env} and enable XML check-in/out "
+                "(and GPS check-in/out if a radius is wanted) for this pair.")))
+        return out
+
     def sub_app(uid=None):
         """(ScApp, (username, password)) for a Subscriber user, or None when no Subscriber user exists."""
         r = db.execute("SELECT u.*, c.client_id, c.client_secret FROM users u JOIN connections c ON c.id=u.conn_id "
@@ -79,7 +93,7 @@ def create_app(store, engine=None, rt=None):
 
     @app.get("/setup")
     def setup(request: Request):
-        return page(request, "setup")
+        return page(request, "setup", pairs=pair_status())
 
     @app.get("/dashboard")
     def dashboard(request: Request, page_no: int = Query(1, alias="page"), hide_done: str = "", hide_skipped: str = "", f: str = ""):
@@ -89,7 +103,8 @@ def create_app(store, engine=None, rt=None):
         z = ZoneInfo(tz)
         week = [dict(r, when=datetime.fromtimestamp(r["due_at"], z).strftime("%a %b %d, %H:%M"), detail=status.detail(r["kind"], json.loads(r["payload"]))) for r in rows]
         return page(request, "dashboard", stages=status.by_stage(db), week=week, total=total, pages=pages, cur=cur, hide_done=bool(hide_done), hide_skipped=bool(hide_skipped),
-                    gaps=[g for g in store.get("gaps", []) if not g["acked"]])
+                    gaps=[g for g in store.get("gaps", []) if not g["acked"]],
+                    blocked=[p["name"] for p in pair_status() if p["state"] == "blocked"])
 
     @app.get("/connections")
     def connections(request: Request, msg: str = ""):

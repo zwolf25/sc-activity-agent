@@ -202,3 +202,17 @@ def test_welcome_page_sets_environment_once(tmp_path):
     urllib.request.urlopen(f"http://127.0.0.1:{port}/choose", urllib.parse.urlencode({"env": "sb2"}).encode())
     t.join(15)
     assert s.get("env") == "sb2" and s.get("port") == port
+
+
+def test_setup_shows_checkin_permission_request_and_status(tmp_path):
+    s, c = client(tmp_path)
+    s.put("subscriber_id", 2014917582)
+    c.post("/connections/add", data={"side": "provider", "name": "SydeTech", "client_id": "c", "client_secret": "x", "provider_id": "2000078685"})
+    c.post("/connections/1/users", data={"username": "pu", "password": "pw"})
+    t = c.get("/setup").text
+    assert "Not confirmed yet" in t and "Subscriber ID 2014917582 with Provider ID 2000078685 (SydeTech)" in t and "SB2" in t
+    s.log(ts=1, role="provider", user="pu", action="check_in", method="POST", path="/workorders/1/universalCheckIn", http=403)
+    assert "Blocked (error 804)" in c.get("/setup").text and "Check-in is blocked for SydeTech" in c.get("/dashboard").text
+    s.log(ts=2, role="provider", user="pu", action="check_in", method="POST", path="/workorders/2/universalCheckIn", http=200)
+    t = c.get("/setup").text
+    assert "Confirmed" in t and "Please link" not in t and "Check-in is blocked" not in c.get("/dashboard").text
