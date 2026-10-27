@@ -108,5 +108,5 @@ def test_sweep_runs_once_a_day_on_weekdays_only_when_on(tmp_path):
 
 def test_now_selects_every_idle_wo_without_review(tmp_path):
     s, app, rt = setup(tmp_path, [wo(1), wo(2), wo(3, upd=NEW)])
-    st = cleanup.now(s, rt)
+    st = cleanup.now(s, rt, clock=lambda: NOW)
     assert st["cancelled"] == 2 and [c[1] for c in app.calls if c[0] == "PUT"] == ["/workorders/1/status", "/workorders/2/status"]
