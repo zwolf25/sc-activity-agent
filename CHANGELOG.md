@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unreleased
+
+## v0.4.1 - 2026-10-27
 - Fix: Telegram setup failed behind a company proxy (Zscaler) with a certificate error. Telegram connections now trust the operating system's certificates, so the token check works on managed networks.
 
 ## v0.4.0 - 2026-10-27
