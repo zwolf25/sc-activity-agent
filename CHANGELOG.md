@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+
+## v0.2.2 - 2026-10-26
+Restart the agent after updating. Nothing is paused and no data changes.
 - Dashboard: "This week" swaps the Trade column for Context: the kind of note, whether a proposal or invoice will be approved or rejected, visit number, and whether a check-in is late (plans created from this version on; older plans show no late flag).
 - Dashboard: "This week" has a "Hide skipped" filter, on by default, for steps left over when a WO is cancelled. Also, the activity-hours drop-downs sit side by side on the Behavior page.
 
