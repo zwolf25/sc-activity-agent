@@ -44,7 +44,7 @@ TLS: the frozen Python has no system CA bundle, so `client.SSL_CONTEXT` verifies
 
 Why a shell and not PyInstaller alone: replacing a running executable on Windows is the hard part of an updater, and Tauri already solves it. The macOS sidecar needs the `disable-library-validation` entitlement (`entitlements.plist`): Tauri re-signs it ad hoc, and macOS then refuses to load the Python framework PyInstaller unpacks.
 
-Not done on purpose: Apple notarization and Windows code signing (cost; same choice as the Hub), an Intel Mac build (`macos-latest` runners are Apple silicon), Linux. The updater has not run a real update cycle yet.
+Not done on purpose: Apple notarization and Windows code signing (cost; same choice as the Hub), an Intel Mac build (`macos-latest` runners are Apple silicon), Linux. The update cycle ran for real on macOS arm64 (0.3.2 to 0.3.3 through the Update now button: pause, backup, install, relaunch, resume). The Windows updater has not run yet.
 
 ## Decisions and the reasons
 

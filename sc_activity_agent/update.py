@@ -25,6 +25,12 @@ def _ver(tag):
     return tuple(int(x) for x in tag.lstrip("v").split("."))
 
 
+def pending(store):
+    """The cached newer release, or None. Rechecked against the running version, because the cache outlives an update."""
+    found = (store.get("update_check") or {}).get("found")
+    return found if found and _ver(found["tag"]) > _ver(__version__) else None
+
+
 def repo(store):
     return store.get("update_repo") or REPO
 
@@ -36,14 +42,14 @@ def check(store, fetch=_fetch, clock=time.time, force=False):
         return None
     cached = store.get("update_check")
     if cached and not force and clock() - cached["at"] < CHECK_EVERY:
-        return cached.get("found")
+        return pending(store)
     found = None
     try:
         rel = fetch(f"https://api.github.com/repos/{r}/releases/latest")
         if _ver(rel["tag_name"]) > _ver(__version__):
             found = {"tag": rel["tag_name"], "notes": rel.get("body") or ""}
     except Exception:  # offline, rate-limited or no release yet: try again tomorrow
-        return cached.get("found") if cached else None
+        return pending(store)
     store.put("update_check", {"at": clock(), "found": found})
     return found
 

@@ -173,3 +173,13 @@ def test_desktop_app_versions_match_python_version():
     assert json.loads((root / "src-tauri/tauri.conf.json").read_text())["version"] == __version__
     assert json.loads((root / "package.json").read_text())["version"] == __version__
     assert f'version = "{__version__}"' in (root / "src-tauri/Cargo.toml").read_text()
+
+
+def test_update_banner_clears_once_the_running_version_catches_up(tmp_path):
+    from sc_activity_agent import __version__, update
+    from sc_activity_agent.store import Store
+    s = Store(tmp_path)
+    s.put("update_check", {"at": 1, "found": {"tag": "v99.0.0", "notes": ""}})
+    assert update.pending(s)["tag"] == "v99.0.0"
+    s.put("update_check", {"at": 1, "found": {"tag": "v" + __version__, "notes": ""}})
+    assert update.pending(s) is None
