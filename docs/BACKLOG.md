@@ -14,7 +14,7 @@ Ordered list of enhancements after v1. The order is the priority: rank 1 is next
 
 | Rank | ID | Enhancement | Size | Why | Source |
 |------|----|-------------|------|-----|--------|
-| 1 | B-43 | (Built and verified on SB2 2026-10-26; ships in 0.2.0) Location picker: pull every location the Subscriber can see (`GET /odata/locations`, paged) and let the user add or remove them from a searchable list, with the id, name, coordinates and time zone filled in from the API. No typed IDs. Show Rank 1 trades per location after adding. Refresh button for new stores | M, spike | Typing the location DB id by hand is error-prone and the Prod id differs from SB2. A wrong id breaks the contract check and every create | Zac |
+| 1 | B-44 | (Built; macOS app tested by hand 2026-10-26, Windows build is checked by CI only; ships in 0.3.0) Desktop app: a downloadable `.dmg` and Windows installer with the agent bundled (Tauri shell + frozen Python program), a first-run welcome page for Production or SB2, tray icon, start at login, and in-app updates from GitHub Releases with the Hub's updater. Reverses B-18 | XL | Setup needed Python and a terminal, and `agent update` ran pip. Other people will use this, so install and update must be one click | Zac |
 | 2 | B-39 | (Done: proposal and invoice decisions, user-cancelled or completed WO, user check-in; live-tested on SB2 2026-10-26 for cancel and check-in. Still open: other user changes such as a rescheduled WO or edits to NTE or priority, and a periodic status read instead of reacting to failures) Pick up manual changes: before each step, read the live WO, proposal and invoice status. If the user already did the planned action (approved, checked in, completed), mark the step done and continue. If the user did something different (rejected a proposal, cancelled the WO, completed it early), re-plan from the new state instead of erroring: rejected proposal runs the revised-proposal branch, a cancelled WO ends its plan, anything unrecognized parks the plan and shows it on the Errors page. Spike result (2026-10-26): the API lets a planned approve overturn a user's rejection, and assignWO fails on an already approved proposal, so the status read must come first | L, spike | Real users click around demo data. Today a step that finds the object already changed fails or repeats | Zac |
 | 3 | B-40 | Abandoned WO sweep: find WOs with no activity or updates for N days (Settings slider, default 14). Cancel them or give them a short finishing plan, per a setting. A WO carrying a protect label is never touched (label name is a setting, default `do not touch`) | L, spike | Demo locations fill with WOs users started and left. The spike must find how to read last-activity time and how to read and set a WO label through the API | Zac |
 | 4 | B-41 | One-time clean-up run (manual button and `agent cleanup`): batch-finish or cancel every stalled WO, proposal and invoice at the chosen locations so the location is back to demo ready. Preview list first, then run. Same protect label as B-40. Replaces the old bulk auto-cleanup idea (B-19) | L, spike | Resets a location before a demo. Shares the finish-or-cancel logic with B-40, so build B-40 first or together | Zac |
@@ -59,6 +59,7 @@ None yet. Zac's new ideas go here first, then get sized and ranked.
 |----|------|---------|
 | B-35 | Fix failing creates: pre-check the location dashboard lookup | unreleased (0.1.0) |
 | B-38 | Proposal create, link and approve; invoice reject | unreleased (0.1.0) |
+| B-43 | Location picker from the Subscriber's locations | 0.2.0 |
 
 ## Dropped
 | ID | Item | Reason |
@@ -66,5 +67,5 @@ None yet. Zac's new ideas go here first, then get sized and ranked.
 | B-06 | Realism report | Zac: not wanted |
 | B-10 | Daily digest to Slack or email | Zac: not wanted |
 | B-17 | Schedule heatmap on Day plan | Zac: not wanted |
-| B-18 | Native app wrapper | Zac: not wanted |
+| B-18 | Native app wrapper | Zac: not wanted. Reversed 2026-10-26, now B-44 |
 | B-19 | Bulk auto-cleanup of leftover WOs | Replaced by B-41 (one-time clean-up) and B-40 (abandoned sweep) |

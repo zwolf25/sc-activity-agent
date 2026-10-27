@@ -1,1 +1,5 @@
 __version__ = "0.2.2"
+
+import os
+
+PACKAGED = os.environ.get("SC_AGENT_PACKAGED") == "1"  # set by the desktop app shell that bundles this program

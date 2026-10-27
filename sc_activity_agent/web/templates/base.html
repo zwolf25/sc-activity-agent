@@ -11,9 +11,14 @@
     <form method="post" action="{{ '/resume' if paused else '/pause' }}"><button class="{{ 'primary' if paused else '' }}">{{ 'Resume' if paused else 'Pause' }}</button></form>
   </div>
 </div>
-{% if update %}<div class="banner warn row"><span>Update {{ update.tag }} is available. The agent pauses, installs it and restarts.</span><form method="post" action="/update"><button class="primary">Update now</button></form></div>{% endif %}
+{% if update %}<div class="banner warn row"><span>Update {{ update.tag }} is available. The agent pauses, installs it and restarts.</span>{% if packaged %}<button class="primary" id="upd" type="button">Update now</button>{% else %}<form method="post" action="/update"><button class="primary">Update now</button></form>{% endif %}</div>{% endif %}
 <div class="layout"><nav>
   {% for key, label in nav %}<a href="/{{ key }}" class="{{ 'on' if here == key }}">{{ label }}{% if key == 'errors' and failed %}<span class="badge">{{ failed }}</span>{% endif %}</a>{% endfor %}
   <small class="mono" style="color:var(--muted);padding:8px 12px">v{{ version }}</small>
 </nav><main><div class="page on">{% block body %}{% endblock %}</div></main></div>
-</div></body></html>
+</div>{% if packaged and update %}<script>
+document.getElementById('upd').onclick=async e=>{const b=e.target,T=window.__TAURI__;b.disabled=true;b.textContent='Updating…';
+try{await fetch('/update/prepare',{method:'POST'});const u=await T.updater.check();if(!u)throw new Error('No update found');
+await u.downloadAndInstall();await fetch('/shutdown',{method:'POST'}).catch(()=>{});await T.process.relaunch()}catch(x){b.textContent='Update failed: '+x;await fetch('/resume',{method:'POST'})}}
+</script>{% endif %}
+</body></html>

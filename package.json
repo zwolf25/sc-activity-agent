@@ -1,0 +1,7 @@
+{
+  "name": "sc-activity-agent-desktop",
+  "private": true,
+  "version": "0.2.2",
+  "scripts": { "tauri": "tauri" },
+  "devDependencies": { "@tauri-apps/cli": "^2" }
+}

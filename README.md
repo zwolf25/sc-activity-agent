@@ -14,22 +14,29 @@ A ServiceChannel support team member sets up the check-in/out permission, so ask
 
 ## Quick start
 
-You need Python 3.11 or newer.
+**Desktop app (recommended).** Download the app for your system from the [latest release](https://github.com/zwolf25/sc-activity-agent/releases/latest): the `.dmg` for macOS (Apple silicon) or the `-setup.exe` for Windows. Open it. There is no Python and no terminal.
+
+- macOS: drag the app to Applications. The app is not notarized by Apple, so the first launch needs right-click, then Open (or `xattr -cr "/Applications/SC Activity Agent.app"` once).
+- Windows: run the installer. SmartScreen may warn because the installer is not signed: choose More info, then Run anyway.
+
+On first launch the app asks whether it works in **Production** or **SB2** (the choice is locked for that copy), turns on Start at login, and opens the setup checklist. It keeps running from the tray (menu bar on macOS) when you close the window. **Quit** in the tray menu stops the agent. When a new version is out, a banner offers Update now: the app pauses, installs and restarts, and your data is untouched.
+
+**From source (developers).** You need Python 3.11 or newer.
 
 1. Install: `pip install "git+https://github.com/zwolf25/sc-activity-agent"`
-2. Create an instance. Use `prod` for ServiceChannel Production or `sb2` for the sandbox. The choice is locked for that data folder.
-   `agent init --env sb2`
-3. Start it and open the console: `agent install-app` once, then double-click the launcher. Or run `agent run` and open the address it prints.
-4. The console walks you through setup:
-   1. Add one **Subscriber** connection (an integration app: client ID and secret) and a Subscriber user.
-   2. Enter the Subscriber ID, load your dashboards and choose the issue list dashboard. The dashboard must be assigned to that Subscriber user in ServiceChannel.
-   3. Add one **Provider** connection per provider you play, with its Provider ID and users.
-   4. Add your locations: on the Locations page click Load, search the list and click Add. Ids, coordinates and time zone come from ServiceChannel.
-   5. Map each action to a user on the **Roles** page.
-   6. Review the **Behavior** sliders.
-5. Optional: **Settings** has a Start at login switch, so the agent keeps running after a restart. It cannot wake a sleeping machine.
+2. Create an instance: `agent init --env sb2` (or `prod`). The choice is locked for that data folder.
+3. Start it and open the console: `agent install-app` once, then double-click the launcher. Or run `agent run` and open the address it prints. Update with `agent update`.
 
-Work order creation only runs while the agent runs. If the machine sleeps, the agent notices the gap and moves the remaining steps forward. Settings chooses how.
+**Setup.** The console walks you through:
+
+1. Add one **Subscriber** connection (an integration app: client ID and secret) and a Subscriber user.
+2. Enter the Subscriber ID, load your dashboards and choose the issue list dashboard. The dashboard must be assigned to that Subscriber user in ServiceChannel.
+3. Add one **Provider** connection per provider you play, with its Provider ID and users.
+4. Add your locations: on the Locations page click Load, search the list and click Add. Ids, coordinates and time zone come from ServiceChannel.
+5. Map each action to a user on the **Roles** page.
+6. Review the **Behavior** settings.
+
+Work order creation only runs while the agent runs. If the machine sleeps, the agent notices the gap and moves the remaining steps forward. Settings chooses how. In the desktop app, Start at login is in the tray menu. In the source install it is on the Settings page. Neither can wake a sleeping machine.
 
 ## Production and test
 

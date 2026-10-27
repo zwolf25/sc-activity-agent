@@ -27,7 +27,22 @@ One Python process runs two things: an engine loop and a localhost web console. 
 | `content.py` | Note templates keyed by role and situation |
 | `status.py` | Dashboard counts |
 | `web/` | The console |
-| `autostart.py`, `launcher.py`, `update.py`, `cli.py` | Start at login, launcher, updates, commands |
+| `autostart.py`, `launcher.py`, `update.py`, `cli.py` | Start at login, launcher, updates, commands (source installs) |
+| `welcome.py` | First-run environment choice in the desktop app |
+| `src-tauri/`, `packaging/`, `desktop/` | Desktop shell, sidecar build, loading page |
+
+### Desktop app (v0.3.0)
+Two programs ship together. `src-tauri/` is a small Tauri shell (Rust). `packaging/build_sidecar.sh` freezes the Python agent with PyInstaller into one executable, `agent-core`, which Tauri bundles next to its own binary.
+
+The shell starts `agent-core --data-dir <app data folder> run` with `SC_AGENT_PACKAGED=1`, waits for the agent to write its port to `<data folder>/port`, then points its window at `http://127.0.0.1:<port>/`. Closing the window hides it; the tray keeps the agent running. Quit asks the agent to stop with `POST /shutdown` (the frozen program is two processes, a PyInstaller loader and Python, so killing the loader would leave the port taken), then kills it if it does not stop in 5 s.
+
+`PACKAGED` mode changes four things: the agent picks the first free port from 8080 and records it; a first-run welcome page (`welcome.py`) asks Production or SB2 and locks the choice, as `agent init` does; `/shutdown` and `/update/prepare` exist; the Settings login switch is hidden, because the tray menu owns Start at login.
+
+Updates use the Tauri updater with the Hub's design: `latest.json` on the latest GitHub Release, signed with a minisign key whose public half is in `tauri.conf.json` and whose private half is a repo secret. The console's Update now button calls `/update/prepare` (pause, copy the database, set `resume_after_update`), runs the updater, calls `/shutdown`, then relaunches. The new version resumes the agent on start only if the update paused it. A page served from `127.0.0.1` can call the updater because `capabilities/default.json` lists that origin as remote.
+
+Why a shell and not PyInstaller alone: replacing a running executable on Windows is the hard part of an updater, and Tauri already solves it. The macOS sidecar needs the `disable-library-validation` entitlement (`entitlements.plist`): Tauri re-signs it ad hoc, and macOS then refuses to load the Python framework PyInstaller unpacks.
+
+Not done on purpose: Apple notarization and Windows code signing (cost; same choice as the Hub), an Intel Mac build (`macos-latest` runners are Apple silicon), Linux. The updater has not run a real update cycle yet.
 
 ## Decisions and the reasons
 

@@ -3,5 +3,5 @@
 <div class="sl set"><div>After a pause or sleep gap<small>What happens to steps that came due while the agent was away</small></div>
 <select name="resume_policy">
 {% for v, t in [('catch_up', 'Catch up over the next hour'), ('push', 'Shift forward by the gap'), ('skip_stale', 'Skip stale notes, then shift')] %}<option value="{{ v }}" {{ 'selected' if policy == v }}>{{ t }}</option>{% endfor %}</select></div>
-<div class="sl set"><div>Start at login<small>Does not wake a sleeping machine</small></div><input type="checkbox" name="login" value="on" {{ 'checked' if login }}></div>
+{% if not packaged %}<div class="sl set"><div>Start at login<small>Does not wake a sleeping machine</small></div><input type="checkbox" name="login" value="on" {{ 'checked' if login }}></div>{% endif %}
 <div class="row"><span></span><button class="primary">Save</button></div></form>{% endblock %}

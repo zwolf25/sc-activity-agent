@@ -162,3 +162,14 @@ def test_every_step_falls_in_activity_hours_on_a_weekday():
             outs = [s for s in plan if s["kind"] == "check_out"]
             assert all(o["due_at"] > i["due_at"] and datetime.fromtimestamp(o["due_at"], tz).date() == datetime.fromtimestamp(i["due_at"], tz).date()
                        for i, o in zip(ins, outs))
+
+
+def test_desktop_app_versions_match_python_version():
+    import json
+    from pathlib import Path
+
+    from sc_activity_agent import __version__
+    root = Path(__file__).parent.parent
+    assert json.loads((root / "src-tauri/tauri.conf.json").read_text())["version"] == __version__
+    assert json.loads((root / "package.json").read_text())["version"] == __version__
+    assert f'version = "{__version__}"' in (root / "src-tauri/Cargo.toml").read_text()

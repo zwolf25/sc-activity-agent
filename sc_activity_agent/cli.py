@@ -5,7 +5,7 @@ import sys
 import time
 from pathlib import Path
 
-from . import __version__
+from . import PACKAGED, __version__
 from .store import Store
 
 DEFAULT_PORT = {"prod": 8080, "sb2": 8081}
@@ -62,7 +62,24 @@ def cmd_tick(args, store):
     print(build_engine(store).tick())
 
 
+def free_port(start=8080):
+    import socket
+    for p in range(start, start + 50):
+        with socket.socket() as s:
+            if s.connect_ex(("127.0.0.1", p)):
+                return p
+    sys.exit("No free port found.")
+
+
 def cmd_run(args, store):
+    if PACKAGED and not args.no_ui:
+        # the desktop shell reads this file to learn where the console is; a busy port moves to the next free one
+        port = store.get("port") or free_port(DEFAULT_PORT["prod"])
+        store.put("port", port)
+        (store.dir / "port").write_text(str(port))
+        if not store.get("env"):
+            from .welcome import wait_for_env
+            wait_for_env(store, port)
     engine, rt = build_engine(store, with_rt=True)
     if not args.no_ui:
         import threading
@@ -78,6 +95,10 @@ def cmd_run(args, store):
     from .creator import Creator
     creator = Creator(store, rt, rt.rng)
     (store.dir / "agent.pid").write_text(str(os.getpid()))
+    if store.get("resume_after_update"):   # the desktop app paused the agent for an update; carry on on the new version
+        store.put("resume_after_update", False)
+        engine.paused_at = store.get("paused_at")
+        engine.resume(store.get("resume_policy", "catch_up"))
     print(f"agent {__version__} running ({store.get('env')}). Ctrl+C to stop.")
     try:
         while True:

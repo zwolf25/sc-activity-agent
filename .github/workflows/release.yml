@@ -1,9 +1,11 @@
 name: Release build
+# Runs when a GitHub Release is published (by the release skill). Attaches the Python package and the desktop apps
+# (macOS .dmg, Windows installer) plus latest.json, which the apps' updater reads.
 on:
   release:
     types: [published]
 jobs:
-  build:
+  package:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -17,3 +19,32 @@ jobs:
       - run: gh release upload "${{ github.event.release.tag_name }}" dist/* --clobber
         env:
           GH_TOKEN: ${{ github.token }}
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.platform }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@stable
+      - run: pip install . pyinstaller tzdata
+      - run: sh packaging/build_sidecar.sh
+        shell: bash
+      - run: npm install
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.event.release.tag_name }}
+          releaseId: ${{ github.event.release.id }}

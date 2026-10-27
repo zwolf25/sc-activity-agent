@@ -10,3 +10,9 @@ spike/
 backups/
 secret.key
 .DS_Store
+node_modules/
+src-tauri/target/
+src-tauri/binaries/
+src-tauri/gen/
+packaging/build/
+packaging/dist/

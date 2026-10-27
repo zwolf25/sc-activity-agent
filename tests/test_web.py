@@ -170,3 +170,35 @@ def test_step_context_text():
     assert detail("check_in", {"visit": 1, "late": True}) == "Visit 1, late" and detail("check_in", {"visit": 2}) == "Visit 2"
     assert detail("prov_note", {"situation": "parts"}) == "Note: parts needed"
     assert detail("check_out", {"visit": 1, "final": False}).endswith("return visit") and detail("review", {}) == ""
+
+
+def test_packaged_update_prepare_pauses_and_backs_up(tmp_path, monkeypatch):
+    import sc_activity_agent.web.app as app_mod
+    s, c = client(tmp_path)
+    assert c.post("/update/prepare").status_code == 404 and "Start at login" in c.get("/settings").text
+    monkeypatch.setattr(app_mod, "PACKAGED", True)
+    assert c.post("/update/prepare").json() == {"ok": True}
+    assert s.get("paused_at") and s.get("resume_after_update") is True and list((tmp_path / "backups").glob("agent-*.db"))
+    assert "Start at login" not in c.get("/settings").text
+
+
+def test_welcome_page_sets_environment_once(tmp_path):
+    import threading
+    import time
+    import urllib.parse
+    import urllib.request
+
+    from sc_activity_agent.welcome import wait_for_env
+    s = Store(tmp_path)
+    port = 18999
+    t = threading.Thread(target=wait_for_env, args=(s, port), daemon=True)
+    t.start()
+    for _ in range(40):
+        try:
+            assert b"Production" in urllib.request.urlopen(f"http://127.0.0.1:{port}/").read()
+            break
+        except OSError:
+            time.sleep(0.25)
+    urllib.request.urlopen(f"http://127.0.0.1:{port}/choose", urllib.parse.urlencode({"env": "sb2"}).encode())
+    t.join(15)
+    assert s.get("env") == "sb2" and s.get("port") == port

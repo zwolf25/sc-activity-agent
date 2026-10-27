@@ -1,18 +1,20 @@
 """FastAPI console. Server-rendered Jinja pages and plain forms (post/redirect/get), localhost only."""
 import json
+import os
 import subprocess
 import sys
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, Form, Query, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from .. import __version__, autostart, planner, status, update
+from .. import PACKAGED, __version__, autostart, planner, status, update
 from .. import locations as locations_mod
 from ..client import ScApp, ScError
 from ..handlers import ACTION, cancel_wo
@@ -45,7 +47,7 @@ def create_app(store, engine=None, rt=None):
 
     def page(request, name, **ctx):
         failed = db.execute("SELECT COUNT(*) FROM steps WHERE state='failed'").fetchone()[0]
-        base = dict(request=request, nav=NAV, here=name, env=store.get("env"), version=__version__,
+        base = dict(request=request, nav=NAV, here=name, env=store.get("env"), version=__version__, packaged=PACKAGED,
                     paused=store.get("paused_at") is not None, failed=failed,
                     port=store.get("port"), twin_port=store.get("twin_port"), setup=setup_checks(), update=(store.get("update_check") or {}).get("found"))
         return tpl.TemplateResponse(request, f"{name}.html", {**base, **ctx})
@@ -174,6 +176,26 @@ def create_app(store, engine=None, rt=None):
             db.execute("UPDATE steps SET state='skipped' WHERE id=?", (sid,))
         db.commit()
         return RedirectResponse("/errors", 303)
+
+    @app.post("/update/prepare")
+    def prepare_update():
+        """Desktop app only: pause and back up the database right before the shell installs a new version."""
+        if not PACKAGED:
+            return JSONResponse({"ok": False}, 404)
+        was_paused = store.get("paused_at") is not None
+        store.put("resume_after_update", not was_paused)
+        if not was_paused:
+            store.put("paused_at", time.time())
+        update.backup(store)
+        return {"ok": True}
+
+    @app.post("/shutdown")
+    def shutdown():
+        """Desktop app only: the shell asks the agent to stop when the app quits or restarts for an update."""
+        if not PACKAGED:
+            return JSONResponse({"ok": False}, 404)
+        threading.Timer(0.3, os._exit, args=(0,)).start()
+        return {"ok": True}
 
     @app.post("/update")
     def run_update():
