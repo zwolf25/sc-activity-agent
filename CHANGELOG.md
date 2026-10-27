@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## v0.3.1 - 2026-10-27
+- Fix: no behavior change. First release delivered through the desktop app's Update now button, to prove the update path.
+
 ## v0.3.0 - 2026-10-27
 - New: a desktop app. Download a `.dmg` (macOS, Apple silicon) or a Windows installer from the release page and open it. No Python or terminal. It asks Production or SB2 on first run, starts at login, lives in the tray, and updates itself from the Update now banner. The `pip` install and `agent update` still work for source installs.
 
