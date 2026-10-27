@@ -417,15 +417,22 @@ def create_app(store, engine=None, rt=None):
         return page(request, "cleanup", rows=rows, msg=msg, cfg=cleanup_mod.settings(store), prev=prev, runstate=store.get("cleanup_run"))
 
     @app.post("/cleanup/preview")
-    def cleanup_preview(days: int = Form(14), protect: str = Form("do not touch")):
+    def cleanup_preview(days: int = Form(14), protect: str = Form("do not touch"), sweep: str = Form("off")):
         if not rt:
             return RedirectResponse("/cleanup?msg=The agent is not running", 303)
-        store.put("cleanup", {"days": max(1, min(days, 3650)), "protect": protect.strip()})
+        store.put("cleanup", {"days": max(1, min(days, 3650)), "protect": protect.strip(), "sweep": sweep if sweep in ("off", "cancel", "finish") else "off"})
         try:
             r = cleanup_mod.preview(store, rt)
         except ScError as e:
             return RedirectResponse(f"/cleanup?msg=Could not read work orders: {e.body or e}", 303)
         return RedirectResponse(f"/cleanup?msg=Found {len(r['items'])} work order(s) to cancel", 303)
+
+    @app.post("/cleanup/now")
+    def cleanup_now(confirm: str = Form("")):
+        if not (rt and confirm) or (store.get("cleanup_run") or {}).get("running"):
+            return RedirectResponse("/cleanup?msg=Tick the box to confirm (or a clean-up is already running)", 303)
+        threading.Thread(target=cleanup_mod.now, args=(store, rt), daemon=True).start()
+        return RedirectResponse("/cleanup?msg=Clean-up started. Refresh this page for progress", 303)
 
     @app.post("/cleanup/run")
     def cleanup_run(confirm: str = Form("")):

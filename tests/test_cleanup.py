@@ -81,3 +81,32 @@ def test_console_flow_needs_preview_and_confirm(tmp_path):
     assert "<b>1</b> work order(s) found" in c.get("/cleanup").text
     assert "Tick the box" in c.post("/cleanup/run", data={}).text                 # preview but no tick
     assert not [x for x in app.calls if x[0] == "PUT"]
+
+
+def test_finish_gives_our_providers_wos_a_plan_and_cancels_the_rest(tmp_path):
+    s, app, rt = setup(tmp_path, [wo(1), wo(2)])
+    s.db.execute("INSERT INTO connections VALUES(2,'provider','P','c','x',77)")
+    s.db.commit()
+    app.listing[0]["Provider"] = {"Id": 77, "Name": "ours"}
+    app.listing[1]["Provider"] = {"Id": 99, "Name": "theirs"}
+    cleanup.preview(s, rt, clock=lambda: NOW)
+    st = cleanup.run(s, rt, clock=lambda: NOW, finish=True)
+    assert st["finished"] == 1 and st["cancelled"] == 1
+    kinds = [r[0] for r in s.db.execute("SELECT kind FROM steps WHERE wo_id=(SELECT id FROM work_orders WHERE sc_id=1) ORDER BY seq")]
+    assert kinds == ["accept", "check_in", "check_out", "review", "invoice_submit", "invoice_decide"]
+    assert [c[1] for c in app.calls if c[0] == "PUT"] == ["/workorders/2/status"]
+
+
+def test_sweep_runs_once_a_day_on_weekdays_only_when_on(tmp_path):
+    s, app, rt = setup(tmp_path, [wo(1)])
+    assert cleanup.sweep(s, rt, clock=lambda: NOW) == []                      # off by default
+    s.put("cleanup", {"sweep": "cancel"})
+    assert cleanup.sweep(s, rt, clock=lambda: NOW + 5 * 86400) == []          # Saturday
+    assert "cancelled 1" in cleanup.sweep(s, rt, clock=lambda: NOW)[0][1]
+    assert cleanup.sweep(s, rt, clock=lambda: NOW + 3600) == []               # already ran today
+
+
+def test_now_selects_every_idle_wo_without_review(tmp_path):
+    s, app, rt = setup(tmp_path, [wo(1), wo(2), wo(3, upd=NEW)])
+    st = cleanup.now(s, rt)
+    assert st["cancelled"] == 2 and [c[1] for c in app.calls if c[0] == "PUT"] == ["/workorders/1/status", "/workorders/2/status"]

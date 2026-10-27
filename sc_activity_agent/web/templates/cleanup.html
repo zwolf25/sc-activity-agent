@@ -5,7 +5,11 @@
 <form method="post" action="/cleanup/preview" class="row">
 <label>No activity for <input type="number" name="days" min="1" max="3650" value="{{ cfg.days }}" style="width:5em"> days</label>
 <label>Never touch WOs with label <input name="protect" value="{{ cfg.protect }}"></label>
+<label>Every weekday <select name="sweep"><option value="off"{% if cfg.sweep == 'off' %} selected{% endif %}>do nothing</option><option value="cancel"{% if cfg.sweep == 'cancel' %} selected{% endif %}>cancel idle work orders</option><option value="finish"{% if cfg.sweep == 'finish' %} selected{% endif %}>finish ours, cancel the rest</option></select></label>
 <button>Preview</button></form>
+<p class="muted">The daily choice runs by itself, with no preview. "Finish ours" gives work orders held by your own providers a short plan (accept, visit, review, invoice, approve) and cancels the others. Saved when you press Preview.</p>
+<form method="post" action="/cleanup/now"><label class="chk"><input type="checkbox" name="confirm" value="1"> Skip the list: select every idle work order and act now, using the daily choice above</label>
+<button class="sm">Clean up now</button></form>
 {% if prev %}<p><b>{{ prev['items']|length }}</b> work order(s) found {{ prev.when }} ({{ prev.days }}+ days idle{% if prev.protected %}, {{ prev.protected }} skipped for label "{{ prev.protect }}"{% endif %}). Each one is re-checked just before it is cancelled.</p>
 {% if prev['items'] %}<div class="tbl"><table><thead><tr><th>WO</th><th>Location</th><th>Trade</th><th>Status</th><th>Last activity</th><th>Provider</th></tr></thead><tbody>
 {% for i in prev['items'] %}<tr><td class="mono">{{ i.id }}</td><td>{{ i.location }}</td><td>{{ i.trade }}</td><td>{{ i.status }}</td><td>{{ i.updated[:10] }}</td><td>{{ i.provider }}</td></tr>{% endfor %}

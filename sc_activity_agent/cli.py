@@ -35,18 +35,31 @@ def cmd_status(args, store):
           f"calls last hour={store.count_calls_since(now - 3600)}")
 
 
+def sweep_in_thread(store, rt):
+    """The daily sweep makes two API calls per work order at ~15 calls/min, so it must not block the step loop."""
+    import threading
+
+    from . import cleanup
+    threading.Thread(target=lambda: print(time.strftime("%H:%M:%S"), "cleanup sweep:", cleanup.sweep(store, rt)), daemon=True).start()
+    return []
+
+
 def cmd_cleanup(args, store):
     from . import cleanup
     _, rt = build_engine(store, with_rt=True)
     if args.days:
         store.put("cleanup", {**cleanup.settings(store), "days": args.days})
+    if args.run and args.auto:
+        s = cleanup.now(store, rt)
+        print(f"cancelled {s['cancelled']}, finishing {s.get('finished', 0)}, skipped {s['skipped']}, errors {len(s['errors'])}")
+        return
     r = cleanup.preview(store, rt)
     for i in r["items"]:
         print(f"{i['id']}  {i['location']}  {i['status']}  {i['updated'][:10]}  {i['trade']}  {i['provider']}")
     print(f"{len(r['items'])} work order(s) idle {r['days']}+ days; {r['protected']} skipped for label '{r['protect']}'")
     if args.run and r["items"]:
-        s = cleanup.run(store, rt)
-        print(f"cancelled {s['cancelled']}, skipped {s['skipped']}, errors {len(s['errors'])}")
+        s = cleanup.run(store, rt, finish=args.finish)
+        print(f"cancelled {s['cancelled']}, finishing {s.get('finished', 0)}, skipped {s['skipped']}, errors {len(s['errors'])}")
         for e in s["errors"]:
             print("  " + e)
     elif r["items"]:
@@ -111,6 +124,7 @@ def cmd_run(args, store):
                          kwargs={"host": "127.0.0.1", "port": port, "log_level": "warning"}, daemon=True).start()
         print(f"Console: http://127.0.0.1:{port}")
     from . import update
+    from . import cleanup
     from .creator import Creator
     creator = Creator(store, rt, rt.rng)
     from .alerts import Alerts
@@ -133,7 +147,8 @@ def cmd_run(args, store):
             engine.paused_at = store.get("paused_at")
             # one failing piece must not stop the others, or the whole agent
             for name, fn in (("step", engine.tick), ("update", lambda: (update.check(store), [])[1]),
-                             ("create", creator.tick)):
+                             ("create", creator.tick),
+                             ("cleanup", lambda: sweep_in_thread(store, rt))):
                 try:
                     for key, outcome in fn():
                         print(time.strftime("%H:%M:%S"), f"{name} {key}: {outcome}")
@@ -291,6 +306,8 @@ def main(argv=None):
     cl = sub.add_parser("cleanup", help="list old work orders the agent did not create; --run cancels them")
     cl.add_argument("--days", type=int)
     cl.add_argument("--run", action="store_true")
+    cl.add_argument("--auto", action="store_true", help="with --run: select every idle WO without listing them first; follows the daily choice")
+    cl.add_argument("--finish", action="store_true", help="with --run: give WOs held by our providers a finishing plan instead of cancelling")
     for n in ("status", "tick", "pause", "resume"):
         sub.add_parser(n)
     args = p.parse_args(argv)
