@@ -25,6 +25,7 @@ One Python process runs two things: an engine loop and a localhost web console. 
 | `creator.py` | Rolls daily WO counts, picks issues, creates WOs, saves their plans |
 | `generator.py` | Pure helpers: issue flattening, Rank 1 trades, picking, payloads |
 | `content.py` | Note templates keyed by role and situation |
+| `alerts.py` | Optional Telegram alerts and action buttons: outbound only (sendMessage, getUpdates long poll), never raises into the engine |
 | `status.py` | Dashboard counts, the This week table, step context text |
 | `web/` | The console (routes in `app.py`, Jinja templates, one stylesheet) |
 | `autostart.py`, `launcher.py`, `cli.py` | Start at login, launcher, commands (source installs; the desktop app does its own login start) |
@@ -87,6 +88,9 @@ Not done on purpose: Apple notarization and Windows code signing (cost; same cho
 **Updates are opt-in.** The agent checks GitHub Releases daily and shows a banner; nothing installs by itself. Source installs run `agent update`: pause, back up the database, `pip install` the tag, let the new code migrate the schema, resume, and restore the backup if the new version fails to start. The desktop app does the same steps with the Tauri updater (see above) and treats its own sidecar and shell as one unit, so they always update together.
 
 **Localhost only, secrets encrypted.** The console binds to 127.0.0.1 with no login. Secrets are Fernet-encrypted in SQLite with a key file in the data folder.
+
+### Telegram alerts
+Why outbound only: the agent runs on a user's laptop with no public address, so alerts are `sendMessage` calls and button taps are read with `getUpdates` long polling in a daemon thread. Why one bot per instance: Telegram lets one program read a bot's updates, so Prod and SB2 each have their own token (`alerts_token`, encrypted) and settings (`alerts`), and messages carry a [PROD]/[SB2] tag. Why limits: 6 h cooldown per alert key and 10 messages an hour with one summary, so a bad night cannot flood a phone. Why a chat check: only the saved `chat_id` may tap; Cancel WO needs a yes; a stale button re-reads the live step state. A failed send is stored in `alert_error` and never stops the engine. Taps are logged in `changes`.
 
 ## Data model
 `connections` and `users` hold integration apps and their users. `roles` maps actions to users per location (the Roles page offers one user per cell as a drop-down; the `pick` column still allows a random choice among several). `locations` describes where the agent works. `work_orders` and `steps` hold each WO and its plan. `api_log` is the audit trail. `settings` holds everything else as JSON.

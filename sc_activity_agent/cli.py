@@ -95,6 +95,8 @@ def cmd_run(args, store):
     from . import update
     from .creator import Creator
     creator = Creator(store, rt, rt.rng)
+    from .alerts import Alerts
+    threading.Thread(target=Alerts(store).poll_forever, args=(engine, rt), daemon=True).start()   # Telegram button taps
     (store.dir / "agent.pid").write_text(str(os.getpid()))
     if store.get("resume_after_update"):   # the desktop app paused the agent for an update; carry on on the new version
         store.put("resume_after_update", False)

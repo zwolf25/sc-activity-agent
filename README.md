@@ -48,6 +48,21 @@ Production and SB2 are two separate instances with their own data, keys and port
 2. Install the app, quit it before the welcome page, and copy `agent.db` and `secret.key` from the old data folder into the app's data folder (macOS: `~/Library/Application Support/com.zackwolf.sc-activity-agent`, Windows: `%APPDATA%\com.zackwolf.sc-activity-agent`). Copy both files; the key decrypts the saved credentials.
 3. Start the app. It skips the welcome page, keeps the saved environment and port, and resumes from the saved plans.
 
+## Telegram alerts (optional)
+
+Settings > Telegram alerts walks you through it, with a check at each step:
+
+1. In Telegram, message @BotFather, send `/newbot`, and copy the token.
+2. Paste the token in Settings. The app shows the bot's name.
+3. Open the bot in Telegram, press **Start**, then click **Find my chat** in Settings.
+4. Click **Send test message**, then tick the alerts you want and **Send alerts**.
+
+Alerts cover a step that failed after its retries, check-in blocked (error 804), a connection or login failure, and the agent coming back after being offline over an hour. A message names the WO, the location, the step and the error text, so that text goes to Telegram. Nothing else is sent. The token is stored encrypted. The same alert is not repeated within 6 hours, and at most 10 go out per hour.
+
+**Action buttons** (optional) add Retry, Skip step, Pause agent and Cancel WO to an alert. The agent reads taps by asking Telegram (outbound only; no open port). Only the chat saved in Settings can tap. Cancel WO asks for a yes first. Each tap is logged in the `changes` setting.
+
+Each instance has its own bot. Set up Production on its Settings page. To get SB2 alerts, set up a second bot on the SB2 instance's Settings page; messages start with [PROD] or [SB2]. Buttons need one bot per instance, because one bot's taps can be read by only one program.
+
 ## Commands
 
 | Command | What it does |

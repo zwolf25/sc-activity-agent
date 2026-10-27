@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- New: optional Telegram alerts. Settings > Telegram alerts has a step-by-step setup with a check at each step. You get a message when a step fails after its retries, check-in is blocked (804), a login fails, or the agent was offline over an hour. Optional action buttons: Retry, Skip step, Pause agent, Cancel WO (asks first). Off by default; the bot token is stored encrypted; each instance has its own bot; at most 10 messages an hour and no repeat of the same alert within 6 hours. Messages include the WO, location, step and error text.
 - New: one desktop app covers Production and SB2. On a Production instance, Connections > Open SB2 test instance creates and starts an SB2 copy inside the app's data folder (own database, key, port and logins; nothing is shared with Production). It runs only when you start it. The tray menu has Production console and SB2 console. One app update and one Quit cover both: both are paused and backed up before an update, and the SB2 copy comes back by itself if it was running.
 
 ## v0.3.6 - 2026-10-27

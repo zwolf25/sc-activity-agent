@@ -5,6 +5,7 @@ import random
 import time
 from zoneinfo import ZoneInfo
 
+from .alerts import Alerts
 from .client import ScError
 
 MERGE_SECONDS = 1800  # a new gap starting this soon after an unread one extends it
@@ -106,6 +107,7 @@ class Engine:
         self.store.put("last_tick", now)
         if last is None or now - last <= GAP_SECONDS:
             return
+        Alerts(self.store).offline(last, now)
         undo = self.apply_gap(last, now, "shift")
         gaps = self.store.get("gaps", [])
         prev = gaps[-1] if gaps else None
@@ -153,6 +155,7 @@ class Engine:
                 if n >= MAX_ATTEMPTS:
                     self.store.db.execute("UPDATE steps SET state='failed', attempts=?, error=? WHERE id=?", (n, str(e), st["id"]))
                     out.append((st["id"], "failed"))
+                    Alerts(self.store).step_failed(wo, st, e)
                 else:
                     self.store.db.execute("UPDATE steps SET attempts=?, error=?, due_at=? WHERE id=?",
                                           (n, str(e), now + BACKOFF[n - 1], st["id"]))

@@ -17,6 +17,7 @@ from fastapi.templating import Jinja2Templates
 
 from .. import PACKAGED, __version__, autostart, planner, status, update
 from .. import locations as locations_mod
+from ..alerts import EVENTS, Alerts, AlertError
 from ..client import ScApp, ScError
 from ..handlers import ACTION, cancel_wo
 
@@ -390,9 +391,62 @@ def create_app(store, engine=None, rt=None):
         return RedirectResponse("/cleanup", 303)
 
     @app.get("/settings")
-    def settings(request: Request):
+    def settings(request: Request, msg: str = ""):
+        al = Alerts(store)
         return page(request, "settings", login=autostart.enabled(store.dir, store.get("env")),
-                    policy=store.get("resume_policy", "catch_up"))
+                    policy=store.get("resume_policy", "catch_up"), msg=msg, al=al.cfg, token_set=bool(store.get("alerts_token")),
+                    events=EVENTS, alert_error=store.get("alert_error"), other_env="SB2" if store.get("env") == "prod" else "Production")
+
+    @app.post("/alerts/token")
+    def alerts_token(token: str = Form(...)):
+        al = Alerts(store)
+        try:
+            bot = al.call(token.strip(), "getMe")
+        except AlertError as e:
+            return RedirectResponse(f"/settings?msg=Telegram did not accept that token: {e}", 303)
+        store.put("alerts_token", store.enc(token.strip()))
+        al.save(bot=bot.get("username", ""), chat_id=None, chat_name="", enabled=False)
+        return RedirectResponse(f"/settings?msg=Bot @{bot.get('username')} found. Now open it in Telegram, press Start, then click Find my chat.", 303)
+
+    @app.post("/alerts/find-chat")
+    def alerts_find_chat():
+        al = Alerts(store)
+        if not al.token():
+            return RedirectResponse("/settings?msg=Paste the bot token first.", 303)
+        try:
+            ups = al.call(al.token(), "getUpdates", timeout=0, allowed_updates=["message"])
+        except AlertError as e:
+            return RedirectResponse(f"/settings?msg={e}", 303)
+        msgs = [u["message"] for u in ups if u.get("message")]
+        if not msgs:
+            return RedirectResponse("/settings?msg=No message found yet. Open your bot in Telegram, press Start, then click Find my chat again.", 303)
+        chat = msgs[-1]["chat"]
+        name = " ".join(x for x in (chat.get("first_name"), chat.get("last_name")) if x) or chat.get("username") or str(chat["id"])
+        al.save(chat_id=chat["id"], chat_name=name)
+        return RedirectResponse(f"/settings?msg=Found chat with {name}. Send a test message to confirm.", 303)
+
+    @app.post("/alerts/test")
+    def alerts_test():
+        al = Alerts(store)
+        try:
+            al.raw("Test message from SC Activity Agent. Alerts are working.", [[("Dismiss", "d")]])
+            store.put("alert_error", None)
+            return RedirectResponse("/settings?msg=Test message sent. Check Telegram.", 303)
+        except (AlertError, TypeError) as e:
+            return RedirectResponse(f"/settings?msg=Could not send: {e}", 303)
+
+    @app.post("/alerts/save")
+    async def alerts_save(request: Request):
+        f = await request.form()
+        Alerts(store).save(enabled=f.get("enabled") == "on", buttons=f.get("buttons") == "on",
+                           events={k: f.get(f"ev_{k}") == "on" for k in EVENTS})
+        return RedirectResponse("/settings?msg=Alert settings saved.", 303)
+
+    @app.post("/alerts/remove")
+    def alerts_remove():
+        store.db.execute("DELETE FROM settings WHERE key IN ('alerts','alerts_token','alerts_offset','alert_sent','alert_times')")
+        store.db.commit()
+        return RedirectResponse("/settings?msg=Telegram alerts removed.", 303)
 
     @app.post("/settings")
     def save_settings(resume_policy: str = Form(...), login: str = Form("off")):
