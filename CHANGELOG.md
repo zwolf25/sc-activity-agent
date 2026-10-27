@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+
+## v0.5.0 - 2026-10-27
+- New: the daily sweep (B-40). Choose on the Cleanup page what happens to idle work orders every weekday: nothing, cancel them, or finish the ones held by your own providers and cancel the rest. At most 100 work orders a day.
 - New: on-demand clean-up of old work orders (B-41). The Cleanup page and `agent cleanup [--days N] [--run]` list open work orders at your enabled locations that the agent did not create and that have had no activity for N days (default 14). Review the list, tick the box and cancel them all. Each work order is re-read just before it is cancelled, so anything touched since the preview is skipped. A work order carrying the protect label (default `do not touch`, set the label in ServiceChannel) is never touched. A paused agent cancels nothing. To skip the review there is a Clean up now button (`agent cleanup --run --auto`) that selects every idle work order itself, and a daily choice (B-40) that does the same every weekday on its own, up to 100 work orders a day: cancel idle work orders, or finish the ones held by your own providers with a short plan (accept, visit, review, invoice, approve) and cancel the rest. Needs a restart after the update.
 - Fix: the console now loads its stylesheet with the version in the address, so an update shows its new look right away instead of the old cached styles. The Telegram setup steps have clear spacing and its option groups are lettered A to C. A finished step shows its Done line (with a check mark) on its own line.
 

@@ -15,35 +15,33 @@ Ordered list of enhancements after v1. The order is the priority: rank 1 is next
 | Rank | ID | Enhancement | Size | Why | Source |
 |------|----|-------------|------|-----|--------|
 | 1 | B-39 | (Done: proposal and invoice decisions, user-cancelled or completed WO, user check-in; live-tested on SB2 2026-10-26 for cancel and check-in. Still open: other user changes such as a rescheduled WO or edits to NTE or priority, and a periodic status read instead of reacting to failures) Pick up manual changes: before each step, read the live WO, proposal and invoice status. If the user already did the planned action (approved, checked in, completed), mark the step done and continue. If the user did something different (rejected a proposal, cancelled the WO, completed it early), re-plan from the new state instead of erroring: rejected proposal runs the revised-proposal branch, a cancelled WO ends its plan, anything unrecognized parks the plan and shows it on the Errors page. Spike result (2026-10-26): the API lets a planned approve overturn a user's rejection, and assignWO fails on an already approved proposal, so the status read must come first | L, spike | Real users click around demo data. Today a step that finds the object already changed fails or repeats | Zac |
-| 2 | B-40 | (Built for 0.5.0: daily sweep, cancel or finish, 100 a day cap; remove this row at release) Abandoned WO sweep: find WOs with no activity or updates for N days (Settings slider, default 14). Cancel them or give them a short finishing plan, per a setting. A WO carrying a protect label is never touched (label name is a setting, default `do not touch`) | L | Demo locations fill with WOs users started and left. Spike done 2026-10-27 (see api-notes): `UpdatedDate` is the last-activity time and OData filters on it with the label name; labels can be read but not set through the API, so the agent only reads the protect label. Finishing plans only work on WOs assigned to our providers; all others are cancel-only | Zac |
-| 3 | B-41 | (Built for 0.5.0 as an on-demand preview-and-cancel; the finish-with-a-plan option stays with B-40) One-time clean-up run (on demand: Cleanup button and `agent cleanup`, re-runnable any time). Finds old WOs, proposals and invoices at the connected locations that the agent did not create and that conflict with the new activity (the ProductTeam Subscriber's locations hold old data), and finishes or cancels them. Run it when first setting up, when a location is added, and whenever data has not been maintained. Preview list first, then run. Skips anything carrying the protect label from B-40 and anything the agent itself is still working. Replaces the old bulk auto-cleanup idea (B-19) | L | Old open data at a location clashes with the clean data the agent creates, so locations need a reset now and again later. Shares the finish-or-cancel logic with B-40, so build B-40 first or together | Zac |
-| 4 | B-08 | Emergency timing: read WO priority and ETA. Any WO with an ETA under 8 hours gets more activity, including back-and-forth notes that confirm provider availability before the visit | M | Urgent WOs are where flat timing looks most fake | Zac |
-| 5 | B-11 | Provider declines (low rate) and reschedules (higher rate) | L, spike | Real queues have refusals and date changes. Reschedules re-time the plan | Zac |
-| 6 | B-20 | Reassign WOs between providers, for example after a decline or a no-show | L, spike | Completes the decline path. Adds no-show as an outcome | Zac |
-| 7 | B-12 | Invoice variety and validation: time on site and labor rate flags, over-NTE, partial, credit memo. Subscriber approves or rejects based on the flags | L, spike | Exercises the invoice validation logic and rejection paths | Zac + Claude |
-| 8 | B-21 | Mark approved invoices as PAID | S, spike | Closes the money lifecycle | Zac |
-| 9 | B-22 | Complete checklists on WOs | M, spike | Checklists are part of real completion | Zac |
-| 10 | B-23 | Create WOs with assets attached | M, spike | Asset-linked work is the normal case in many accounts | Zac |
-| 11 | B-24 | Providers attach assets to WOs when onsite | M, spike | Pairs with B-23 | Zac |
-| 12 | B-14 | Photos on WOs: relevant to the trade and issue only, with variety (several images per issue type) | M, spike | Real WOs carry photos. Needs a curated image set per issue type, with licensing checked | Zac |
-| 13 | B-25 | Star ratings on WOs. A low rating moves the WO to Unsatisfactory and the provider returns onsite to finish | L, spike | Adds a rework loop | Zac |
-| 14 | B-15 | Provider-side PM WOs: find PM WOs and move them through the process. Subscribers cannot create PMs through the API, so the agent only picks up existing ones | L, spike | PM is a large share of real volume | Zac |
-| 15 | B-26 | PM compliance flows: pass and fail documentation, and the related follow-up | L, spike | Builds on B-15 | Zac |
-| 16 | B-27 | Linked WOs (parent and child) | M, spike | Common for multi-visit and multi-trade jobs | Zac |
-| 17 | B-28 | Recall WOs | M, spike | Rework against a closed WO. Pairs with B-25 | Zac |
-| 18 | B-29 | Avoided WOs: Guided Troubleshooting resolves the issue, and duplicate WOs are detected and avoided | L, spike | Tests the "WO never gets created" paths | Zac |
-| 19 | B-30 | Site audits that result in WOs created | L, spike | A second source of WOs besides the issue list | Zac |
-| 20 | B-31 | Snow and landscaping WOs done by providers with CIWO | L, spike | CIWO has its own check-in model | Zac |
-| 21 | B-32 | Quarterly RFP: a Subscriber runs an RFP with several bidding providers, then issues WOs to the winners | XL, spike | Needs several provider connections and contract changes | Zac |
-| 22 | B-33 | FTM techs and FTM WOs through the process | L, spike | Needs the FTM product model first | Zac |
-| 23 | B-05 | Per-location behavior overrides | M | Locations should differ in volume and trade mix | Claude |
-| 24 | B-07 | Seasonal and holiday weighting (HVAC in summer, quiet holidays) | M | Flat weekday activity is an easy tell | Claude |
-| 25 | B-03 | Settings export/import and DB backup/restore | S | Recovery from a bad update, or a machine move | Claude |
-| 26 | B-04 | Deep link from the console to the WO in the ServiceChannel Subscriber view, in place of a WO detail page | S, spike | Finds the WO URL pattern. Keeps the console small | Zac |
-| 27 | B-09 | Scenario presets (quiet week, busy week, storm surge) | S | One click to change load | Claude |
-| 28 | B-16 | Clock speed-up mode for demos on SB2 | M | A full lifecycle in minutes | Claude |
-| 29 | B-13 | Repeat issues on the same asset | M | Needs B-23. Feeds repeat-repair reports | Claude |
-| 30 | B-34 | RT workflows | XL, spike | Very hard. Last on purpose | Zac |
+| 2 | B-08 | Emergency timing: read WO priority and ETA. Any WO with an ETA under 8 hours gets more activity, including back-and-forth notes that confirm provider availability before the visit | M | Urgent WOs are where flat timing looks most fake | Zac |
+| 3 | B-11 | Provider declines (low rate) and reschedules (higher rate) | L, spike | Real queues have refusals and date changes. Reschedules re-time the plan | Zac |
+| 4 | B-20 | Reassign WOs between providers, for example after a decline or a no-show | L, spike | Completes the decline path. Adds no-show as an outcome | Zac |
+| 5 | B-12 | Invoice variety and validation: time on site and labor rate flags, over-NTE, partial, credit memo. Subscriber approves or rejects based on the flags | L, spike | Exercises the invoice validation logic and rejection paths | Zac + Claude |
+| 6 | B-21 | Mark approved invoices as PAID | S, spike | Closes the money lifecycle | Zac |
+| 7 | B-22 | Complete checklists on WOs | M, spike | Checklists are part of real completion | Zac |
+| 8 | B-23 | Create WOs with assets attached | M, spike | Asset-linked work is the normal case in many accounts | Zac |
+| 9 | B-24 | Providers attach assets to WOs when onsite | M, spike | Pairs with B-23 | Zac |
+| 10 | B-14 | Photos on WOs: relevant to the trade and issue only, with variety (several images per issue type) | M, spike | Real WOs carry photos. Needs a curated image set per issue type, with licensing checked | Zac |
+| 11 | B-25 | Star ratings on WOs. A low rating moves the WO to Unsatisfactory and the provider returns onsite to finish | L, spike | Adds a rework loop | Zac |
+| 12 | B-15 | Provider-side PM WOs: find PM WOs and move them through the process. Subscribers cannot create PMs through the API, so the agent only picks up existing ones | L, spike | PM is a large share of real volume | Zac |
+| 13 | B-26 | PM compliance flows: pass and fail documentation, and the related follow-up | L, spike | Builds on B-15 | Zac |
+| 14 | B-27 | Linked WOs (parent and child) | M, spike | Common for multi-visit and multi-trade jobs | Zac |
+| 15 | B-28 | Recall WOs | M, spike | Rework against a closed WO. Pairs with B-25 | Zac |
+| 16 | B-29 | Avoided WOs: Guided Troubleshooting resolves the issue, and duplicate WOs are detected and avoided | L, spike | Tests the "WO never gets created" paths | Zac |
+| 17 | B-30 | Site audits that result in WOs created | L, spike | A second source of WOs besides the issue list | Zac |
+| 18 | B-31 | Snow and landscaping WOs done by providers with CIWO | L, spike | CIWO has its own check-in model | Zac |
+| 19 | B-32 | Quarterly RFP: a Subscriber runs an RFP with several bidding providers, then issues WOs to the winners | XL, spike | Needs several provider connections and contract changes | Zac |
+| 20 | B-33 | FTM techs and FTM WOs through the process | L, spike | Needs the FTM product model first | Zac |
+| 21 | B-05 | Per-location behavior overrides | M | Locations should differ in volume and trade mix | Claude |
+| 22 | B-07 | Seasonal and holiday weighting (HVAC in summer, quiet holidays) | M | Flat weekday activity is an easy tell | Claude |
+| 23 | B-03 | Settings export/import and DB backup/restore | S | Recovery from a bad update, or a machine move | Claude |
+| 24 | B-04 | Deep link from the console to the WO in the ServiceChannel Subscriber view, in place of a WO detail page | S, spike | Finds the WO URL pattern. Keeps the console small | Zac |
+| 25 | B-09 | Scenario presets (quiet week, busy week, storm surge) | S | One click to change load | Claude |
+| 26 | B-16 | Clock speed-up mode for demos on SB2 | M | A full lifecycle in minutes | Claude |
+| 27 | B-13 | Repeat issues on the same asset | M | Needs B-23. Feeds repeat-repair reports | Claude |
+| 28 | B-34 | RT workflows | XL, spike | Very hard. Last on purpose | Zac |
 
 ## Ideas waiting for a spec
 None yet. Zac's new ideas go here first, then get sized and ranked.
@@ -51,7 +49,7 @@ None yet. Zac's new ideas go here first, then get sized and ranked.
 ## Done
 | ID | Item | Version |
 |----|------|---------|
-| B-41 (cancel part) | On-demand clean-up of old WOs: preview, review, cancel; protect label; re-check before cancel | unreleased (0.5.0) |
+| B-40, B-41 | Idle-WO clean-up: preview and cancel, Clean up now, daily sweep (cancel or finish), protect label | 0.5.0 |
 | B-46 | Add several locations at once (checkboxes plus pasted store IDs or CSV) | unreleased (0.4.2) |
 | B-02 | Contract resync and skipped-trades report (daily refresh already existed; added Refresh now and the Skipped trades table) | unreleased (0.4.2) |
 | B-42a, B-42b | Telegram alerts and action buttons (in-app setup guide, one bot per instance) | unreleased (0.4.0) |
