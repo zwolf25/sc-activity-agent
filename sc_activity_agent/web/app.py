@@ -16,6 +16,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from .. import cleanup as cleanup_mod
 from .. import PACKAGED, __version__, autostart, planner, status, update
 from .. import locations as locations_mod
 from ..alerts import EVENTS, Alerts, AlertError
@@ -410,7 +411,31 @@ def create_app(store, engine=None, rt=None):
     @app.get("/cleanup")
     def cleanup(request: Request, msg: str = ""):
         rows = db.execute("SELECT * FROM work_orders ORDER BY created_at DESC LIMIT 500").fetchall()
-        return page(request, "cleanup", rows=rows, msg=msg)
+        prev = store.get("cleanup_preview")
+        if prev:
+            prev = {**prev, "when": datetime.fromtimestamp(prev["at"], ZoneInfo(store.get("tz", "America/New_York"))).strftime("%b %d %H:%M")}
+        return page(request, "cleanup", rows=rows, msg=msg, cfg=cleanup_mod.settings(store), prev=prev, runstate=store.get("cleanup_run"))
+
+    @app.post("/cleanup/preview")
+    def cleanup_preview(days: int = Form(14), protect: str = Form("do not touch")):
+        if not rt:
+            return RedirectResponse("/cleanup?msg=The agent is not running", 303)
+        store.put("cleanup", {"days": max(1, min(days, 3650)), "protect": protect.strip()})
+        try:
+            r = cleanup_mod.preview(store, rt)
+        except ScError as e:
+            return RedirectResponse(f"/cleanup?msg=Could not read work orders: {e.body or e}", 303)
+        return RedirectResponse(f"/cleanup?msg=Found {len(r['items'])} work order(s) to cancel", 303)
+
+    @app.post("/cleanup/run")
+    def cleanup_run(confirm: str = Form("")):
+        run = store.get("cleanup_run") or {}
+        if not (rt and confirm and (store.get("cleanup_preview") or {}).get("items")):
+            return RedirectResponse("/cleanup?msg=Tick the box to confirm, after a preview that found work orders", 303)
+        if run.get("running"):
+            return RedirectResponse("/cleanup?msg=A clean-up is already running", 303)
+        threading.Thread(target=cleanup_mod.run, args=(store, rt), daemon=True).start()
+        return RedirectResponse("/cleanup?msg=Clean-up started. Refresh this page for progress", 303)
 
     @app.post("/cleanup/{wid}/cancel")
     def cancel(wid: int):

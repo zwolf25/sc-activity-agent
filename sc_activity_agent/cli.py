@@ -35,6 +35,24 @@ def cmd_status(args, store):
           f"calls last hour={store.count_calls_since(now - 3600)}")
 
 
+def cmd_cleanup(args, store):
+    from . import cleanup
+    _, rt = build_engine(store, with_rt=True)
+    if args.days:
+        store.put("cleanup", {**cleanup.settings(store), "days": args.days})
+    r = cleanup.preview(store, rt)
+    for i in r["items"]:
+        print(f"{i['id']}  {i['location']}  {i['status']}  {i['updated'][:10]}  {i['trade']}  {i['provider']}")
+    print(f"{len(r['items'])} work order(s) idle {r['days']}+ days; {r['protected']} skipped for label '{r['protect']}'")
+    if args.run and r["items"]:
+        s = cleanup.run(store, rt)
+        print(f"cancelled {s['cancelled']}, skipped {s['skipped']}, errors {len(s['errors'])}")
+        for e in s["errors"]:
+            print("  " + e)
+    elif r["items"]:
+        print("Preview only. Add --run to cancel them.")
+
+
 def build_engine(store, with_rt=False):
     import random
 
@@ -270,12 +288,15 @@ def main(argv=None):
     sp.add_argument("step", type=int)
     sp.add_argument("action", choices=["retry", "skip", "due"])
     sp.add_argument("value", nargs="?")
+    cl = sub.add_parser("cleanup", help="list old work orders the agent did not create; --run cancels them")
+    cl.add_argument("--days", type=int)
+    cl.add_argument("--run", action="store_true")
     for n in ("status", "tick", "pause", "resume"):
         sub.add_parser(n)
     args = p.parse_args(argv)
     cmd_fn = {"init": cmd_init, "status": cmd_status, "tick": cmd_tick, "run": cmd_run,
               "pause": cmd_pause, "resume": cmd_resume, "login": cmd_login, "update": cmd_update, "open": cmd_open, "install-app": cmd_install_app,
-              "get": cmd_get, "set": cmd_set, "plan": cmd_plan, "step": cmd_step}[args.cmd]
+              "get": cmd_get, "set": cmd_set, "plan": cmd_plan, "step": cmd_step, "cleanup": cmd_cleanup}[args.cmd]
     cmd_fn(args, Store(data_dir(args)))
 
 

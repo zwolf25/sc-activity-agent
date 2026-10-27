@@ -91,6 +91,7 @@ Use `--data-dir` (or `SC_AGENT_DATA`) to choose where an instance keeps its data
 - Before each create the agent checks that the location's dashboard can resolve the issue, and redraws if not.
 - Pause blocks every write.
 - The API cannot set VOID. Cleanup cancels a work order as Completed / Canceled.
+- **Clean up old work orders.** Cleanup page (or `agent cleanup --days 14`, add `--run` to cancel): lists open work orders at your enabled locations that the agent did not create and that have had no activity for N days. Cancel runs only after you preview and confirm, and skips any work order with the label `do not touch` (change the name on the page; labels are set in ServiceChannel, not by the agent).
 
 ## More
 
