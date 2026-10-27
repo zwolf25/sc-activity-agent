@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 
 from .client import ScError
 
+MERGE_SECONDS = 1800  # a new gap starting this soon after an unread one extends it
 GAP_SECONDS = 600  # silence longer than this between ticks is a gap (sleep, shutdown, crash)
 MAX_ATTEMPTS = 3
 BACKOFF = (120, 600, 1800)
@@ -107,7 +108,13 @@ class Engine:
             return
         undo = self.apply_gap(last, now, "shift")
         gaps = self.store.get("gaps", [])
-        gaps.append({"start": last, "end": now, "policy": "shift", "steps": len(undo), "undo": undo, "acked": False})
+        prev = gaps[-1] if gaps else None
+        if prev and not prev["acked"] and last - prev["end"] <= MERGE_SECONDS:
+            # a sleeping laptop wakes and dozes again and again; one notice covers the whole stretch
+            prev["undo"] = {**undo, **prev["undo"]}   # the earliest original time of each step wins
+            prev.update(end=now, steps=len(prev["undo"]))
+        else:
+            gaps.append({"start": last, "end": now, "policy": "shift", "steps": len(undo), "undo": undo, "acked": False})
         self.store.put("gaps", gaps[-50:])
 
     def resolve_gap(self, index, policy):

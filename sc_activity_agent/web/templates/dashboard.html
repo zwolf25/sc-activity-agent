@@ -1,6 +1,7 @@
 {% extends "base.html" %}{% block body %}
 {% for b in blocked %}<div class="banner warn">Check-in is blocked for {{ b }} (error 804). ServiceChannel support must enable check-in/out for the pair. <a href="/setup">Get the request text</a></div>{% endfor %}
 {% for g in gaps %}<form class="banner warn" method="post" action="/gap/{{ g.i }}/dismiss">{{ g.text }} <button>Dismiss</button></form>{% endfor %}
+{% if gaps|length > 1 %}<form method="post" action="/gap/dismiss-all"><button>Dismiss all {{ gaps|length }} offline notices</button></form>{% endif %}
 {% if setup|rejectattr(1)|list %}<div class="banner warn">Setup is not finished. <a href="/setup">See the checklist</a>.</div>{% endif %}
 <div class="grid3">{% for s, n in stages.items() %}<div class="card stat"><span class="n">{{ n }}</span><span class="l">{{ s }}</span></div>{% endfor %}</div>
 <div class="card tbl"><div class="row"><h3>This week</h3>

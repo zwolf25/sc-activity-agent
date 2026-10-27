@@ -116,6 +116,11 @@ def create_app(store, engine=None, rt=None):
                     gaps=[dict(g, i=i, text=gap_text(g, z)) for i, g in enumerate(store.get("gaps", [])) if not g["acked"]],
                     blocked=[p["name"] for p in pair_status() if p["state"] == "blocked"])
 
+    @app.post("/gap/dismiss-all")
+    def dismiss_all_gaps():
+        store.put("gaps", [dict(g, acked=True) for g in store.get("gaps", [])])
+        return RedirectResponse("/dashboard", 303)
+
     @app.post("/gap/{i}/dismiss")
     def dismiss_gap(i: int):
         gaps = store.get("gaps", [])

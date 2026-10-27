@@ -80,3 +80,16 @@ def test_no_gap_for_normal_ticks(tmp_path):
         e.tick()
         t[0] += 30
     assert s.get("gaps") is None
+
+
+def test_repeated_sleep_wake_cycles_make_one_notice(tmp_path):
+    t = [T0]
+    s, e = mk(tmp_path, PLAN, lambda: t[0])
+    e.tick()
+    for _ in range(3):  # sleep 16 min, wake for a tick, sleep again 1 min after
+        t[0] += 16 * 60
+        e.tick()
+        t[0] += 60
+        e.tick()
+    gaps = s.get("gaps")
+    assert len(gaps) == 1 and gaps[0]["end"] - gaps[0]["start"] >= 48 * 60
