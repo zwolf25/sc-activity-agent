@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unreleased
+
+## v0.4.2 - 2026-10-27
 - Fix: a new release now shows the Update banner within an hour. The check was cached for a day, so a fresh release could stay hidden.
 - New: add several locations at once. Tick rows in the search results, or paste store IDs as a list or CSV, then click Add selected. Locations already added keep their on/off setting.
 - New: the Locations page has Refresh now, which re-reads Rank 1 contracts immediately (they still refresh daily by themselves), and a Skipped trades table that lists trades on the issue list where another provider is Rank 1.
