@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unreleased
+
+## v0.3.4 - 2026-10-27
 - Fix: after an update, the "Update available" banner kept showing the version you had just installed until the next daily check. It now disappears as soon as the running version matches.
 
 ## v0.3.3 - 2026-10-27
