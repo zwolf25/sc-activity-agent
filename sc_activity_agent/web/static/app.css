@@ -96,3 +96,5 @@ ol.steps li>form.tg{margin-top:10px}
 form.tg>button{align-self:flex-start}
 ol.steps li.ok::marker{color:var(--good,#1a7f37);font-weight:700}
 ol.steps button{white-space:nowrap}
+ol.steps .done{margin-top:6px;font-weight:600;color:var(--good)}
+ol.steps .done::before{content:"\2713 "}

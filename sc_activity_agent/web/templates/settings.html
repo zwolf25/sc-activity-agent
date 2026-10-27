@@ -9,9 +9,9 @@
 <div class="card"><h3>Telegram alerts (optional)</h3>
 <p>Get a Telegram message when something needs you, and fix it from your phone. Off until you finish the steps below. Messages name the WO, the location, the step and the error, so that text goes to Telegram. This {{ 'Production' if env == 'prod' else 'SB2' }} instance has its own bot and its own settings; {{ other_env }} needs a separate bot, set up on its own Settings page if you want it.</p>
 <ol class="steps">
-<li {{ 'class=ok' if token_set }}>In Telegram, message <b>@BotFather</b>, send <code>/newbot</code>, choose a name, and copy the token it gives you. {% if token_set %}<b>Done: bot @{{ al.bot }}.</b>{% endif %}
+<li {{ 'class=ok' if token_set }}>In Telegram, message <b>@BotFather</b>, send <code>/newbot</code>, choose a name, and copy the token it gives you. {% if token_set %}<div class="done">Done: bot @{{ al.bot }}</div>{% endif %}
 <form method="post" action="/alerts/token" class="row" style="justify-content:flex-start"><input type="password" name="token" placeholder="Paste the bot token" autocomplete="off" required><button>{{ 'Replace token' if token_set else 'Check token' }}</button></form></li>
-<li {{ 'class=ok' if al.chat_id }}>Open your new bot in Telegram and press <b>Start</b> (a bot cannot message you until you do). Then click Find my chat. {% if al.chat_id %}<b>Done: chat with {{ al.chat_name }}.</b>{% endif %}
+<li {{ 'class=ok' if al.chat_id }}>Open your new bot in Telegram and press <b>Start</b> (a bot cannot message you until you do). Then click Find my chat. {% if al.chat_id %}<div class="done">Done: chat with {{ al.chat_name }}</div>{% endif %}
 <form method="post" action="/alerts/find-chat"><button {{ 'disabled' if not token_set }}>Find my chat</button></form></li>
 <li>Send a test message and check that it arrives. <form method="post" action="/alerts/test"><button {{ 'disabled' if not al.chat_id }}>Send test message</button></form></li>
 <li>Choose what to be told about, then save.
