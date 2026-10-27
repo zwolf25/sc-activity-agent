@@ -37,12 +37,12 @@ def by_stage(db):
 
 
 def week(db, tz="America/New_York", now=None, hide_done=False, page=1, size=10):
-    """Steps planned for the local calendar week (Monday to Sunday), oldest first: (rows, total, pages, page)."""
+    """Steps planned for the local calendar week (Monday to Sunday), oldest first, without skipped ones (their WO was cancelled or ended): (rows, total, pages, page)."""
     z = ZoneInfo(tz)
     d = dt.datetime.fromtimestamp(now, z) if now else dt.datetime.now(z)
     mon = (d - dt.timedelta(days=d.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
     lo, hi = mon.timestamp(), (mon + dt.timedelta(days=7)).timestamp()
-    where = "s.due_at>=? AND s.due_at<?" + (" AND s.state!='done'" if hide_done else "")
+    where = "s.due_at>=? AND s.due_at<? AND s.state!='skipped'" + (" AND s.state!='done'" if hide_done else "")
     total = db.execute(f"SELECT COUNT(*) FROM steps s WHERE {where}", (lo, hi)).fetchone()[0]
     pages = max(1, -(-total // size))
     page = min(max(1, page), pages)

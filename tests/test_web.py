@@ -143,6 +143,9 @@ def test_dashboard_this_week_paginates_and_hides_done(tmp_path):
     hidden = c.get("/dashboard?hide_done=1").text
     assert hidden.count("prov note") == 9 and "Page 1 of" not in hidden and "done</span>" not in hidden
     assert "API calls in the last hour" not in p1
+    s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,state) VALUES(1,99,'sub_note',?, 'skipped')", (wed,))
+    s.db.commit()
+    assert "skipped" not in c.get("/dashboard").text
 
 
 def test_activity_hours_are_one_row_of_selects_and_end_follows_start(tmp_path):

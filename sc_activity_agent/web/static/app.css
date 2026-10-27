@@ -67,8 +67,7 @@ td.num,th.num{text-align:right}
 select{width:auto;max-width:100%}
 .sl.set{grid-template-columns:minmax(150px,1fr) minmax(0,260px);justify-items:start}
 .sl.set select{width:100%}
-.hours{display:flex;align-items:center;gap:8px;grid-column:span 1}
-.hours select{width:auto}
+.hours{display:flex;flex-wrap:nowrap;align-items:center;gap:8px}
 input[type=range]{width:100%;accent-color:var(--accent)}
 input[type=text],input[type=password],select{font:inherit;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:6px 9px;width:100%}
 label.f{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)}
@@ -85,3 +84,4 @@ label.f{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--
 .banner.warn{background:var(--warn-bg);color:var(--warn)}
 @media(max-width:720px){.layout{grid-template-columns:1fr}nav{flex-direction:row;overflow-x:auto}nav a{white-space:nowrap}.sl{grid-template-columns:1fr 60px}.sl>div:nth-child(2){grid-column:1/-1;order:3}.ctrl{margin-left:0}}
 @media(prefers-reduced-motion:no-preference){.bar i{transition:width .3s}}
+.hours select{width:auto;flex:none}
