@@ -85,3 +85,8 @@ label.f{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--
 @media(max-width:720px){.layout{grid-template-columns:1fr}nav{flex-direction:row;overflow-x:auto}nav a{white-space:nowrap}.sl{grid-template-columns:1fr 60px}.sl>div:nth-child(2){grid-column:1/-1;order:3}.ctrl{margin-left:0}}
 @media(prefers-reduced-motion:no-preference){.bar i{transition:width .3s}}
 .hours select{width:auto;flex:none}
+form.tg{display:flex;flex-direction:column;gap:12px;margin-top:8px}
+form.tg .grp{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:8px}
+form.tg h4{margin:0;font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+label.chk{display:flex;align-items:flex-start;gap:8px;font-size:13.5px}
+label.chk input{margin-top:3px}

@@ -1,6 +1,7 @@
 # Changelog
 
 ## Unreleased
+- Change: the Telegram alerts form is clearer. Each option is on its own line in three groups: a master switch (Send Telegram alerts), which alert types to send, and the optional action buttons.
 
 ## v0.4.1 - 2026-10-27
 - Fix: Telegram setup failed behind a company proxy (Zscaler) with a certificate error. Telegram connections now trust the operating system's certificates, so the token check works on managed networks.
