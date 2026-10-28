@@ -1,6 +1,6 @@
 [package]
 name = "sc-activity-agent-desktop"
-version = "0.6.0"
+version = "0.6.1"
 description = "Desktop shell for the SC Activity Agent"
 edition = "2021"
 

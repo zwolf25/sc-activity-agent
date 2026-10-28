@@ -1,6 +1,9 @@
 # Changelog
 
 ## Unreleased
+
+## v0.6.1 - 2026-10-28
+- Update note: restart the agent after updating. No database migration and no pause needed.
 - Fixed: two-technician visits. When two techs worked a visit, the first tech's check-out completed the WO and the second tech's check-out failed with error 921. The first tech now leaves with the Parts on Order status and the second completes the WO. This was found by testing on Prod with two SydeTech users; if you saw a failed check-out on a two-tech visit, retry it from the Errors page.
 - Fixed: the Provider column in the clean-up preview was blank. It now shows the provider name.
 
