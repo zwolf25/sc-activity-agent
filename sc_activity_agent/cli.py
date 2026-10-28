@@ -6,7 +6,7 @@ import threading
 import time
 from pathlib import Path
 
-from . import PACKAGED, __version__
+from . import PACKAGED, __version__, awake
 from .store import Store
 
 DEFAULT_PORT = {"prod": 8080, "sb2": 8081}
@@ -160,8 +160,11 @@ def cmd_run(args, store):
             if twin.get("resume_after_update"):
                 threading.Thread(target=ensure_running, args=(d, twin.get("port")), daemon=True).start()
     print(f"agent {__version__} running ({store.get('env')}). Ctrl+C to stop.")
+    caffeinate = None
     try:
         while True:
+            if not PACKAGED:
+                caffeinate = awake.sync(store, caffeinate)
             engine.paused_at = store.get("paused_at")
             # one failing piece must not stop the others, or the whole agent
             for name, fn in (("step", engine.tick), ("update", lambda: (update.check(store), [])[1]),

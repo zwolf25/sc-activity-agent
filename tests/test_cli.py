@@ -40,3 +40,23 @@ def test_run_loop_uses_only_names_it_defines():
             defined.add(n.name)
     used = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
     assert used <= defined, used - defined
+
+
+def test_keep_awake_follows_the_setting(tmp_path, monkeypatch):
+    from sc_activity_agent import awake
+    started = []
+
+    class P:
+        def __init__(self, cmd): started.append(cmd); self.dead = False
+        def poll(self): return 1 if self.dead else None
+        def terminate(self): self.dead = True
+    monkeypatch.setattr(awake.subprocess, "Popen", P)
+    monkeypatch.setattr(awake.sys, "platform", "darwin")
+    s = Store(tmp_path)
+    p = awake.sync(s, None)
+    assert started[0][:2] == ["caffeinate", "-i"] and awake.sync(s, p) is p and len(started) == 1   # on by default, not restarted
+    s.put("keep_awake", False)
+    assert awake.sync(s, p) is None and p.dead
+    monkeypatch.setattr(awake.sys, "platform", "win32")
+    s.put("keep_awake", True)
+    assert awake.sync(s, None) is None and len(started) == 1

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- New: Keep this Mac awake for the Python install (macOS only, on by default, Settings). The agent runs `caffeinate` for as long as it runs, so the Mac does not idle-sleep on power and plans keep running. It does not cover lid-close or battery sleep. The desktop app keeps its own switch in the tray menu.
+- Changed: `install.sh` takes the data folder from `SC_AGENT_DATA` when set, so it can install on top of an existing instance.
 ## v0.6.2 - 2026-10-28
 - Update note: restart the agent after updating. No database migration and no pause needed.
 - New: one-command install for macOS, Linux and Windows (`install.sh`, `install.ps1`). It checks for Python 3.11 or newer and, if it is missing, prints how to install it (Homebrew or python.org on macOS, winget or python.org on Windows). It then installs the latest release into its own environment, creates the instance and the double-click launcher. The launcher starts the agent if it is not running and opens the console in your browser. If the agent cannot start, it shows a message that names agent.log instead of opening a dead page.
