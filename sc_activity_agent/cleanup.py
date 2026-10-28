@@ -67,10 +67,10 @@ def preview(store, rt, clock=time.time):
     return result
 
 
-def _eta(w):
-    """Epoch seconds of the WO's ScheduledDate, or 0 when it is missing or unreadable."""
+def _eta(w, key):
+    """Epoch seconds of a WO date field, or 0 when it is missing or unreadable."""
     try:
-        return dt.datetime.fromisoformat(w["ScheduledDate"].replace("Z", "+00:00")).timestamp()
+        return dt.datetime.fromisoformat(w[key].replace("Z", "+00:00")).timestamp()
     except (KeyError, AttributeError, ValueError):
         return 0
 
@@ -80,7 +80,8 @@ def finish_plan(store, rt, w, now):
     loc = store.db.execute("SELECT * FROM locations WHERE store_id=?", (w["_location"],)).fetchone()
     c, rng, tz = {**planner.DEFAULTS, **store.get("behavior", {})}, rt.rng, loc["tz"] or "America/New_York"
     t, steps = now, []
-    if 0 < _eta(w) - now < 8 * 3600:   # the visit is hours away: the availability exchange comes first (B-08)
+    gap = _eta(w, "ScheduledDate") - (_eta(w, "CallDate") or _eta(w, "CreatedDate"))   # original ETA minus call date
+    if 0 < gap < c["emergency_hours"] * 3600 and _eta(w, "ScheduledDate") > now:   # urgent and the visit still ahead: the availability exchange comes first (B-08)
         for kind, lo, hi, payload in (("sub_note", 300, 900, {"situation": "followup"}), ("prov_note", 600, 1200, {"situation": "eta"})):
             t = planner._fit(t + rng.randint(lo, hi), t, c, tz, rng)
             steps.append({"kind": kind, "due_at": t, "payload": payload})

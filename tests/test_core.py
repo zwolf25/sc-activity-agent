@@ -242,3 +242,15 @@ def test_eta_over_eight_hours_is_a_normal_plan_anchored_to_the_eta():
     for seed in range(100):
         p = planner.build_plan(random.Random(seed), now, {"proposal_rate": 0, "late_checkin": 0, "first_time_fix": 100}, eta=eta)
         assert next(s for s in p if s["kind"] == "check_in")["due_at"] >= eta
+
+
+def test_emergency_hours_sets_the_threshold_and_zero_turns_it_off():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    tz = ZoneInfo("America/New_York")
+    now = datetime(2026, 10, 28, 9, 0, tzinfo=tz).timestamp()
+    eta = now + 20 * 3600
+    kinds = lambda cfg: [s["kind"] for s in planner.build_plan(random.Random(1), now, {"proposal_rate": 100, **cfg}, eta=eta)]
+    assert "proposal_create" in kinds({})                               # 20 h is over the 8 h default
+    assert "proposal_create" not in kinds({"emergency_hours": 24})
+    assert "proposal_create" in kinds({"emergency_hours": 0})

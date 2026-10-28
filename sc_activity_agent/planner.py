@@ -7,7 +7,7 @@ DEFAULTS = {
     "proposal_rate": 10, "proposal_approval": 90, "invoice_approval": 95,
     "sub_notes": 2.0, "prov_notes": 3.0,
     "late_checkin": 15, "late_days": 2,
-    "time_on_site_hrs": 2.0, "pay_days": 30, "multi_tech": 5, "watch": 0, "first_time_fix": 80,
+    "time_on_site_hrs": 2.0, "pay_days": 30, "multi_tech": 5, "watch": 0, "emergency_hours": 8, "first_time_fix": 80,
     "hours_start": 8, "hours_end": 17,
     "resume_policy": "catch_up",
 }
@@ -47,8 +47,8 @@ def _fit(ts, prev, c, tz, rng):
 def build_plan(rng, now, cfg, tz="America/New_York", eta=None):
     """now: epoch seconds when the WO is created. Returns list of dicts {kind, due_at, payload}, sorted by due_at.
     Times are epoch seconds. Kinds: accept, prov_note, sub_note, proposal_create, proposal_decide, check_in, check_out,
-    review, invoice_submit, invoice_decide, invoice_pay. eta: epoch seconds of the scheduled visit when it is known. An ETA under
-    8 hours away makes an emergency plan: a confirm-availability exchange before the visit, no proposal, no late arrival (B-08).
+    review, invoice_submit, invoice_decide, invoice_pay. eta: epoch seconds of the scheduled visit when it is known. An ETA closer
+    to the call date than cfg emergency_hours (default 8; 0 turns it off) makes an emergency plan: a confirm-availability exchange before the visit, no proposal, no late arrival (B-08).
     The ETA decides, not the priority label."""
     c = {**DEFAULTS, **cfg}
     steps = []
@@ -56,7 +56,7 @@ def build_plan(rng, now, cfg, tz="America/New_York", eta=None):
     def add(kind, due, **payload):
         steps.append({"kind": kind, "due_at": due, "payload": payload})
 
-    emergency = eta is not None and eta - now < 8 * 3600
+    emergency = eta is not None and eta - now < c["emergency_hours"] * 3600
     created = datetime.fromtimestamp(now, ZoneInfo(tz))
     sched_day = _biz_day(created.date(), rng.randint(1, 5))
     if emergency:

@@ -141,7 +141,8 @@ class Creator:
         b = {**planner.DEFAULTS, **self.store.get("behavior", {})}
         tz = loc["tz"] or "America/New_York"
         # an EMERGENCY issue is the one case where we pick a same-day ETA; every behavior then keys off that ETA, not the label
-        eta = now + self.rng.randint(3000, 7 * 3600) if issue["priority"] == "EMERGENCY" else None
+        hrs = b["emergency_hours"]
+        eta = now + self.rng.randint(1800, max(1800, int(hrs * 3600 * 0.9))) if issue["priority"] == "EMERGENCY" and hrs else None
         plan = planner.build_plan(self.rng, now, b, tz, eta=eta)
         first_in = next(s["due_at"] for s in plan if s["kind"] == "check_in")
         sched = dt.datetime.fromtimestamp(first_in, ZoneInfo(tz))
