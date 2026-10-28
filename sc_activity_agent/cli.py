@@ -204,9 +204,11 @@ def cmd_open(args, store):
     """Start the agent if its port is closed, then open the console in the browser."""
     import webbrowser
 
-    from .launcher import ensure_running
+    from .launcher import alert, ensure_running
     port = store.get("port") or sys.exit("Run `agent init --env prod|sb2` first.")
-    ensure_running(store.dir, port)
+    if not ensure_running(store.dir, port):
+        alert(f"The agent did not start. Details are in {store.dir / 'agent.log'}")
+        sys.exit(1)
     webbrowser.open(f"http://127.0.0.1:{port}")
 
 

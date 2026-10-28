@@ -2,6 +2,7 @@
 import json
 import re
 import os
+import platform
 import subprocess
 import sys
 import threading
@@ -13,7 +14,7 @@ from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, Form, Query, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -499,6 +500,19 @@ def create_app(store, engine=None, rt=None):
                     policy=store.get("resume_policy", "catch_up"), msg=msg, al=al.cfg, token_set=bool(store.get("alerts_token")),
                     backups=[(n, s // 1024, datetime.fromtimestamp(t).strftime("%b %d %H:%M")) for n, s, t in update.backups(store)],
                     events=EVENTS, alert_error=store.get("alert_error"), other_env="SB2" if store.get("env") == "prod" else "Production")
+
+    @app.post("/check-update")
+    def check_update():
+        found = update.check(store, force=True)
+        return RedirectResponse("/settings?msg=" + quote(f"Version {found['tag']} is available." if found else f"You are on the latest version ({__version__})."), 303)
+
+    @app.get("/diagnostics", response_class=PlainTextResponse)
+    def diagnostics():
+        """What to paste into a support message: versions, state and the end of the log (no credentials are ever logged)."""
+        log = store.dir / "agent.log"
+        tail = "\n".join(log.read_text(errors="replace").splitlines()[-60:]) if log.exists() else "(no agent.log)"
+        return (f"agent {__version__}  env={store.get('env')}  packaged={PACKAGED}  paused={store.get('paused_at') is not None}\n"
+                f"python {sys.version.split()[0]}  {platform.platform()}  port={store.get('port')}\n--- agent.log (last 60 lines)\n{tail}")
 
     @app.post("/backup")
     def backup_now():

@@ -21,11 +21,14 @@ A ServiceChannel support team member sets up the check-in/out permission, so ask
 
 On first launch the app asks whether it works in **Production** or **SB2** (the choice is locked for that copy), turns on Start at login, and opens the setup checklist. It keeps running from the tray (menu bar on macOS) when you close the window. **Quit** in the tray menu stops the agent. When a new version is out, a banner offers Update now: the app pauses, installs and restarts, and your data is untouched.
 
-**From source (developers).** You need Python 3.11 or newer.
+**Install with Python (no desktop app).** You need Python 3.11 or newer; the installer checks and tells you how to get it if it is missing.
 
-1. Install: `pip install "git+https://github.com/zwolf25/sc-activity-agent"`
-2. Create an instance: `agent init --env sb2` (or `prod`). The choice is locked for that data folder.
-3. Start it and open the console: `agent install-app` once, then double-click the launcher. Or run `agent run` and open the address it prints. Update with `agent update`.
+- macOS or Linux: `curl -fsSL https://raw.githubusercontent.com/zwolf25/sc-activity-agent/main/install.sh | sh` (add `-s sb2` after `sh` for an SB2 instance; the default is Production)
+- Windows (PowerShell): `irm https://raw.githubusercontent.com/zwolf25/sc-activity-agent/main/install.ps1 | iex`
+
+It creates a launcher named SC Activity Agent (in `~/Applications` on macOS, the Start menu on Windows). Double-click it: it starts the agent if needed and opens the console in your browser. The agent keeps running when you close the tab. Turn on Start at login in Settings so it runs after a restart. Update from Settings > Check for updates, or with `agent update`. An update pauses the agent, saves a backup, installs the release and restarts; if the new version does not start, the old version and your data come back.
+
+**By hand (developers).** `pip install "https://github.com/zwolf25/sc-activity-agent/archive/refs/tags/<tag>.zip"`, then `agent init --env sb2` (or `prod`; locked per data folder), then `agent install-app` or `agent run`.
 
 **Setup.** The console walks you through:
 

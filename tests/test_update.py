@@ -69,3 +69,29 @@ def test_roles_convert_to_user_capabilities_on_open(tmp_path):
     s = Store(tmp_path)
     can = {r["id"]: sorted(__import__("json").loads(r["can_do"])) for r in s.db.execute("SELECT id, can_do FROM users")}
     assert can == {1: ["accept", "check_in"], 2: ["check_in"]}   # the per-location HQ override is dropped
+
+
+def test_failed_start_puts_the_previous_version_back(tmp_path):
+    s = Store(tmp_path)
+    s.put("update_repo", "o/r")
+    specs = []
+    ok, msg = update.apply(s, "v9.0.0", run=lambda a, **k: subprocess.CompletedProcess(a, 1),
+                           pip=lambda spec: specs.append(spec) or subprocess.CompletedProcess([], 0))
+    assert not ok and specs[-1].endswith(f"v{update.__version__}.zip") and "Previous version put back" in msg
+
+
+def test_success_restarts_the_agent_that_was_running(tmp_path):
+    s = Store(tmp_path)
+    s.put("update_repo", "o/r")
+    (tmp_path / "agent.pid").write_text("2147483646")   # not a live process: kill fails, no restart
+    restarted = []
+    ok, msg = update.apply(s, "v9.0.0", run=lambda a, **k: subprocess.CompletedProcess(a, 0),
+                           pip=lambda spec: subprocess.CompletedProcess([], 0), restart=restarted.append)
+    assert ok and not restarted and "not running" in msg
+    import os
+    (tmp_path / "agent.pid").write_text(str(os.getpid()))
+    import signal
+    signal.signal(signal.SIGTERM, lambda *a: None)       # the test process survives its own SIGTERM
+    ok, msg = update.apply(s, "v9.0.0", run=lambda a, **k: subprocess.CompletedProcess(a, 0),
+                           pip=lambda spec: subprocess.CompletedProcess([], 0), restart=restarted.append)
+    assert ok and restarted == [s]

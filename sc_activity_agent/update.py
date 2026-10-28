@@ -93,6 +93,11 @@ def restore(store, name):
     return keep
 
 
+def _spec(repo, tag):
+    """A tag archive installs without git on the machine."""
+    return f"https://github.com/{repo}/archive/refs/tags/{tag}.zip"
+
+
 def _pip(spec):
     cmd = [sys.executable, "-m", "pip", "install", "--upgrade", spec]
     if subprocess.run([sys.executable, "-m", "pip", "--version"], capture_output=True).returncode:
@@ -100,16 +105,30 @@ def _pip(spec):
     return subprocess.run(cmd, capture_output=True, text=True)
 
 
-def apply(store, tag, run=subprocess.run, pip=_pip):
-    """Pause, back up, install the tag, let the new code migrate the DB and resume. Restores the DB copy if that fails.
-    Returns (ok, message)."""
+def _restart(store, wait=10):
+    """Source install: start the agent again once the old one has let go of its port. The desktop app and a Start at login unit
+    restart it themselves, and a second copy would run every step twice."""
+    from . import PACKAGED, autostart, launcher
+    port = store.get("port")
+    if PACKAGED or not port or autostart.enabled(store.dir, store.get("env")):
+        return
+    for _ in range(wait * 4):
+        if not launcher.port_open(port):
+            break
+        time.sleep(0.25)
+    launcher.ensure_running(store.dir, port)
+
+
+def apply(store, tag, run=subprocess.run, pip=_pip, restart=_restart):
+    """Pause, back up, install the tag, let the new code migrate the DB and resume. If the new version does not start, put the
+    old code and the old database back. Returns (ok, message)."""
     r = repo(store)
     if not r:
         return False, "No update repository configured."
     was_paused = store.get("paused_at") is not None
     store.put("paused_at", store.get("paused_at") or time.time())
     saved = backup(store)
-    res = pip(f"git+https://github.com/{r}@{tag}")
+    res = pip(_spec(r, tag))
     if res.returncode:
         if not was_paused:
             store.put("paused_at", None)
@@ -120,11 +139,14 @@ def apply(store, tag, run=subprocess.run, pip=_pip):
         args[-1] = "resume"
     if run(args, capture_output=True).returncode:
         shutil.copy2(saved, store.dir / "agent.db")
-        return False, f"New version failed to start. Database restored from {saved.name}. Run agent resume to continue."
+        back = pip(_spec(r, f"v{__version__}"))
+        what = "Previous version put back" if not back.returncode else f"Could not reinstall v{__version__}, run agent update"
+        return False, f"New version failed to start. Database restored from {saved.name}. {what}. Run agent resume to continue."
     pid = store.dir / "agent.pid"
     if pid.exists():
         try:
-            os.kill(int(pid.read_text()), signal.SIGTERM)  # Start at login restarts it on the new code
+            os.kill(int(pid.read_text()), signal.SIGTERM)
         except (OSError, ValueError):
-            pass
-    return True, f"Updated to {tag}. Restart the agent if it does not restart by itself."
+            return True, f"Updated to {tag}. The agent was not running; start it to use the new version."
+        restart(store)
+    return True, f"Updated to {tag}. The agent restarts on the new version."

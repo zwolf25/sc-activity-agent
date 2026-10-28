@@ -21,5 +21,8 @@ version = {attr = "sc_activity_agent.__version__"}
 [tool.setuptools.packages.find]
 include = ["sc_activity_agent*"]
 
+[tool.setuptools.package-data]
+"sc_activity_agent.web" = ["static/*", "templates/*"]   # without this a pip install has no console pages
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -4,6 +4,10 @@
 
 ## v0.6.2 - 2026-10-28
 - Update note: restart the agent after updating. No database migration and no pause needed.
+- New: one-command install for macOS, Linux and Windows (`install.sh`, `install.ps1`). It checks for Python 3.11 or newer and, if it is missing, prints how to install it (Homebrew or python.org on macOS, winget or python.org on Windows). It then installs the latest release into its own environment, creates the instance and the double-click launcher. The launcher starts the agent if it is not running and opens the console in your browser. If the agent cannot start, it shows a message that names agent.log instead of opening a dead page.
+- New: Settings > Updates and support has Check for updates and Copy diagnostics (version, platform, state and the end of the log, for a support message).
+- Changed: updating a source install now restarts the agent by itself, unless Start at login already does. If the new version does not start, the previous version and the database are both put back (before, only the database was). Updates install from the release archive, so git is no longer needed on the machine.
+- Fixed: a pip install of the agent had no console pages (the templates and styles were not packaged), so `agent update` on a source install would have left a console that cannot open.
 - Fixed: the desktop app could sit on its loading screen with no clue why. The agent's log was buffered, so a process the system killed left nothing behind (the log showed nothing after 08:52 on 2026-10-28). The log is now written line by line and a native crash is reported there. The app also watches the agent program: if it exits abnormally it writes the exit status to agent.log (a signal means the system killed it) and starts it again, waiting longer after each quick failure.
 - Known: on one machine macOS kills the agent program a few seconds after it starts when the app is opened from Finder or the Dock (it still runs from a terminal). The new log shows the exit status when that happens (B-49).
 

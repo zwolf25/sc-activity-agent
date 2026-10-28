@@ -19,3 +19,24 @@ def test_set_get_plan_and_step(tmp_path, capsys):
     assert Store(tmp_path).db.execute("SELECT due_at FROM steps").fetchone()[0] > 7000
     main(["--data-dir", d, "step", "1", "skip"])
     assert Store(tmp_path).db.execute("SELECT state FROM steps").fetchone()[0] == "skipped"
+
+
+def test_run_loop_uses_only_names_it_defines():
+    """The status watch once went dead because its import landed in the wrong function; nothing exercised the loop."""
+    import ast
+    import builtins
+    import inspect
+    from sc_activity_agent import cli
+    tree = ast.parse(inspect.getsource(cli.cmd_run))
+    defined = set(dir(builtins)) | set(vars(cli))
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store):
+            defined.add(n.id)
+        elif isinstance(n, (ast.Import, ast.ImportFrom)):
+            defined |= {(a.asname or a.name).split(".")[0] for a in n.names}
+        elif isinstance(n, ast.arg):
+            defined.add(n.arg)
+        elif isinstance(n, ast.ExceptHandler) and n.name:
+            defined.add(n.name)
+    used = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
+    assert used <= defined, used - defined

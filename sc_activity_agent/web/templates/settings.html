@@ -6,6 +6,11 @@
 {% for v, t in [('catch_up', 'Catch up over the next hour'), ('push', 'Shift forward by the gap'), ('skip_stale', 'Skip stale notes, then shift')] %}<option value="{{ v }}" {{ 'selected' if policy == v }}>{{ t }}</option>{% endfor %}</select></div>
 {% if not packaged %}<div class="sl set"><div>Start at login<small>Does not wake a sleeping machine</small></div><input type="checkbox" name="login" value="on" {{ 'checked' if login }}></div>{% endif %}
 <div class="row"><span></span><button class="primary">Save</button></div></form>
+<div class="card"><h3>Updates and support</h3>
+<p>Version {{ version }}. The agent checks for a new release every hour and shows a banner. Updating pauses the agent, saves a backup, installs the release and restarts. If the new version does not start, the old version and your database are put back.</p>
+<div class="row" style="justify-content:flex-start"><form method="post" action="/check-update"><button>Check for updates</button></form>
+<button type="button" id="diag">Copy diagnostics</button></div>
+<script>document.getElementById('diag').onclick=async e=>{const b=e.target;try{const t=await (await fetch('/diagnostics')).text();await navigator.clipboard.writeText(t);b.textContent='Copied'}catch(x){window.open('/diagnostics')}}</script></div>
 <div class="card"><h3>Backups</h3>
 <p>A copy of the database (settings, connections, plans) is saved before every update and every clean-up run. The last 10 are kept in the <code>backups</code> folder of this instance's data folder.</p>
 <form method="post" action="/backup"><button>Back up now</button></form>

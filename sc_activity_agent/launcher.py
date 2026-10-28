@@ -53,6 +53,16 @@ def ensure_running(data_dir, port):
     return port_open(port)
 
 
+def alert(msg):
+    """The launcher has no window, so a failure to start must be shown some other way."""
+    if sys.platform == "darwin":
+        subprocess.run(["osascript", "-e", f'display alert "SC Activity Agent" message "{msg}"'], capture_output=True)
+    elif sys.platform == "win32":
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(0, msg, "SC Activity Agent", 0x10)
+    print(msg, file=sys.stderr)
+
+
 def png(size=512):
     """Blue rounded square with a white activity pulse line. Plain-Python PNG so no image library is needed."""
     r, bg, fg = size // 5, (31, 95, 214), (255, 255, 255)
