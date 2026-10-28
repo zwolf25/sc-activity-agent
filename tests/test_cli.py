@@ -60,3 +60,12 @@ def test_keep_awake_follows_the_setting(tmp_path, monkeypatch):
     monkeypatch.setattr(awake.sys, "platform", "win32")
     s.put("keep_awake", True)
     assert awake.sync(s, None) is None and len(started) == 1
+
+
+def test_second_agent_on_the_same_data_folder_is_refused(tmp_path):
+    from sc_activity_agent.launcher import lock_data_dir
+    first = lock_data_dir(tmp_path)
+    assert first is not None
+    assert lock_data_dir(tmp_path) is None   # a second agent (launcher plus login job) must not run
+    first.close()
+    assert lock_data_dir(tmp_path) is not None

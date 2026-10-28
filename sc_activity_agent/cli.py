@@ -72,7 +72,6 @@ def cmd_cleanup(args, store):
 
 def cmd_backup(args, store):
     from . import update
-    from .handlers import watch
     if args.name:
         try:
             print(f"Restored {args.name}. The database it replaced is saved as {update.restore(store, args.name).name}.")
@@ -123,6 +122,10 @@ def free_port(start=8080):
 
 def cmd_run(args, store):
     sys.stdout.reconfigure(line_buffering=True)   # a log that is killed mid-run must still show its last lines
+    from .launcher import lock_data_dir
+    lock = lock_data_dir(store.dir)   # kept open for the life of the process
+    if lock is None:   # the launcher and Start at login can both start an agent; two would run every step twice
+        sys.exit(f"Another agent already runs on {store.dir}. Exiting.")
     if PACKAGED and not args.no_ui:
         # the desktop shell reads this file to learn where the console is; a busy port moves to the next free one
         port = store.get("port") or free_port(DEFAULT_PORT["prod"])
@@ -131,6 +134,7 @@ def cmd_run(args, store):
         if not store.get("env"):
             from .welcome import wait_for_env
             wait_for_env(store, port)
+    from .handlers import watch
     engine, rt = build_engine(store, with_rt=True)
     if not args.no_ui:
         import threading

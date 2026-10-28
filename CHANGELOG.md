@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed: the launcher and Start at login could each start an agent, so two ran on one data folder and every step could run twice. An agent now takes a lock on its data folder at start; a second one exits with a message.
+- Fixed: the periodic WO status check (B-39) never ran, because its import sat in the wrong function.
 - New: Keep this Mac awake for the Python install (macOS only, on by default, Settings). The agent runs `caffeinate` for as long as it runs, so the Mac does not idle-sleep on power and plans keep running. It does not cover lid-close or battery sleep. The desktop app keeps its own switch in the tray menu.
 - Changed: `install.sh` takes the data folder from `SC_AGENT_DATA` when set, so it can install on top of an existing instance.
 - New: Behavior settings "Provider declines %" and "Reschedules %" (both default 0, so nothing changes until you raise them). A declining provider sends the decline (WO becomes OPEN / DECLINED) and the Subscriber cancels the WO 1 to 3 days later. A reschedule is the Provider moving the scheduled date 1 to 3 business days later than the original date; the WO is created with the original date and the visits follow the new one. A decline only stays OPEN / DECLINED when the trade's auto-reassign setting is off in ServiceChannel; with it on, SC hands the WO to another provider and the agent cancels it.

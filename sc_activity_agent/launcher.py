@@ -40,6 +40,22 @@ def port_open(port):
         return s.connect_ex(("127.0.0.1", port)) == 0
 
 
+def lock_data_dir(data_dir):
+    """Hold a lock on the data folder for the life of the process. Returns the open file, or None if another agent holds it."""
+    f = open(Path(data_dir) / "agent.lock", "a+")
+    try:
+        if sys.platform == "win32":
+            import msvcrt
+            msvcrt.locking(f.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        f.close()
+        return None
+    return f
+
+
 def ensure_running(data_dir, port):
     """Start `agent run` for this data dir if its port is closed and wait (up to 15 s) for the console. Returns True if up."""
     if not port_open(port):
