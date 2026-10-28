@@ -121,6 +121,7 @@ def free_port(start=8080):
 
 
 def cmd_run(args, store):
+    sys.stdout.reconfigure(line_buffering=True)   # a log that is killed mid-run must still show its last lines
     if PACKAGED and not args.no_ui:
         # the desktop shell reads this file to learn where the console is; a busy port moves to the next free one
         port = store.get("port") or free_port(DEFAULT_PORT["prod"])

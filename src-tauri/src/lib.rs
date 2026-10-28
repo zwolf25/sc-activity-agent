@@ -73,7 +73,8 @@ fn start_agent(app: &AppHandle) -> std::io::Result<()> {
     let _ = fs::remove_file(dir.join("port"));
     let log = OpenOptions::new().create(true).append(true).open(dir.join("agent.log"))?;
     let mut cmd = Command::new(sidecar_path());
-    cmd.arg("--data-dir").arg(&dir).arg("run").env("SC_AGENT_PACKAGED", "1")
+    // Unbuffered, so a killed agent still leaves its last lines in agent.log; the fault handler reports a native crash there.
+    cmd.arg("--data-dir").arg(&dir).arg("run").env("SC_AGENT_PACKAGED", "1").env("PYTHONUNBUFFERED", "1").env("PYTHONFAULTHANDLER", "1")
         .stdin(Stdio::null()).stdout(log.try_clone()?).stderr(log);
     #[cfg(windows)]
     {
@@ -82,6 +83,43 @@ fn start_agent(app: &AppHandle) -> std::io::Result<()> {
     }
     *app.state::<Agent>().child.lock().unwrap() = Some(cmd.spawn()?);
     Ok(())
+}
+
+fn log_line(dir: &Path, msg: &str) {
+    if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(dir.join("agent.log")) {
+        let secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+        let _ = writeln!(f, "[shell {secs}] {msg}");
+    }
+}
+
+/// Watch the agent program. An exit that was not a clean stop is written to agent.log with its status (a signal means the
+/// system killed it) and the agent is started again, waiting longer after each quick failure so a loop cannot spin.
+fn supervise(app: AppHandle) {
+    std::thread::spawn(move || {
+        let (mut fails, mut started) = (0u32, Instant::now());
+        loop {
+            std::thread::sleep(Duration::from_secs(2));
+            let status = match app.state::<Agent>().child.lock().unwrap().as_mut() {
+                Some(c) => c.try_wait().ok().flatten(),
+                None => None, // stopped on purpose, or never started
+            };
+            let Some(st) = status else { continue };
+            *app.state::<Agent>().child.lock().unwrap() = None;
+            let dir = data_dir(&app);
+            if st.success() {
+                log_line(&dir, "agent program stopped cleanly");
+                continue;
+            }
+            fails = if started.elapsed() > Duration::from_secs(120) { 0 } else { fails + 1 };
+            let wait = (5u64 << fails.min(6)).min(300);
+            log_line(&dir, &format!("agent program exited with {st} after {}s; restarting in {wait}s", started.elapsed().as_secs()));
+            std::thread::sleep(Duration::from_secs(wait));
+            match start_agent(&app) {
+                Ok(()) => started = Instant::now(),
+                Err(e) => log_line(&dir, &format!("could not restart the agent program: {e}")),
+            }
+        }
+    });
 }
 
 /// Keep the Mac from idle-sleeping while plugged in: plans only run while the machine is awake, and each sleep shifts them later.
@@ -231,6 +269,7 @@ pub fn run() {
             if app.get_webview_window("main").is_none() {
                 tauri::WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into())).title("SC Activity Agent").build()?;
             }
+            supervise(handle.clone());
             open_console_when_ready(handle, hidden);
             Ok(())
         })

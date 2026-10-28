@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.6.2 - 2026-10-28
+- Update note: restart the agent after updating. No database migration and no pause needed.
+- Fixed: the desktop app could sit on its loading screen with no clue why. The agent's log was buffered, so a process the system killed left nothing behind (the log showed nothing after 08:52 on 2026-10-28). The log is now written line by line and a native crash is reported there. The app also watches the agent program: if it exits abnormally it writes the exit status to agent.log (a signal means the system killed it) and starts it again, waiting longer after each quick failure.
+- Known: on one machine macOS kills the agent program a few seconds after it starts when the app is opened from Finder or the Dock (it still runs from a terminal). The new log shows the exit status when that happens (B-49).
+
 ## v0.6.1 - 2026-10-28
 - Update note: restart the agent after updating. No database migration and no pause needed.
 - Fixed: two-technician visits. When two techs worked a visit, the first tech's check-out completed the WO and the second tech's check-out failed with error 921. The first tech now leaves with the Parts on Order status and the second completes the WO. This was found by testing on Prod with two SydeTech users; if you saw a failed check-out on a two-tech visit, retry it from the Errors page.
