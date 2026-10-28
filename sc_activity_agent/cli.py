@@ -72,6 +72,7 @@ def cmd_cleanup(args, store):
 
 def cmd_backup(args, store):
     from . import update
+    from .handlers import watch
     if args.name:
         try:
             print(f"Restored {args.name}. The database it replaced is saved as {update.restore(store, args.name).name}.")
@@ -168,7 +169,7 @@ def cmd_run(args, store):
             engine.paused_at = store.get("paused_at")
             # one failing piece must not stop the others, or the whole agent
             for name, fn in (("step", engine.tick), ("update", lambda: (update.check(store), [])[1]),
-                             ("create", creator.tick),
+                             ("create", creator.tick), ("watch", lambda: watch(store, rt)),
                              ("cleanup", lambda: sweep_in_thread(store, rt))):
                 try:
                     for key, outcome in fn():

@@ -140,7 +140,7 @@ class Creator:
             raise ScError(409, f"no issue resolves on the dashboard of {loc['store_id']}", "create")
         b = {**planner.DEFAULTS, **self.store.get("behavior", {})}
         tz = loc["tz"] or "America/New_York"
-        plan = planner.build_plan(self.rng, now, b, tz)
+        plan = planner.build_plan(self.rng, now, b, tz, emergency=issue["priority"] == "EMERGENCY")
         first_in = next(s["due_at"] for s in plan if s["kind"] == "check_in")
         sched = dt.datetime.fromtimestamp(first_in, ZoneInfo(tz))
         locd = {"subscriber_id": loc["subscriber_id"], "id": loc["db_id"], "store_id": loc["store_id"]}

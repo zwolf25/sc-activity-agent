@@ -319,3 +319,22 @@ def test_first_tech_out_of_a_crew_visit_does_not_complete_the_wo(tmp_path):
     s.db.execute("DELETE FROM work_orders")
     out(_wo(s, provider_id=2000078685, techs={"1.0": 2, "1.1": 2}))
     assert bodies[-1]["PrimaryStatus"] == "PartsOnOrder"
+
+
+def test_watch_ends_the_plan_of_a_wo_cancelled_by_a_user(tmp_path):
+    from sc_activity_agent.handlers import watch
+    s = setup(tmp_path)
+    plan = planner.build_plan(random.Random(4), NOW, {})
+    add_plan(s, "HQ-NYC", "HVAC", 5001, plan, {**CTX}, NOW)
+    add_plan(s, "HQ-NYC", "HVAC", 5002, plan, {**CTX}, NOW)
+
+    class App(FakeApp):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            if method == "GET" and path.startswith("/workorders/"):
+                return {"Status": {"Primary": "COMPLETED", "Extended": "CANCELED" if path.endswith("5002") else "OPEN"}}
+            return super().call(user, method, path, params, body, **kw)
+    rt = Runtime(s, {1: App("sub", []), 2: App("prov", [])}, random.Random(1))
+    assert watch(s, rt, lambda: 1000) == [(5002, "cancelled by a user: plan ended")]
+    assert s.db.execute("SELECT state FROM work_orders WHERE sc_id=5002").fetchone()[0] == "cancelled"
+    assert s.db.execute("SELECT state FROM work_orders WHERE sc_id=5001").fetchone()[0] == "active"
+    assert watch(s, rt, lambda: 1100) == []   # throttled: not again within 15 minutes

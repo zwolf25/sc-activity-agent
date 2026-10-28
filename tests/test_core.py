@@ -215,3 +215,19 @@ def test_each_thread_gets_its_own_db_connection(tmp_path):
     [t.start() for t in ts]
     [t.join() for t in ts]
     assert not errs and s.get("k3") == 199
+
+
+def test_emergency_plan_visits_within_hours_with_an_availability_exchange():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    tz = ZoneInfo("America/New_York")
+    now = datetime(2026, 10, 28, 9, 0, tzinfo=tz).timestamp()   # Wednesday morning
+    for seed in range(200):
+        p = planner.build_plan(random.Random(seed), now, {"proposal_rate": 100, "late_checkin": 100}, emergency=True)
+        first_in = next(s for s in p if s["kind"] == "check_in")["due_at"]
+        assert first_in - now <= 8 * 3600
+        assert not any(s["kind"] == "proposal_create" for s in p)
+        early = [s["kind"] for s in p if s["due_at"] < first_in]
+        assert early[0] == "accept" and {"sub_note", "prov_note"} <= set(early)   # random notes may interleave
+        d = datetime.fromtimestamp(first_in, tz)
+        assert 8 <= d.hour + d.minute / 60 <= 17 and d.weekday() < 5

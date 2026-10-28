@@ -3,6 +3,7 @@
 Verified on SB2: sub_note, accept, prov_note, check_in, check_out, review. invoice_submit, invoice_decide (approve and reject). Proposals: create (provider), assignWO then approve (subscriber) and reject verified on SB2."""
 import datetime as dt
 import json
+import time
 
 from . import content
 from .client import ScError
@@ -270,6 +271,31 @@ def end_plan(rt, wo):
     rt.store.db.execute("UPDATE work_orders SET state='cancelled' WHERE id=?", (wo["id"],))
     rt.store.db.execute("UPDATE steps SET state='skipped' WHERE wo_id=? AND state IN ('pending','failed')", (wo["id"],))
     rt.store.db.commit()
+
+
+WATCH_EVERY, WATCH_MAX = 900, 4   # one pass per 15 minutes, at most 4 reads each: well under the API rate limit
+
+
+def watch(store, rt, clock=time.time):
+    """B-39: read the live status of the WOs that still have pending steps, least recently read first. A WO the user cancelled
+    ends its plan here instead of failing a step later. Returns [(sc_id, outcome)]."""
+    if store.get("paused_at") is not None or clock() - store.get("watch_at", 0) < WATCH_EVERY:
+        return []
+    store.put("watch_at", clock())
+    out = []
+    for wo in store.db.execute(
+            "SELECT w.* FROM work_orders w WHERE w.state='active' AND EXISTS (SELECT 1 FROM steps s WHERE s.wo_id=w.id AND s.state='pending') "
+            "ORDER BY COALESCE(json_extract(w.ctx,'$.watched'),0) LIMIT ?", (WATCH_MAX,)).fetchall():
+        try:
+            app, user = rt.user_for(wo["location"], "sub_note", wo)
+            st = (app.call(user, "GET", f"/workorders/{wo['sc_id']}", action="watch", wo=wo["sc_id"]) or {}).get("Status", {})
+        except ScError:
+            continue   # a failed read changes nothing; the next pass tries again
+        rt.save_ctx(wo, watched=clock())
+        if st.get("Extended") == "CANCELED":
+            end_plan(rt, wo)
+            out.append((wo["sc_id"], "cancelled by a user: plan ended"))
+    return out
 
 
 def cancel_wo(rt, wo, note="Cancelled by SC Activity Agent cleanup"):

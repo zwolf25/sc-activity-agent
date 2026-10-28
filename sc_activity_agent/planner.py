@@ -44,10 +44,11 @@ def _fit(ts, prev, c, tz, rng):
     return new
 
 
-def build_plan(rng, now, cfg, tz="America/New_York"):
+def build_plan(rng, now, cfg, tz="America/New_York", emergency=False):
     """now: epoch seconds when the WO is created. Returns list of dicts {kind, due_at, payload}, sorted by due_at.
     Times are epoch seconds. Kinds: accept, prov_note, sub_note, proposal_create, proposal_decide, check_in, check_out,
-    review, invoice_submit, invoice_decide, invoice_pay."""
+    review, invoice_submit, invoice_decide, invoice_pay. emergency: the visit is hours away, not days, with a confirm-availability
+    exchange before it; no proposal and no late arrival (B-08)."""
     c = {**DEFAULTS, **cfg}
     steps = []
 
@@ -56,16 +57,24 @@ def build_plan(rng, now, cfg, tz="America/New_York"):
 
     created = datetime.fromtimestamp(now, ZoneInfo(tz))
     sched_day = _biz_day(created.date(), rng.randint(1, 5))
-    add("accept", now + rng.randint(300, 2400), situation="ack")
-    add("prov_note", now + rng.randint(2700, 5400), situation="eta")
+    if emergency:
+        add("accept", now + rng.randint(120, 900), situation="ack")
+        add("sub_note", now + rng.randint(900, 1500), situation="followup")   # the subscriber asks for confirmation
+        add("prov_note", now + rng.randint(1600, 2400), situation="eta")      # the provider confirms availability
+    else:
+        add("accept", now + rng.randint(300, 2400), situation="ack")
+        add("prov_note", now + rng.randint(2700, 5400), situation="eta")
 
     # first-time-fix decides how many visits; each visit is a check-in/out pair on its own business day
     visits = 1 if rng.random() * 100 < c["first_time_fix"] else rng.choice([2, 2, 3])
-    late = rng.random() * 100 < c["late_checkin"]
+    late = rng.random() * 100 < c["late_checkin"] and not emergency
     day = _biz_day(sched_day, rng.randint(1, max(1, int(c["late_days"]) * 2 - 1))) if late else sched_day
     span = c["hours_end"] - c["hours_start"]
-    has_proposal = rng.random() * 100 < c["proposal_rate"]
+    has_proposal = rng.random() * 100 < c["proposal_rate"] and not emergency
     t = _at(day, c["hours_start"] + rng.random() * span * 0.4, tz)
+    if emergency:   # under 8 hours out (or the next morning when it is raised after hours)
+        t = _fit(now + rng.randint(3000, 7 * 3600), now + 2400, c, tz, rng)
+        day = datetime.fromtimestamp(t, ZoneInfo(tz)).date()
 
     if has_proposal:
         # check-in is blocked until the proposal is approved, so the proposal precedes the first visit
