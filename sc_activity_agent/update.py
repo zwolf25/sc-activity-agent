@@ -119,7 +119,17 @@ def _restart(store, wait=10):
     launcher.ensure_running(store.dir, port)
 
 
-def apply(store, tag, run=subprocess.run, pip=_pip, restart=_restart):
+def _stop(store):
+    """Ask the running agent to exit. False when there is none."""
+    pid = store.dir / "agent.pid"
+    try:
+        os.kill(int(pid.read_text()), signal.SIGTERM)
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+def apply(store, tag, run=subprocess.run, pip=_pip, restart=_restart, stop=_stop):
     """Pause, back up, install the tag, let the new code migrate the DB and resume. If the new version does not start, put the
     old code and the old database back. Returns (ok, message)."""
     r = repo(store)
@@ -142,11 +152,7 @@ def apply(store, tag, run=subprocess.run, pip=_pip, restart=_restart):
         back = pip(_spec(r, f"v{__version__}"))
         what = "Previous version put back" if not back.returncode else f"Could not reinstall v{__version__}, run agent update"
         return False, f"New version failed to start. Database restored from {saved.name}. {what}. Run agent resume to continue."
-    pid = store.dir / "agent.pid"
-    if pid.exists():
-        try:
-            os.kill(int(pid.read_text()), signal.SIGTERM)
-        except (OSError, ValueError):
-            return True, f"Updated to {tag}. The agent was not running; start it to use the new version."
-        restart(store)
+    if not stop(store):
+        return True, f"Updated to {tag}. The agent was not running; start it to use the new version."
+    restart(store)
     return True, f"Updated to {tag}. The agent restarts on the new version."
