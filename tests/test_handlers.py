@@ -303,3 +303,19 @@ def test_second_tech_is_skipped_when_the_provider_has_one_tech(tmp_path):
         rt.user_for("HQ-NYC", "check_in", wo, step("check_in", visit=1, tech=1))
     with pytest.raises(Skip):
         rt.user_for("HQ-NYC", "check_out", wo, step("check_out", visit=1, tech=1))
+
+
+def test_first_tech_out_of_a_crew_visit_does_not_complete_the_wo(tmp_path):
+    s = setup(tmp_path)
+    calls = []
+    rt = Runtime(s, {1: FakeApp("sub", calls), 2: FakeApp("prov", calls)}, random.Random(1))
+    h = make_handlers(rt)
+    out = lambda wo: h["check_out"](None, wo, {"kind": "check_out", "due_at": 1_761_566_400,
+                                               "payload": json.dumps({"visit": 1, "final": True, "situation": "complete", "partial": True})})
+    bodies = []
+    rt.apps[2].call = lambda user, method, path, params=None, body=None, **kw: bodies.append(body) or {}
+    out(_wo(s, provider_id=2000078685, techs={"1.0": 2}))
+    assert bodies[-1]["PrimaryStatus"] == "Completed"   # no second tech checked in: nobody else to wait for
+    s.db.execute("DELETE FROM work_orders")
+    out(_wo(s, provider_id=2000078685, techs={"1.0": 2, "1.1": 2}))
+    assert bodies[-1]["PrimaryStatus"] == "PartsOnOrder"

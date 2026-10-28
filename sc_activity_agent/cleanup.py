@@ -52,7 +52,8 @@ def preview(store, rt, clock=time.time):
         shielded = {w["Id"] for w in _pages(app, user, "/odata/workorders", {
             "$filter": f"Labels/any(l: l/Label eq '{cfg['protect']}')", "$select": "Id"}, MAX)} if cfg["protect"] else set()
         rows = _pages(app, user, f"/odata/locations({loc['db_id']})/workorders",
-                      {"$filter": f"UpdatedDate lt {cutoff} and ({status})", "$orderby": "UpdatedDate"}, MAX - len(items))
+                      {"$filter": f"UpdatedDate lt {cutoff} and ({status})", "$orderby": "UpdatedDate",
+                       "$expand": "Provider($select=Id,Name)"}, MAX - len(items))
         for w in rows:
             if w["Id"] in mine:
                 continue

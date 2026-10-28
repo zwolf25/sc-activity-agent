@@ -101,7 +101,7 @@ def build_plan(rng, now, cfg, tz="America/New_York"):
         if rng.random() < 0.7:
             add("prov_note", t + 600, situation="onsite" if v == 0 else "return")
         last = v == visits - 1
-        add("check_out", out, visit=v + 1, final=last, situation="complete" if last else "parts")
+        add("check_out", out, visit=v + 1, final=last, situation="complete" if last else "parts", **({"partial": True} if crew else {}))   # partial: the other tech still on site
         if crew:
             add("check_out", min(out + rng.randint(60, 600), end_cap), visit=v + 1, tech=1, final=last, situation="complete" if last else "parts")
         if not last:

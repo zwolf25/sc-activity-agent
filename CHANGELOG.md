@@ -1,6 +1,8 @@
 # Changelog
 
 ## Unreleased
+- Fixed: two-technician visits. When two techs worked a visit, the first tech's check-out completed the WO and the second tech's check-out failed with error 921. The first tech now leaves with the Parts on Order status and the second completes the WO. This was found by testing on Prod with two SydeTech users; if you saw a failed check-out on a two-tech visit, retry it from the Errors page.
+- Fixed: the Provider column in the clean-up preview was blank. It now shows the provider name.
 
 ## v0.6.0 - 2026-10-27
 - Changed: the Roles page is gone. Each user on the Connections page now has **Can do** checkboxes. The agent picks randomly among the users who can do an action and belong to the WO's provider, so several technicians across several provider accounts take turns. A check-out is done by the same tech who checked in on that visit; separate visits can use different techs. Your existing Roles convert automatically on update (per-location overrides are dropped; none were in use). The first user added to a connection can do everything; later users start with nothing ticked.

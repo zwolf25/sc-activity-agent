@@ -149,5 +149,7 @@ Provider app and user (SydeTech, Production app does not exist on SB2; a separat
 
 - **Invoice payment verified (SB2, 2026-10-27):** Subscriber `POST /invoices/{id}/Payment` with `{"PaymentDate","PaymentNumber","PaymentAmount"}` returned 204 on an APPROVED invoice (180704845, total 320.00); `GET /invoices/{id}` then showed `Status: PAID` and a `Payments[]` entry. Swagger error 1178 covers: only approved invoices, already paid, amount above the invoice total, amount not above zero, date before approval, and "Pay not allowed for this subscriber" (not seen on SB2; unknown on Prod).
 
-## Two technicians on one visit (2026-10-27, NOT verified)
-- B-47 plans a second `universalCheckIn` (TechsCount 1, different user) 5 to 20 minutes after the first on the same WO, and a second `universalCheckOut` after the first tech's. Whether SC accepts a check-in on a WO that is already ON SITE, and a check-out after the WO left ON SITE, has not been tested. The guarded handler treats a 400/403/409 on a WO that is ON SITE (check-in) or COMPLETED as done; anything else shows on the Errors page. Spike: B-48.
+## Two technicians on one visit (verified on Prod 2026-10-27, WOs 368258499 and 368258511, cancelled after)
+- A second tech (another user of the same provider) can `universalCheckIn` on a WO that is already ON SITE: 200 with its own MechanicId.
+- A `universalCheckOut` with PrimaryStatus Completed by the first tech completes the WO. The second tech's check-out then fails with 400 error 921 "Cannot update work order in 'completed' status."
+- Working order: first tech out with PrimaryStatus PartsOnOrder, second tech out with Completed. Both return 200 with their MechanicId; the WO ends COMPLETED.

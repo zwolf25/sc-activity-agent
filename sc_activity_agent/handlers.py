@@ -122,9 +122,12 @@ def make_handlers(rt):
         p = json.loads(step["payload"])
         loc = rt.location(wo["location"])
         text = content.note("provider", p["situation"], ctx_of(wo), rt.rng)
+        # the first tech out of a crew visit must not complete the WO, but only if the second tech really checked in
+        partial = bool(p.get("partial")) and f"{p['visit']}.1" in ctx_of(wo).get("techs", {})
         checkio(f"/workorders/{wo['sc_id']}/universalCheckOut",
                 {"Latitude": loc["lat"], "Longitude": loc["lon"], "CheckOutTime": _iso(step["due_at"]),
-                 "PrimaryStatus": "Completed" if p["final"] else "PartsOnOrder", "ActionStatus": "Complete",
+                 "PrimaryStatus": "Completed" if p["final"] and not partial else "PartsOnOrder",   # Completed closes the WO and blocks the second tech's check-out (921)
+                  "ActionStatus": "Complete",
                  "Resolution": text, "TechsCount": 1}, wo, step)
 
     def review(engine, wo, step):
