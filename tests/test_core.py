@@ -223,7 +223,7 @@ def test_emergency_plan_visits_within_hours_with_an_availability_exchange():
     tz = ZoneInfo("America/New_York")
     now = datetime(2026, 10, 28, 9, 0, tzinfo=tz).timestamp()   # Wednesday morning
     for seed in range(200):
-        p = planner.build_plan(random.Random(seed), now, {"proposal_rate": 100, "late_checkin": 100}, emergency=True)
+        p = planner.build_plan(random.Random(seed), now, {"proposal_rate": 100, "late_checkin": 100}, eta=now + 3 * 3600)
         first_in = next(s for s in p if s["kind"] == "check_in")["due_at"]
         assert first_in - now <= 8 * 3600
         assert not any(s["kind"] == "proposal_create" for s in p)
@@ -231,3 +231,14 @@ def test_emergency_plan_visits_within_hours_with_an_availability_exchange():
         assert early[0] == "accept" and {"sub_note", "prov_note"} <= set(early)   # random notes may interleave
         d = datetime.fromtimestamp(first_in, tz)
         assert 8 <= d.hour + d.minute / 60 <= 17 and d.weekday() < 5
+
+
+def test_eta_over_eight_hours_is_a_normal_plan_anchored_to_the_eta():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    tz = ZoneInfo("America/New_York")
+    now = datetime(2026, 10, 28, 9, 0, tzinfo=tz).timestamp()
+    eta = datetime(2026, 10, 30, 10, 0, tzinfo=tz).timestamp()
+    for seed in range(100):
+        p = planner.build_plan(random.Random(seed), now, {"proposal_rate": 0, "late_checkin": 0, "first_time_fix": 100}, eta=eta)
+        assert next(s for s in p if s["kind"] == "check_in")["due_at"] >= eta

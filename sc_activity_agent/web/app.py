@@ -46,6 +46,7 @@ SLIDERS = [("wo_per_month", "Work orders per month", "Per enabled location, week
            ("time_on_site_hrs", "Average time on site (hours)", "Check-in to check-out per visit", 0.5, 8, 0.5),
            ("pay_days", "Average days to pay", "After the invoice is approved (30 = Net 30 terms)", 1, 90, 1),
            ("multi_tech", "Two-technician visits %", "Share of visits worked by 2 technicians (needs 2 check-in techs on the provider)", 0, 100, 1),
+           ("watch", "Background status check", "1 = also read one active WO per hour; every write already reads its WO first", 0, 1, 1),
            ("first_time_fix", "First-time fix %", "Rest need 2 or 3 visits", 0, 100, 1),
            ("hours_start", "Activity starts (hour)", "Local time at the location", 0, 23, 1),
            ("hours_end", "Activity ends (hour)", "", 1, 24, 1)]

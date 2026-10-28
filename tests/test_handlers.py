@@ -324,6 +324,7 @@ def test_first_tech_out_of_a_crew_visit_does_not_complete_the_wo(tmp_path):
 def test_watch_ends_the_plan_of_a_wo_cancelled_by_a_user(tmp_path):
     from sc_activity_agent.handlers import watch
     s = setup(tmp_path)
+    s.put("behavior", {"watch": 1})
     plan = planner.build_plan(random.Random(4), NOW, {})
     add_plan(s, "HQ-NYC", "HVAC", 5001, plan, {**CTX}, NOW)
     add_plan(s, "HQ-NYC", "HVAC", 5002, plan, {**CTX}, NOW)
@@ -334,7 +335,44 @@ def test_watch_ends_the_plan_of_a_wo_cancelled_by_a_user(tmp_path):
                 return {"Status": {"Primary": "COMPLETED", "Extended": "CANCELED" if path.endswith("5002") else "OPEN"}}
             return super().call(user, method, path, params, body, **kw)
     rt = Runtime(s, {1: App("sub", []), 2: App("prov", [])}, random.Random(1))
-    assert watch(s, rt, lambda: 1000) == [(5002, "cancelled by a user: plan ended")]
+    assert watch(s, rt, lambda: 10000) == []   # one WO per pass: 5001 first, still open
+    assert watch(s, rt, lambda: 10100) == []   # throttled: not again within the hour
+    assert watch(s, rt, lambda: 14000) == [(5002, "cancelled by a user: plan ended")]
     assert s.db.execute("SELECT state FROM work_orders WHERE sc_id=5002").fetchone()[0] == "cancelled"
     assert s.db.execute("SELECT state FROM work_orders WHERE sc_id=5001").fetchone()[0] == "active"
-    assert watch(s, rt, lambda: 1100) == []   # throttled: not again within 15 minutes
+    s.put("behavior", {})
+    assert watch(s, rt, lambda: 10 ** 6) == []   # off by default
+
+
+def _preflight_app(status):
+    class App(FakeApp):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            if method == "GET" and path.startswith("/workorders/"):
+                self.calls.append((self.name, user[0], method, path))
+                return {"Status": status}
+            return super().call(user, method, path, params, body, **kw)
+    return App
+
+
+def test_preflight_ends_the_plan_before_any_write_on_a_cancelled_wo(tmp_path):
+    s = setup(tmp_path)
+    calls = []
+    App = _preflight_app({"Primary": "COMPLETED", "Extended": "CANCELED"})
+    rt = Runtime(s, {1: App("sub", calls), 2: App("prov", calls)}, random.Random(1))
+    add_plan(s, "HQ-NYC", "HVAC", 5001, planner.build_plan(random.Random(4), NOW, {}), {**CTX}, NOW)
+    Engine(s, make_handlers(rt), clock=lambda: NOW + 10 ** 7, per_tick=50).tick()
+    assert {c[2] for c in calls} == {"GET"}   # no write was attempted
+    assert s.db.execute("SELECT state FROM work_orders WHERE sc_id=5001").fetchone()[0] == "cancelled"
+
+
+def test_preflight_skips_field_steps_on_a_wo_a_user_completed_but_still_reviews(tmp_path):
+    s = setup(tmp_path)
+    calls = []
+    App = _preflight_app({"Primary": "COMPLETED", "Extended": "COMPLETED"})
+    rt = Runtime(s, {1: App("sub", calls), 2: App("prov", calls)}, random.Random(1))
+    h = make_handlers(rt)
+    wo = _wo(s)
+    h["check_in"](None, wo, step("check_in", visit=1))
+    assert [c for c in calls if c[2] != "GET"] == []
+    h["review"](None, wo, step("review", situation="review"))
+    assert any(c[2] != "GET" for c in calls)

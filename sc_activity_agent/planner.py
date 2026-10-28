@@ -7,7 +7,7 @@ DEFAULTS = {
     "proposal_rate": 10, "proposal_approval": 90, "invoice_approval": 95,
     "sub_notes": 2.0, "prov_notes": 3.0,
     "late_checkin": 15, "late_days": 2,
-    "time_on_site_hrs": 2.0, "pay_days": 30, "multi_tech": 5, "first_time_fix": 80,
+    "time_on_site_hrs": 2.0, "pay_days": 30, "multi_tech": 5, "watch": 0, "first_time_fix": 80,
     "hours_start": 8, "hours_end": 17,
     "resume_policy": "catch_up",
 }
@@ -44,17 +44,19 @@ def _fit(ts, prev, c, tz, rng):
     return new
 
 
-def build_plan(rng, now, cfg, tz="America/New_York", emergency=False):
+def build_plan(rng, now, cfg, tz="America/New_York", eta=None):
     """now: epoch seconds when the WO is created. Returns list of dicts {kind, due_at, payload}, sorted by due_at.
     Times are epoch seconds. Kinds: accept, prov_note, sub_note, proposal_create, proposal_decide, check_in, check_out,
-    review, invoice_submit, invoice_decide, invoice_pay. emergency: the visit is hours away, not days, with a confirm-availability
-    exchange before it; no proposal and no late arrival (B-08)."""
+    review, invoice_submit, invoice_decide, invoice_pay. eta: epoch seconds of the scheduled visit when it is known. An ETA under
+    8 hours away makes an emergency plan: a confirm-availability exchange before the visit, no proposal, no late arrival (B-08).
+    The ETA decides, not the priority label."""
     c = {**DEFAULTS, **cfg}
     steps = []
 
     def add(kind, due, **payload):
         steps.append({"kind": kind, "due_at": due, "payload": payload})
 
+    emergency = eta is not None and eta - now < 8 * 3600
     created = datetime.fromtimestamp(now, ZoneInfo(tz))
     sched_day = _biz_day(created.date(), rng.randint(1, 5))
     if emergency:
@@ -72,8 +74,8 @@ def build_plan(rng, now, cfg, tz="America/New_York", emergency=False):
     span = c["hours_end"] - c["hours_start"]
     has_proposal = rng.random() * 100 < c["proposal_rate"] and not emergency
     t = _at(day, c["hours_start"] + rng.random() * span * 0.4, tz)
-    if emergency:   # under 8 hours out (or the next morning when it is raised after hours)
-        t = _fit(now + rng.randint(3000, 7 * 3600), now + 2400, c, tz, rng)
+    if eta is not None:   # the visit is anchored to the known ETA (moved to the next activity window when it falls outside)
+        t = _fit(max(eta, now + 2400), now + 2400, c, tz, rng)
         day = datetime.fromtimestamp(t, ZoneInfo(tz)).date()
 
     if has_proposal:

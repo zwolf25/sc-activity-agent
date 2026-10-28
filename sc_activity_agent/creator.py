@@ -140,7 +140,9 @@ class Creator:
             raise ScError(409, f"no issue resolves on the dashboard of {loc['store_id']}", "create")
         b = {**planner.DEFAULTS, **self.store.get("behavior", {})}
         tz = loc["tz"] or "America/New_York"
-        plan = planner.build_plan(self.rng, now, b, tz, emergency=issue["priority"] == "EMERGENCY")
+        # an EMERGENCY issue is the one case where we pick a same-day ETA; every behavior then keys off that ETA, not the label
+        eta = now + self.rng.randint(3000, 7 * 3600) if issue["priority"] == "EMERGENCY" else None
+        plan = planner.build_plan(self.rng, now, b, tz, eta=eta)
         first_in = next(s["due_at"] for s in plan if s["kind"] == "check_in")
         sched = dt.datetime.fromtimestamp(first_in, ZoneInfo(tz))
         locd = {"subscriber_id": loc["subscriber_id"], "id": loc["db_id"], "store_id": loc["store_id"]}

@@ -238,6 +238,8 @@ def make_handlers(rt):
         WO makes the field steps moot, and a check-in/out the user already did is done. Anything else is a real failure."""
         def run(engine, wo, step):
             try:
+                if preflight(rt, call, wo, step, kind):
+                    return
                 return fn(engine, wo, step)
             except ScError as e:
                 if e.status not in (400, 403, 409):
@@ -263,6 +265,22 @@ def make_handlers(rt):
     return {k: guarded(k, f) for k, f in handlers.items()}
 
 
+ALREADY_DONE_WHEN_COMPLETED = {"accept", "check_in", "check_out", "proposal_create", "proposal_decide"}
+
+
+def preflight(rt, call, wo, step, kind):
+    """B-39: read the live WO before a write. A cancelled WO ends the plan; a WO a user already completed makes the field steps
+    moot. Returns True when the step must not run. A failed read changes nothing: the step runs and its own guard handles it."""
+    try:
+        st = (call(wo, step, "GET", f"/workorders/{wo['sc_id']}") or {}).get("Status", {})
+    except ScError:
+        return False
+    if st.get("Extended") == "CANCELED":
+        end_plan(rt, wo)
+        return True
+    return st.get("Primary") == "COMPLETED" and kind in ALREADY_DONE_WHEN_COMPLETED
+
+
 FIELD = {"accept", "prov_note", "sub_note", "check_in", "check_out", "proposal_create", "proposal_decide", "review"}
 
 
@@ -273,13 +291,13 @@ def end_plan(rt, wo):
     rt.store.db.commit()
 
 
-WATCH_EVERY, WATCH_MAX = 900, 4   # one pass per 15 minutes, at most 4 reads each: well under the API rate limit
+WATCH_EVERY, WATCH_MAX = 3600, 1   # off by default (behavior.watch): the preflight read already catches changes before each write
 
 
 def watch(store, rt, clock=time.time):
     """B-39: read the live status of the WOs that still have pending steps, least recently read first. A WO the user cancelled
     ends its plan here instead of failing a step later. Returns [(sc_id, outcome)]."""
-    if store.get("paused_at") is not None or clock() - store.get("watch_at", 0) < WATCH_EVERY:
+    if not store.get("behavior", {}).get("watch") or store.get("paused_at") is not None or clock() - store.get("watch_at", 0) < WATCH_EVERY:
         return []
     store.put("watch_at", clock())
     out = []
