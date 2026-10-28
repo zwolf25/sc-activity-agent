@@ -1,7 +1,16 @@
+import json
+import pytest
 from fastapi.testclient import TestClient
 
 from sc_activity_agent.store import Store
 from sc_activity_agent.web.app import create_app
+
+
+@pytest.fixture(autouse=True)
+def login_works(monkeypatch):
+    """Adding a user signs in first; no test may reach the real login server."""
+    from sc_activity_agent.client import ScApp
+    monkeypatch.setattr(ScApp, "token", lambda self, user, pw: "tok")
 
 
 def client(tmp_path):
@@ -46,7 +55,7 @@ def test_dashboard_audit_errors_render_and_pause_toggles(tmp_path):
 
 def test_new_pages_render_and_save(tmp_path):
     s, c = client(tmp_path)
-    for p in ("/behavior", "/locations", "/roles", "/cleanup", "/settings"):
+    for p in ("/behavior", "/locations", "/connections", "/cleanup", "/settings"):
         assert c.get(p).status_code == 200
     c.post("/behavior", data={"wo_per_month": "60", "hours_start": "9"})
     assert s.get("behavior")["wo_per_month"] == 60 and s.get("hours_start") == 9
@@ -54,9 +63,7 @@ def test_new_pages_render_and_save(tmp_path):
     c.post("/locations/add", data={"store_id": "HQ"})
     c.post("/connections/add", data={"side": "subscriber", "name": "m", "client_id": "a", "client_secret": "b"})
     c.post("/connections/1/users", data={"username": "u1", "password": "p"})
-    c.post("/roles", data={"*|accept": "1", "HQ|accept": ""})
-    assert s.db.execute("SELECT user_ids FROM roles WHERE location='*' AND action='accept'").fetchone()[0] == "[1]"
-    assert "u1" in c.get("/roles").text and "HQ" in c.get("/locations").text
+    assert "u1" in c.get("/connections").text and "HQ" in c.get("/locations").text
 
 
 def test_wizard_points_to_next_step_and_dashboard_select(tmp_path):
@@ -157,11 +164,26 @@ def test_activity_hours_are_one_row_of_selects_and_end_follows_start(tmp_path):
     assert s.get("hours_start") == 10 and s.get("hours_end") == 11
 
 
-def test_roles_use_single_dropdowns(tmp_path):
+def test_users_carry_their_capabilities(tmp_path):
     s, c = client(tmp_path)
-    c.post("/connections/add", data={"side": "subscriber", "name": "m", "client_id": "a", "client_secret": "b"})
+    c.post("/connections/add", data={"side": "provider", "name": "p", "client_id": "a", "client_secret": "b", "provider_id": "7"})
     c.post("/connections/1/users", data={"username": "u1", "password": "p"})
-    assert "multiple" not in c.get("/roles").text
+    c.post("/connections/1/users", data={"username": "u2", "password": "p"})
+    can = lambda i: json.loads(s.db.execute("SELECT can_do FROM users WHERE id=?", (i,)).fetchone()[0])
+    assert "check_in" in can(1) and can(2) == []   # the first user on a connection gets everything, later ones start empty
+    c.post("/users/2/can-do", data={"can_do": ["check_in", "nonsense"]})
+    assert can(2) == ["check_in"]
+    page = c.get("/connections").text
+    assert "Can do" in page and "No user can do" not in page
+
+
+def test_setup_checklist_flags_actions_nobody_can_do(tmp_path):
+    s, c = client(tmp_path)
+    c.post("/connections/add", data={"side": "provider", "name": "p", "client_id": "a", "client_secret": "b", "provider_id": "7"})
+    c.post("/connections/1/users", data={"username": "u1", "password": "p"})
+    c.post("/users/1/can-do", data={"can_do": ["accept"]})
+    page = c.get("/connections").text
+    assert "No user can do" in page and "No check-in tech" in page
 
 
 def test_step_context_text():
@@ -268,3 +290,33 @@ def test_locations_page_shows_skipped_trades_and_refresh_button(tmp_path):
     s.put("rank1", {"HQ": {"at": 1, "trades": ["HVAC"], "skipped": ["ROOFING"]}})
     page = c.get("/locations").text
     assert "ROOFING" in page and "Refresh now" in page
+
+
+def test_user_label_can_be_edited_after_adding(tmp_path):
+    s = Store(tmp_path)
+    s.put("env", "sb2")
+    s.db.execute("INSERT INTO connections VALUES(1,'provider','P','c','x',77)")
+    s.db.execute("INSERT INTO users(id,conn_id,username,password,label) VALUES(1,1,'tech1',?,'old')", (s.enc("pw"),))
+    s.db.commit()
+    c = TestClient(create_app(s))
+    c.post("/users/1/label", data={"label": " Maria, HVAC tech "}, follow_redirects=False)
+    assert s.db.execute("SELECT label FROM users WHERE id=1").fetchone()[0] == "Maria, HVAC tech"
+    assert "Maria, HVAC tech" in c.get("/connections").text
+
+
+def test_new_user_is_saved_only_if_login_works(tmp_path, monkeypatch):
+    from sc_activity_agent.client import ScApp, ScError
+    s = Store(tmp_path)
+    s.put("env", "sb2")
+    s.db.execute("INSERT INTO connections VALUES(1,'provider','P','c',?,77)", (s.enc("sec"),))
+    s.db.commit()
+    c = TestClient(create_app(s))
+
+    def bad(self, user, pw):
+        raise ScError(400, "Wrong user or password", "/oauth/token")
+    monkeypatch.setattr(ScApp, "token", bad)
+    r = c.post("/connections/1/users", data={"username": "tech1", "password": "x"}, follow_redirects=False)
+    assert s.db.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0 and "was not added" in r.headers["location"].replace("%20", " ")
+    monkeypatch.setattr(ScApp, "token", lambda self, user, pw: "tok")
+    c.post("/connections/1/users", data={"username": "tech1", "password": "x", "label": "Maria"}, follow_redirects=False)
+    assert s.db.execute("SELECT username FROM users").fetchone()[0] == "tech1"

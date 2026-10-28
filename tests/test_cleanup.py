@@ -38,8 +38,7 @@ class FakeApp:
 def setup(tmp_path, listing, protected=()):
     s = Store(tmp_path)
     s.db.execute("INSERT INTO connections VALUES(1,'subscriber','S','c','x',NULL)")
-    s.db.execute("INSERT INTO users VALUES(1,1,'sub',?, '',NULL)", (s.enc("pw"),))
-    s.db.execute("INSERT INTO roles VALUES('*','subscriber_note','[1]','single')")
+    s.db.execute("INSERT INTO users(id,conn_id,username,password,can_do) VALUES(1,1,'sub',?,'[\"subscriber_note\"]')", (s.enc("pw"),))
     s.db.execute("INSERT INTO locations(store_id,db_id,subscriber_id,name,lat,lon,tz) VALUES('HQ',10,5,'HQ',1,2,'America/New_York')")
     s.db.execute("INSERT INTO work_orders(id, sc_id, location, trade, state, created_at) VALUES(1, 7, 'HQ', 'HVAC', 'active', 0)")
     s.db.commit()

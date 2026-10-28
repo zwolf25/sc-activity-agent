@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## v0.6.0 - 2026-10-27
+- Changed: the Roles page is gone. Each user on the Connections page now has **Can do** checkboxes. The agent picks randomly among the users who can do an action and belong to the WO's provider, so several technicians across several provider accounts take turns. A check-out is done by the same tech who checked in on that visit; separate visits can use different techs. Your existing Roles convert automatically on update (per-location overrides are dropped; none were in use). The first user added to a connection can do everything; later users start with nothing ticked.
+- New: Behavior setting "Two-technician visits %" (default 5): share of visits where a second tech checks in a few minutes after the first and both check out. With fewer than two check-in techs on the provider, those visits stay single-tech.
+- Changed: the setup checklist replaces "Roles mapped" with "Every action has a user" and "Every Provider has a check-in tech". A WO with no capable user for its provider now fails with a clear message instead of a 403.
+- New: user labels show next to the username on Connections and in the Audit log. Old WOs created before this update have no recorded provider and use any capable user.
+- Changed: Add user now signs in first. If the login fails, the user is not saved and the page shows the reason (for example wrong password or a client that is not registered in this environment). The Test button stays for users already added.
+- New: a user's Label on the Connections page can be edited after the user is added (type, then Save).
+- New: Settings has a Backups card (Back up now, and a list of the last 10 copies). The agent also saves a copy before every clean-up run. `agent backup` makes one from the command line, and `agent backup <file>` restores one while the agent is stopped.
+- New: every plan now ends with the Subscriber marking the approved invoice as paid, about 30 days after the approval (Net 30 terms, varying by about a quarter either way; the Behavior setting "Average days to pay" changes it). The payment amount equals the invoice total. If the invoice was rejected or already paid by a user, the step does nothing. If your Subscriber is not allowed to record payments, the step is skipped without an error. Plans already saved are not changed.
+- Changed: the Behavior setting "Time on site factor" is now "Average time on site (hours)", default 2 hours. Visit lengths vary around that average. The old factor is ignored, so every instance moves to 2 hours on update (the old default of 1.0 was also about 2 hours).
+- New: `agent cleanup --limit N` acts on only the oldest N idle work orders, for testing the clean-up on a few at a time.
+- Fix: the engine, console and clean-up sweep no longer share one database connection. Before, two of them touching the database at the same moment could fail with "bad parameter or other API misuse" (seen on the Resync locations button). Each thread now has its own connection. Needs a restart; nothing pauses.
+
 ## v0.5.1 - 2026-10-27
 - Fix: the daily clean-up choice now has its own Save button with a confirm box, and saving it never starts a run: the first run is a day later. Before, saving the setting from the Preview button could start a sweep within minutes. "Finish ours" is no longer offered on Production and never runs automatically there. Finishing plans no longer start with an accept step, because most idle work orders are past acceptance and the API refuses it (error 904).
 

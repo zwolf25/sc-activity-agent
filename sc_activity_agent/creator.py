@@ -47,12 +47,14 @@ class Creator:
         hit = cache.get(loc["store_id"])
         if hit and not force and self.clock() - hit["at"] < RANK_TTL:
             return set(hit["trades"])
-        trades = set()
+        owners = {}   # trade -> provider id, so a WO's provider-side steps run as that provider's users
         get = lambda p: self._get(loc, p)
         for c in self.store.db.execute("SELECT provider_id FROM connections WHERE side='provider' AND provider_id IS NOT NULL"):
-            trades |= generator.rank_one_trades(get, loc["subscriber_id"], c["provider_id"], loc["db_id"])
+            for t in generator.rank_one_trades(get, loc["subscriber_id"], c["provider_id"], loc["db_id"]):
+                owners.setdefault(t, c["provider_id"])
+        trades = set(owners)
         if trades:   # never cache an empty answer: a transient API blip would block creation for a day
-            cache[loc["store_id"]] = {"at": self.clock(), "trades": sorted(trades)}
+            cache[loc["store_id"]] = {"at": self.clock(), "trades": sorted(trades), "owners": owners}
             self.store.put("rank1", cache)
         return trades
 
@@ -150,5 +152,8 @@ class Creator:
                    sched_day=sched.strftime("%A"), eta=sched.strftime("%I:%M %p").lstrip("0"),
                    eta_end=(sched + dt.timedelta(hours=2)).strftime("%I:%M %p").lstrip("0"), area="sales floor",
                    equipment=issue["item"], amount="", nte=issue["nte"], category=issue["category"])
+        pid = self.store.get("rank1", {}).get(loc["store_id"], {}).get("owners", {}).get(issue["trade"])
+        if pid:
+            ctx["provider_id"] = pid
         add_plan(self.store, loc["store_id"], issue["trade"], r["id"], plan, ctx, now)
         return r["id"]

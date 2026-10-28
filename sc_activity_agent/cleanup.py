@@ -6,7 +6,7 @@ import random
 import time
 from zoneinfo import ZoneInfo
 
-from . import planner
+from . import planner, update
 from .client import ScError
 from .engine import add_plan
 
@@ -82,6 +82,8 @@ def finish_plan(store, rt, w, now):
     issue = w.get("Problem") or w.get("ProblemDescription") or "reported issue"
     ctx = dict(trade=trade, issue=issue, location=loc["name"] or loc["store_id"], sched_day="", eta="", eta_end="", area="sales floor",
                equipment=w.get("AssetType") or "equipment", amount="", nte=w.get("Nte") or 500, category="REPAIR")
+    if (w.get("Provider") or {}).get("Id"):
+        ctx["provider_id"] = w["Provider"]["Id"]
     add_plan(store, loc["store_id"], trade, w["Id"], steps, ctx, now)
 
 
@@ -90,6 +92,8 @@ def run(store, rt, clock=time.time, finish=False):
     preview is skipped. Progress is saved after each WO so the page can show it."""
     prev = store.get("cleanup_preview") or {"items": []}
     cfg = settings(store)
+    if prev["items"]:
+        update.backup(store)   # a restore point before a bulk cancel
     cutoff = _iso(clock() - prev.get("days", cfg["days"]) * 86400)
     state = {"running": True, "total": len(prev["items"]), "cancelled": 0, "skipped": 0, "errors": [], "started": clock()}
     store.put("cleanup_run", state)

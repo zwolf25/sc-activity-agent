@@ -12,7 +12,7 @@ def setup(tmp_path, handlers, clock):
     s = Store(tmp_path)
     plan = planner.build_plan(random.Random(5), NOW, {})
     add_plan(s, "HQ-NYC", "HVAC", 1001, plan, {}, NOW)
-    return s, Engine(s, handlers, clock=clock), plan
+    return s, Engine(s, handlers, clock=clock, per_tick=50), plan
 
 
 def ok(*a):
@@ -26,7 +26,7 @@ def test_steps_run_in_order_and_plan_completes(tmp_path):
     ok.calls = []
     t = [NOW]
     kinds = {k: ok for k in ["accept", "prov_note", "sub_note", "proposal_create", "proposal_decide", "check_in",
-                             "check_out", "review", "invoice_submit", "invoice_decide"]}
+                             "check_out", "review", "invoice_submit", "invoice_decide", "invoice_pay"]}
     s, e, plan = setup(tmp_path, kinds, lambda: t[0])
     t[0] = plan[-1]["due_at"] + 10
     for _ in range(len(plan) + 5):
@@ -43,10 +43,10 @@ def test_retry_then_fail_then_operator_retry(tmp_path):
     for _ in range(8):  # ticks under the gap threshold, so backoff is real time, not a sleep gap
         e.tick()
         t[0] += 500
-    row = s.db.execute("SELECT * FROM steps WHERE seq=0").fetchone()
+    row = s.db.execute("SELECT * FROM steps WHERE kind='accept'").fetchone()
     assert row["state"] == "failed" and "boom" in row["error"]
     e.retry(row["id"])
-    assert s.db.execute("SELECT state,attempts FROM steps WHERE seq=0").fetchone()["state"] == "pending"
+    assert s.db.execute("SELECT state,attempts FROM steps WHERE kind='accept'").fetchone()["state"] == "pending"
 
 
 def test_later_steps_wait_for_failed_earlier_step(tmp_path):
@@ -96,5 +96,5 @@ def test_non_api_error_fails_the_step_instead_of_looping(tmp_path):
     for _ in range(8):
         e.tick()
         t[0] += 500
-    row = s.db.execute("SELECT * FROM steps WHERE seq=0").fetchone()
+    row = s.db.execute("SELECT * FROM steps WHERE kind='accept'").fetchone()
     assert row["state"] == "failed" and "ProviderId" in row["error"]

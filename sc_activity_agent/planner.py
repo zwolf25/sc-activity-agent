@@ -7,7 +7,7 @@ DEFAULTS = {
     "proposal_rate": 10, "proposal_approval": 90, "invoice_approval": 95,
     "sub_notes": 2.0, "prov_notes": 3.0,
     "late_checkin": 15, "late_days": 2,
-    "time_on_site": 1.0, "first_time_fix": 80,
+    "time_on_site_hrs": 2.0, "pay_days": 30, "multi_tech": 5, "first_time_fix": 80,
     "hours_start": 8, "hours_end": 17,
     "resume_policy": "catch_up",
 }
@@ -47,7 +47,7 @@ def _fit(ts, prev, c, tz, rng):
 def build_plan(rng, now, cfg, tz="America/New_York"):
     """now: epoch seconds when the WO is created. Returns list of dicts {kind, due_at, payload}, sorted by due_at.
     Times are epoch seconds. Kinds: accept, prov_note, sub_note, proposal_create, proposal_decide, check_in, check_out,
-    review, invoice_submit, invoice_decide."""
+    review, invoice_submit, invoice_decide, invoice_pay."""
     c = {**DEFAULTS, **cfg}
     steps = []
 
@@ -90,14 +90,20 @@ def build_plan(rng, now, cfg, tz="America/New_York"):
         if t > _at(day, c["hours_end"] - 1, tz):   # a late proposal decision can leave no room today: start the next business day
             day = _biz_day(day, 1)
             t = _at(day, c["hours_start"] + rng.random() * span * 0.4, tz)
-        hours = max(0.5, rng.gauss(2.0, 0.7)) * c["time_on_site"]
+        hours = max(0.5, rng.gauss(c["time_on_site_hrs"], c["time_on_site_hrs"] * 0.35))
         end_cap = _at(day, c["hours_end"], tz)
         out = min(t + hours * 3600, end_cap)
         add("check_in", t, visit=v + 1, situation="onsite" if v == 0 else "return", **({"late": late} if v == 0 else {}))
+        crew = rng.random() * 100 < c["multi_tech"] and out - t > 2400   # a second tech works the same visit, a little behind the first
+        if crew:
+            in2 = t + rng.randint(300, min(1200, int(out - t) - 1800))
+            add("check_in", in2, visit=v + 1, tech=1, situation="onsite")
         if rng.random() < 0.7:
             add("prov_note", t + 600, situation="onsite" if v == 0 else "return")
         last = v == visits - 1
         add("check_out", out, visit=v + 1, final=last, situation="complete" if last else "parts")
+        if crew:
+            add("check_out", min(out + rng.randint(60, 600), end_cap), visit=v + 1, tech=1, final=last, situation="complete" if last else "parts")
         if not last:
             add("prov_note", out + 60, situation="parts")
 
@@ -107,11 +113,13 @@ def build_plan(rng, now, cfg, tz="America/New_York"):
     inv_at = review_at + rng.randint(7200, 2 * 86400)  # invoices follow the review
     add("invoice_submit", inv_at, situation="invoice")
     if rng.random() * 100 < c["invoice_approval"]:
-        add("invoice_decide", inv_at + rng.randint(3600, 2 * 86400), approve=True)
+        dec_at = inv_at + rng.randint(3600, 2 * 86400)
+        add("invoice_decide", dec_at, approve=True)
     else:
         add("invoice_decide", inv_at + rng.randint(3600, 86400), approve=False)
         add("invoice_submit", inv_at + 2 * 86400, situation="invoice_fix")
-        add("invoice_decide", inv_at + 3 * 86400, approve=True)
+        dec_at = inv_at + 3 * 86400
+        add("invoice_decide", dec_at, approve=True)
 
     # notes sprinkled between creation and the final invoice decision
     lo, hi = now + 600, steps[-1]["due_at"]
@@ -119,6 +127,7 @@ def build_plan(rng, now, cfg, tz="America/New_York"):
         add("sub_note", rng.uniform(lo, hi), situation=rng.choice(["created", "access", "followup"]))
     for _ in range(max(0, _poisson(rng, c["prov_notes"]) - 2)):  # ack/eta/onsite notes already count
         add("prov_note", rng.uniform(lo, hi), situation=rng.choice(["access", "eta"]))
+    add("invoice_pay", dec_at + max(2, rng.gauss(c["pay_days"], c["pay_days"] * 0.25)) * 86400)   # after the notes block so notes still end at the decision
     steps.sort(key=lambda s: s["due_at"])
     prev = 0
     for st in steps:   # planned times can fall at night or on a weekend: fit them to the activity window, order unchanged

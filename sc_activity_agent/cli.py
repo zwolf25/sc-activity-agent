@@ -54,16 +54,33 @@ def cmd_cleanup(args, store):
         print(f"cancelled {s['cancelled']}, finishing {s.get('finished', 0)}, skipped {s['skipped']}, errors {len(s['errors'])}")
         return
     r = cleanup.preview(store, rt)
+    if args.limit:
+        r = {**r, "items": r["items"][:args.limit]}
     for i in r["items"]:
         print(f"{i['id']}  {i['location']}  {i['status']}  {i['updated'][:10]}  {i['trade']}  {i['provider']}")
     print(f"{len(r['items'])} work order(s) idle {r['days']}+ days; {r['protected']} skipped for label '{r['protect']}'")
     if args.run and r["items"]:
+        if args.limit:
+            store.put("cleanup_preview", {**r, "items": r["items"][:args.limit]})
         s = cleanup.run(store, rt, finish=args.finish)
         print(f"cancelled {s['cancelled']}, finishing {s.get('finished', 0)}, skipped {s['skipped']}, errors {len(s['errors'])}")
         for e in s["errors"]:
             print("  " + e)
     elif r["items"]:
         print("Preview only. Add --run to cancel them.")
+
+
+def cmd_backup(args, store):
+    from . import update
+    if args.name:
+        try:
+            print(f"Restored {args.name}. The database it replaced is saved as {update.restore(store, args.name).name}.")
+        except (FileNotFoundError, RuntimeError) as e:
+            sys.exit(str(e) if isinstance(e, RuntimeError) else f"No such backup: {args.name}")
+    else:
+        print(update.backup(store).name)
+    for n, size, ts in update.backups(store)[:10]:
+        print(f"  {n}  {size // 1024} KB  {time.strftime('%Y-%m-%d %H:%M', time.localtime(ts))}")
 
 
 def build_engine(store, with_rt=False):
@@ -307,13 +324,16 @@ def main(argv=None):
     cl.add_argument("--days", type=int)
     cl.add_argument("--run", action="store_true")
     cl.add_argument("--auto", action="store_true", help="with --run: select every idle WO without listing them first; follows the daily choice")
+    cl.add_argument("--limit", type=int, help="act on only the oldest N idle WOs (testing; the list shows all)")
     cl.add_argument("--finish", action="store_true", help="with --run: give WOs held by our providers a finishing plan instead of cancelling")
+    bk = sub.add_parser("backup", help="back up the database now and list backups; give a backup name to restore it (agent stopped)")
+    bk.add_argument("name", nargs="?")
     for n in ("status", "tick", "pause", "resume"):
         sub.add_parser(n)
     args = p.parse_args(argv)
     cmd_fn = {"init": cmd_init, "status": cmd_status, "tick": cmd_tick, "run": cmd_run,
               "pause": cmd_pause, "resume": cmd_resume, "login": cmd_login, "update": cmd_update, "open": cmd_open, "install-app": cmd_install_app,
-              "get": cmd_get, "set": cmd_set, "plan": cmd_plan, "step": cmd_step, "cleanup": cmd_cleanup}[args.cmd]
+              "get": cmd_get, "set": cmd_set, "plan": cmd_plan, "step": cmd_step, "cleanup": cmd_cleanup, "backup": cmd_backup}[args.cmd]
     cmd_fn(args, Store(data_dir(args)))
 
 

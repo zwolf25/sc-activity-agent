@@ -2,7 +2,7 @@
 
 Generates realistic ServiceChannel activity through the public API: work orders, proposals and invoices, with Subscriber actions done as Subscribers and Provider actions done as Providers, so the audit trail reads like real work.
 
-You run it on your own machine, connect your own integration apps, and choose your own locations. It creates work orders only where one of your provider connections holds Rank 1 for the trade, then walks each work order from creation to an approved invoice.
+You run it on your own machine, connect your own integration apps, and choose your own locations. It creates work orders only where one of your provider connections holds Rank 1 for the trade, then walks each work order from creation to a paid invoice.
 
 ## Prerequisites
 
@@ -33,7 +33,7 @@ On first launch the app asks whether it works in **Production** or **SB2** (the 
 2. Enter the Subscriber ID, load your dashboards and choose the issue list dashboard. The dashboard must be assigned to that Subscriber user in ServiceChannel.
 3. Add one **Provider** connection per provider you play, with its Provider ID and users.
 4. Add your locations: on the Locations page click Load, search the list, tick several rows (or paste store IDs as a list or CSV) and click Add selected. Ids, coordinates and time zone come from ServiceChannel. The Locations page also shows the trades the agent can create, the trades it skips because another provider is Rank 1, and a Refresh now button that re-reads Rank 1 straight away (otherwise it refreshes daily).
-5. Map each action to a user on the **Roles** page.
+5. On Connections, tick **Can do** for each user. The first user on a connection starts with every action; later users start empty. Each action needs at least one user, and every Provider needs a user who can check in. Add several Provider users to look like a real crew: the agent picks randomly among the users who can do an action and belong to the WO's provider, and a check-out is done by the tech who checked in.
 6. Review the **Behavior** settings.
 
 Work order creation only runs while the agent runs. If the machine sleeps, the agent notices the gap and moves the remaining steps forward. Settings chooses how. In the desktop app, Start at login is in the tray menu. In the source install it is on the Settings page. Neither can wake a sleeping machine.

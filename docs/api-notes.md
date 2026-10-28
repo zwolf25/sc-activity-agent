@@ -146,3 +146,8 @@ Provider app and user (SydeTech, Production app does not exist on SB2; a separat
 - **Open:** (1) the full list of WO status values (only OPEN, IN PROGRESS and ON HOLD are used as "active" by the clean-up); (2) a short finishing plan needs the WO's provider credentials, so it only applies to WOs assigned to the agent's providers, and everything else can only be cancelled.
 
 - **Accept refused (Prod, 2026-10-27):** `PUT /workorders/{id}/accept` returns 400 / error 904 "Work Order is in status that not allow to perform this action" on idle WOs that are already past acceptance (In Progress and similar). A plan for an existing WO must not start with accept.
+
+- **Invoice payment verified (SB2, 2026-10-27):** Subscriber `POST /invoices/{id}/Payment` with `{"PaymentDate","PaymentNumber","PaymentAmount"}` returned 204 on an APPROVED invoice (180704845, total 320.00); `GET /invoices/{id}` then showed `Status: PAID` and a `Payments[]` entry. Swagger error 1178 covers: only approved invoices, already paid, amount above the invoice total, amount not above zero, date before approval, and "Pay not allowed for this subscriber" (not seen on SB2; unknown on Prod).
+
+## Two technicians on one visit (2026-10-27, NOT verified)
+- B-47 plans a second `universalCheckIn` (TechsCount 1, different user) 5 to 20 minutes after the first on the same WO, and a second `universalCheckOut` after the first tech's. Whether SC accepts a check-in on a WO that is already ON SITE, and a check-out after the WO left ON SITE, has not been tested. The guarded handler treats a 400/403/409 on a WO that is ON SITE (check-in) or COMPLETED as done; anything else shows on the Errors page. Spike: B-48.

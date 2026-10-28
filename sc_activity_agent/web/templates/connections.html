@@ -11,12 +11,17 @@
 {% if env != 'sb2' %}<div class="card"><h3>Test instance (advanced)</h3>
 <p>A separate SB2 copy of this app, with its own data, logins and port. It does not change this instance. You need an SB2 integration app to use it.</p>
 <form method="post" action="/test-instance"><button>Open SB2 test instance</button></form></div>{% endif %}
+{% if idle %}<div class="note">No user can do: {{ idle|join(', ') }}. Tick them under Can do.</div>{% endif %}
+{% if techless %}<div class="note">No check-in tech for Provider: {{ techless|join(', ') }}.</div>{% endif %}
 {% for c in conns %}<div class="card"><div class="row"><h3>{{ c.side }} · {{ c.name }}</h3>
 <form method="post" action="/connections/{{ c.id }}/delete"><button class="sm">Remove</button></form></div>
 <div class="mono">Client ID {{ c.client_id }}{% if c.provider_id %} · Provider {{ c.provider_id }}{% endif %}</div>
 <table><thead><tr><th>User</th><th>Label</th><th></th></tr></thead><tbody>
-{% for u in c.users %}<tr><td>{{ u.username }}</td><td>{{ u.label }}</td><td class="row"><form method="post" action="/users/{{ u.id }}/test"><button class="sm">Test</button></form>
-<form method="post" action="/users/{{ u.id }}/delete"><button class="sm">Remove</button></form></td></tr>{% endfor %}</tbody></table>
+{% for u in c.users %}<tr><td>{{ u.username }}{% if u.label %} <span class="mono">({{ u.label }})</span>{% endif %}</td><td><form method="post" action="/users/{{ u.id }}/label" class="row" style="justify-content:flex-start"><input type="text" name="label" value="{{ u.label }}" placeholder="e.g. Maria, HVAC tech"><button class="sm">Save</button></form></td><td class="row"><form method="post" action="/users/{{ u.id }}/test"><button class="sm">Test</button></form>
+<form method="post" action="/users/{{ u.id }}/delete"><button class="sm">Remove</button></form></td></tr>
+<tr><td colspan="3"><form method="post" action="/users/{{ u.id }}/can-do" class="row" style="justify-content:flex-start;flex-wrap:wrap"><b>Can do</b>
+{% for key, label in c.actions %}<label><input type="checkbox" name="can_do" value="{{ key }}" {{ 'checked' if key in u.can_do }}> {{ label }}</label>{% endfor %}<button class="sm">Save</button></form>
+{% if not u.can_do %}<div class="note">Does nothing until something is ticked.</div>{% endif %}</td></tr>{% endfor %}</tbody></table>
 <form method="post" action="/connections/{{ c.id }}/users" class="row" style="justify-content:flex-start;flex-wrap:wrap">
 <label class="f">Username<input type="text" name="username" required></label><label class="f">Password<input type="password" name="password" required></label>
 <label class="f">Label<input type="text" name="label"></label><button class="primary">Add user</button></form></div>{% endfor %}

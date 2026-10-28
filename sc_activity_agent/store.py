@@ -1,6 +1,7 @@
 """SQLite state for one instance: settings, encrypted secrets, connections/users/roles, WOs, plan steps, audit log."""
 import json
 import sqlite3
+import threading
 import time
 from pathlib import Path
 
@@ -40,7 +41,15 @@ CREATE INDEX IF NOT EXISTS api_log_ts ON api_log(ts);
 
 
 # Each entry upgrades the schema by one version (PRAGMA user_version). Append only; never edit a shipped entry.
-MIGRATIONS = []
+MIGRATIONS = [
+    # 1 (v0.6.0): roles move onto the user. Only the '*' default rows convert; per-location overrides are dropped.
+    # The roles table stays for one release so a downgrade still finds it.
+    """
+    ALTER TABLE users ADD COLUMN can_do TEXT NOT NULL DEFAULT '[]';
+    UPDATE users SET can_do=(SELECT json_group_array(r.action) FROM roles r
+                             WHERE r.location='*' AND EXISTS (SELECT 1 FROM json_each(r.user_ids) j WHERE j.value=users.id));
+    """,
+]
 
 
 class Store:
@@ -52,15 +61,23 @@ class Store:
             key_file.write_bytes(Fernet.generate_key())
             key_file.chmod(0o600)
         self.fernet = Fernet(key_file.read_bytes())
-        self.db = sqlite3.connect(self.dir / "agent.db", check_same_thread=False)
-        self.db.row_factory = sqlite3.Row
-        self.db.execute("PRAGMA foreign_keys=ON")
+        self._tl = threading.local()
         self.db.executescript(SCHEMA)
         v = self.db.execute("PRAGMA user_version").fetchone()[0]
         for n in range(v, len(MIGRATIONS)):
             self.db.executescript(MIGRATIONS[n])
             self.db.execute(f"PRAGMA user_version={n + 1}")
         self.db.commit()
+
+    @property
+    def db(self):
+        """One connection per thread: the engine, web and sweep threads must not share one (sqlite3 raises InterfaceError on overlap)."""
+        c = getattr(self._tl, "c", None)
+        if c is None:
+            c = self._tl.c = sqlite3.connect(self.dir / "agent.db", timeout=30)
+            c.row_factory = sqlite3.Row
+            c.execute("PRAGMA foreign_keys=ON")
+        return c
 
     # secrets are encrypted at rest and only decrypted when used
     def enc(self, plain):

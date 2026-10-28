@@ -7,9 +7,12 @@ import subprocess
 import sys
 import time
 import urllib.request
+from pathlib import Path
 
 from . import __version__
 from .client import SSL_CONTEXT
+
+KEEP = 10   # backups kept; older ones are deleted
 
 REPO = "zwolf25/sc-activity-agent"
 CHECK_EVERY = 3600   # hourly: a day-long cache hid a fresh release from the banner for up to a day
@@ -61,7 +64,33 @@ def backup(store):
     dest.mkdir(exist_ok=True)
     f = dest / f"agent-{__version__}-{int(time.time())}.db"
     shutil.copy2(store.dir / "agent.db", f)
+    for old in sorted(dest.glob("agent-*.db"), key=lambda p: p.stat().st_mtime)[:-KEEP]:
+        old.unlink()
     return f
+
+
+def backups(store):
+    """Newest first: (name, size in bytes, mtime)."""
+    fs = sorted((store.dir / "backups").glob("agent-*.db"), key=lambda p: p.stat().st_mtime, reverse=True)
+    return [(f.name, f.stat().st_size, f.stat().st_mtime) for f in fs]
+
+
+def restore(store, name):
+    """Replace agent.db with a backup. The agent must be stopped: a running agent keeps its own open connections. Returns the
+    path of the safety copy of the database being replaced."""
+    src = store.dir / "backups" / Path(name).name
+    if not src.is_file():
+        raise FileNotFoundError(name)
+    pid = store.dir / "agent.pid"
+    if pid.exists():
+        try:
+            os.kill(int(pid.read_text()), 0)
+            raise RuntimeError("The agent is running. Quit it first, then restore.")
+        except (OSError, ValueError):
+            pass
+    keep = backup(store)
+    shutil.copy2(src, store.dir / "agent.db")
+    return keep
 
 
 def _pip(spec):

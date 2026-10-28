@@ -1,6 +1,8 @@
 import json
 import random
 
+import pytest
+
 from sc_activity_agent import planner
 from sc_activity_agent.engine import Engine, add_plan
 from sc_activity_agent.handlers import Runtime, make_handlers
@@ -37,12 +39,10 @@ def setup(tmp_path):
     s = Store(tmp_path)
     s.db.execute("INSERT INTO connections VALUES(1,'subscriber','S','c','x',NULL)")
     s.db.execute("INSERT INTO connections VALUES(2,'provider','P','c','x',2000078685)")
-    s.db.execute("INSERT INTO users VALUES(1,1,'sub_user',?, '',NULL)", (s.enc("pw"),))
-    s.db.execute("INSERT INTO users VALUES(2,2,'prov_user',?, '',NULL)", (s.enc("pw"),))
-    for a in ("subscriber_note", "review", "invoice_decide"):
-        s.db.execute("INSERT INTO roles VALUES('*',?,'[1]','single')", (a,))
-    for a in ("accept", "provider_note", "check_in", "check_out", "invoice_submit"):
-        s.db.execute("INSERT INTO roles VALUES('*',?,'[2]','single')", (a,))
+    sub_do = ["subscriber_note", "review", "invoice_decide", "proposal_decide", "create_wo"]
+    prov_do = ["accept", "provider_note", "check_in", "check_out", "invoice_submit", "proposal_create"]
+    s.db.execute("INSERT INTO users(id,conn_id,username,password,can_do) VALUES(1,1,'sub_user',?,?)", (s.enc("pw"), json.dumps(sub_do)))
+    s.db.execute("INSERT INTO users(id,conn_id,username,password,can_do) VALUES(2,2,'prov_user',?,?)", (s.enc("pw"), json.dumps(prov_do)))
     s.db.execute("INSERT INTO locations(store_id,lat,lon) VALUES('HQ-NYC',40.7,-73.9)")
     s.db.commit()
     return s
@@ -67,14 +67,14 @@ def test_full_plan_uses_subscriber_and_provider_users_correctly(tmp_path):
 
 def test_missing_role_mapping_fails_step_not_crash(tmp_path):
     s = setup(tmp_path)
-    s.db.execute("DELETE FROM roles WHERE action='accept'")
+    s.db.execute("UPDATE users SET can_do='[]' WHERE id=2")
     s.db.commit()
     rt = Runtime(s, {1: FakeApp("sub", []), 2: FakeApp("prov", [])}, random.Random(1))
     plan = planner.build_plan(random.Random(4), NOW, {})
     add_plan(s, "HQ-NYC", "HVAC", 5001, plan, CTX, NOW)
     e = Engine(s, make_handlers(rt), clock=lambda: NOW + 10 ** 7)
     assert e.tick() == [(1, "retry")]
-    assert "no user mapped to accept" in s.db.execute("SELECT error FROM steps WHERE id=1").fetchone()[0]
+    assert "no user is set to accept" in s.db.execute("SELECT error FROM steps WHERE id=1").fetchone()[0]
 
 
 def test_cancel_wo_sets_completed_canceled_and_stops_plan(tmp_path):
@@ -113,8 +113,6 @@ def test_check_in_permission_error_names_the_cause():
 
 def test_proposal_is_created_by_provider_and_linked_then_approved_by_subscriber(tmp_path):
     s = setup(tmp_path)
-    s.db.execute("INSERT INTO roles VALUES('*','proposal_create','[2]','single')")
-    s.db.execute("INSERT INTO roles VALUES('*','proposal_decide','[1]','single')")
     s.db.commit()
     calls = []
     rt = Runtime(s, {1: FakeApp("sub", calls), 2: FakeApp("prov", calls)}, random.Random(1))
@@ -131,8 +129,6 @@ def test_proposal_is_created_by_provider_and_linked_then_approved_by_subscriber(
 
 def _proposal_plan(tmp_path, pstatus, approval):
     s = setup(tmp_path)
-    s.db.execute("INSERT INTO roles VALUES('*','proposal_create','[2]','single')")
-    s.db.execute("INSERT INTO roles VALUES('*','proposal_decide','[1]','single')")
     s.db.commit()
     calls = []
     sub = FakeApp("sub", calls)
@@ -226,3 +222,84 @@ def test_resubmitted_invoice_gets_a_new_number(tmp_path):
     for _ in range(len(plan) + 3):
         e.tick()
     assert prov.invoice_numbers == ["INV-5001-1", "INV-5001-2"]
+
+
+def test_approved_invoice_is_paid_once_and_paid_or_rejected_is_left_alone(tmp_path):
+    for status, expect in (("APPROVED", 1), ("PAID", 0), ("REJECTED", 0)):
+        s = setup(tmp_path / status)
+        calls = []
+        sub = FakeApp("sub", calls)
+        sub.istatus = status
+        rt = Runtime(s, {1: sub, 2: FakeApp("prov", calls)}, random.Random(1))
+        plan = planner.build_plan(random.Random(4), NOW, {"proposal_rate": 0})
+        add_plan(s, "HQ-NYC", "HVAC", 5001, plan, CTX, NOW)
+        s.db.execute("UPDATE work_orders SET ctx=json_set(ctx,'$.invoice_id',777)")
+        s.db.commit()
+        e = Engine(s, make_handlers(rt), clock=lambda: plan[-1]["due_at"] + 10, per_tick=50)
+        for _ in range(len(plan) + 3):
+            e.tick()
+        assert sum(c[3] == "/invoices/777/Payment" for c in calls) == expect
+
+
+def _wo(s, **ctx):
+    s.db.execute("INSERT INTO work_orders(sc_id,location,state,created_at,ctx) VALUES(9,'HQ-NYC','active',0,?)", (json.dumps({**CTX, **ctx}),))
+    s.db.commit()
+    return s.db.execute("SELECT * FROM work_orders WHERE sc_id=9").fetchone()
+
+
+def _tech(s, uid, conn, can=("check_in", "check_out")):
+    s.db.execute("INSERT INTO users(id,conn_id,username,password,can_do) VALUES(?,?,?,?,?)", (uid, conn, f"t{uid}", s.enc("pw"), json.dumps(list(can))))
+    s.db.commit()
+
+
+def step(kind, **p):
+    return {"kind": kind, "payload": json.dumps(p)}
+
+
+def test_provider_steps_only_use_users_of_the_wos_provider(tmp_path):
+    from sc_activity_agent.client import ScError
+    s = setup(tmp_path)
+    s.db.execute("INSERT INTO connections VALUES(3,'provider','P2','c','x',555)")
+    _tech(s, 3, 3)
+    rt = Runtime(s, {1: 1, 2: 2, 3: 3}, random.Random(1))
+    wo = _wo(s, provider_id=555)
+    assert {rt.user_for("HQ-NYC", "check_in", wo, step("check_in", visit=1))[1][0] for _ in range(1)} == {"t3"}
+    with pytest.raises(ScError, match="provider 999"):
+        rt.user_for("HQ-NYC", "accept", _wo_with(s, 999), step("accept"))
+
+
+def _wo_with(s, pid):
+    s.db.execute("UPDATE work_orders SET ctx=? WHERE sc_id=9", (json.dumps({**CTX, "provider_id": pid}),))
+    s.db.commit()
+    return s.db.execute("SELECT * FROM work_orders WHERE sc_id=9").fetchone()
+
+
+def test_check_out_reuses_the_check_in_tech_and_second_tech_differs(tmp_path):
+    s = setup(tmp_path)
+    for uid in (3, 4):
+        _tech(s, uid, 2)
+    rt = Runtime(s, {1: 1, 2: 2}, random.Random(3))
+    for _ in range(20):   # pick is random, so repeat until the same-tech rule is the only thing that explains the result
+        s.db.execute("DELETE FROM work_orders")
+        wo = _wo(s, provider_id=2000078685)
+        a = rt.user_for("HQ-NYC", "check_in", wo, step("check_in", visit=1))[1][0]
+        wo = s.db.execute("SELECT * FROM work_orders").fetchone()
+        b = rt.user_for("HQ-NYC", "check_in", wo, step("check_in", visit=1, tech=1))[1][0]
+        wo = s.db.execute("SELECT * FROM work_orders").fetchone()
+        assert a != b
+        assert rt.user_for("HQ-NYC", "check_out", wo, step("check_out", visit=1))[1][0] == a
+        assert rt.user_for("HQ-NYC", "check_out", wo, step("check_out", visit=1, tech=1))[1][0] == b
+
+
+def test_second_tech_is_skipped_when_the_provider_has_one_tech(tmp_path):
+    from sc_activity_agent.handlers import Skip
+    s = setup(tmp_path)
+    s.db.execute("UPDATE users SET can_do='[\"accept\",\"check_in\",\"check_out\"]' WHERE id=2")
+    rt = Runtime(s, {1: 1, 2: 2}, random.Random(1))
+    wo = _wo(s, provider_id=2000078685)
+    rt.user_for("HQ-NYC", "check_in", wo, step("check_in", visit=1))
+    wo = s.db.execute("SELECT * FROM work_orders").fetchone()
+    with pytest.raises(Skip):
+        rt.user_for("HQ-NYC", "check_in", wo, step("check_in", visit=1, tech=1))
+    with pytest.raises(Skip):
+        rt.user_for("HQ-NYC", "check_out", wo, step("check_out", visit=1, tech=1))

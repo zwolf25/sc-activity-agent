@@ -4,7 +4,7 @@ import json
 from zoneinfo import ZoneInfo
 
 STAGES = ["Scheduled", "Proposal pending", "On site", "Awaiting return", "Awaiting review", "Invoice due",
-          "Invoice pending", "Invoice rejected", "Closed"]
+          "Invoice pending", "Invoice rejected", "Payment due", "Closed"]
 
 
 def stage(done):
@@ -24,7 +24,9 @@ def stage(done):
         elif kind == "invoice_submit":
             st = "Invoice pending"
         elif kind == "invoice_decide":
-            st = "Closed" if p.get("approve") else "Invoice rejected"
+            st = "Payment due" if p.get("approve") else "Invoice rejected"
+        elif kind == "invoice_pay":
+            st = "Closed"
     return st
 
 
@@ -51,6 +53,8 @@ def detail(kind, p):
         return f"Visit {p.get('visit', 1)}{late}"
     if kind == "check_out":
         return f"Visit {p.get('visit', 1)}, " + ("work complete" if p.get("final") else "parts on order, return visit")
+    if kind == "invoice_pay":
+        return "Marks the invoice paid"
     if kind == "invoice_submit":
         return "Resubmission after reject" if p.get("situation") == "invoice_fix" else ""
     return ""

@@ -10,7 +10,12 @@ from .client import ScError
 ACTION = {"accept": "accept", "prov_note": "provider_note", "sub_note": "subscriber_note", "review": "review",
           "proposal_create": "proposal_create", "proposal_decide": "proposal_decide", "check_in": "check_in",
           "check_out": "check_out", "invoice_submit": "invoice_submit", "invoice_decide": "invoice_decide",
+          "invoice_pay": "invoice_decide",   # the same Subscriber user decides and pays; no new role row for existing instances
           "create": "create_wo"}
+
+
+class Skip(Exception):
+    """Raised by Runtime.user_for when a step has nobody to run it (no second tech). The step ends as done without a call."""
 
 
 class Runtime:
@@ -19,16 +24,39 @@ class Runtime:
     def __init__(self, store, apps, rng):
         self.store, self.apps, self.rng = store, apps, rng
 
-    def user_for(self, location, step_kind):
-        """Roles table lookup: per-location override first, then the '*' default. Returns (app, (username, password))."""
+    def user_for(self, location, step_kind, wo=None, step=None):
+        """Pick a user who can do this action (users.can_do). Provider-side actions are limited to users of the WO's provider
+        (ctx provider_id; WOs without one fall back to every capable user). A check-out reuses the tech who checked in for that
+        visit; a second tech on a visit never repeats one already used. Returns (app, (username, password))."""
         action = ACTION[step_kind]
-        row = (self.store.db.execute("SELECT * FROM roles WHERE location=? AND action=?", (location, action)).fetchone()
-               or self.store.db.execute("SELECT * FROM roles WHERE location='*' AND action=?", (action,)).fetchone())
-        if not row:
-            raise ScError(409, f"no user mapped to {action} at {location}", "")
-        ids = json.loads(row["user_ids"])
-        uid = self.rng.choice(ids) if row["pick"] == "random" else ids[0]
-        u = self.store.db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+        rows = self.store.db.execute(
+            "SELECT u.*, c.side, c.provider_id AS pid FROM users u JOIN connections c ON c.id=u.conn_id "
+            "WHERE EXISTS (SELECT 1 FROM json_each(u.can_do) WHERE value=?) ORDER BY u.id", (action,)).fetchall()
+        ctx = json.loads(wo["ctx"]) if wo else {}
+        pid = ctx.get("provider_id")
+        if pid:
+            rows = [u for u in rows if u["side"] == "subscriber" or u["pid"] == pid]
+        if not rows:
+            who = f" for provider {pid}" if pid else ""
+            raise ScError(409, f"no user{who} is set to {action} at {location}. Tick it under Can do on Connections.", "")
+        u = None
+        if step_kind in ("check_in", "check_out"):
+            p = json.loads(step["payload"])
+            visit, tech = p.get("visit", 1), p.get("tech", 0)
+            techs = ctx.get("techs", {})
+            if step_kind == "check_out" and f"{visit}.{tech}" in techs:
+                u = next((r for r in rows if r["id"] == techs[f"{visit}.{tech}"]), None)
+            elif step_kind == "check_out" and tech:
+                raise Skip   # the second tech never checked in, so there is nobody to check out
+            if u is None and step_kind == "check_in":
+                busy = {v for k, v in techs.items() if k.split(".")[0] == str(visit) and k != f"{visit}.{tech}"}   # a retry may re-pick its own slot
+                free = [r for r in rows if r["id"] not in busy]
+                if not free and tech:
+                    raise Skip   # one check-in tech only: this visit stays single-tech
+                u = self.rng.choice(free or rows)
+                if wo:
+                    self.save_ctx(wo, techs={**techs, f"{visit}.{tech}": u["id"]})
+        u = u or self.rng.choice(rows)
         return self.apps[u["conn_id"]], (u["username"], self.store.dec(u["password"]))
 
     def location(self, store_id):
@@ -56,7 +84,7 @@ def insert_steps(store, wo_id, after_seq, steps):
 
 def make_handlers(rt):
     def call(wo, step, method, path, **kw):
-        app, user = rt.user_for(wo["location"], step["kind"])
+        app, user = rt.user_for(wo["location"], step["kind"], wo, step)
         return app.call(user, method, path, action=step["kind"], wo=wo["sc_id"], write=method != "GET", **kw)
 
     def ctx_of(wo):
@@ -77,6 +105,8 @@ def make_handlers(rt):
     def checkio(path, body, wo, step):
         try:
             call(wo, step, "POST", path, body=body)
+        except Skip:
+            return
         except ScError as e:
             if e.status == 403 and "804" in str(e):
                 raise ScError(403, "No check-in/out permission for this Subscriber and Provider pair. ServiceChannel must enable XML "
@@ -126,6 +156,21 @@ def make_handlers(rt):
                  params={"approvalCode": c.get("approval_code", ""), "comments": text, "category": c.get("category", "REPAIR")})
         else:
             call(wo, step, "PUT", f"/invoices/{c['invoice_id']}/reject", params={"comments": text, "isNotifyProvider": "true"})
+
+    def invoice_pay(engine, wo, step):
+        """Subscriber records a payment for the approved invoice (verified on SB2: 204, invoice Status becomes PAID)."""
+        c = ctx_of(wo)
+        inv = call(wo, step, "GET", f"/invoices/{c['invoice_id']}") or {}
+        if inv.get("Status") != "APPROVED":
+            return   # already paid, or the user rejected it: nothing to pay
+        body = {"PaymentDate": _iso(max(step["due_at"], engine.clock())), "PaymentNumber": f"PAY-{wo['sc_id']}",
+                "PaymentAmount": inv.get("InvoiceTotal")}
+        try:
+            call(wo, step, "POST", f"/invoices/{c['invoice_id']}/Payment", body=body)
+        except ScError as e:
+            if e.status != 400 or "Pay not allowed" not in str(e):
+                raise
+            # ponytail: this Subscriber cannot record payments; skip quietly. Add a visible setting if it shows up on Prod.
 
     LABOR = ["Regular Hours", "Overtime Hours", "Double Time / Holiday Hours", "Helper Regular Hours",
              "Helper Overtime Hours", "Helper Double Time / Holiday Hours", "Subcontractor Labor"]   # CreateProposal requires all seven labor lines (error 503 otherwise)
@@ -210,7 +255,7 @@ def make_handlers(rt):
 
     handlers = {"accept": accept, "prov_note": note("provider"), "sub_note": note("subscriber"), "check_in": check_in,
                 "check_out": check_out, "review": review, "invoice_submit": invoice_submit,
-                "invoice_decide": invoice_decide, "proposal_create": proposal_create, "proposal_decide": proposal_decide}
+                "invoice_decide": invoice_decide, "invoice_pay": invoice_pay, "proposal_create": proposal_create, "proposal_decide": proposal_decide}
     return {k: guarded(k, f) for k, f in handlers.items()}
 
 

@@ -6,6 +6,11 @@
 {% for v, t in [('catch_up', 'Catch up over the next hour'), ('push', 'Shift forward by the gap'), ('skip_stale', 'Skip stale notes, then shift')] %}<option value="{{ v }}" {{ 'selected' if policy == v }}>{{ t }}</option>{% endfor %}</select></div>
 {% if not packaged %}<div class="sl set"><div>Start at login<small>Does not wake a sleeping machine</small></div><input type="checkbox" name="login" value="on" {{ 'checked' if login }}></div>{% endif %}
 <div class="row"><span></span><button class="primary">Save</button></div></form>
+<div class="card"><h3>Backups</h3>
+<p>A copy of the database (settings, connections, plans) is saved before every update and every clean-up run. The last 10 are kept in the <code>backups</code> folder of this instance's data folder.</p>
+<form method="post" action="/backup"><button>Back up now</button></form>
+{% if backups %}<table><tr><th>File</th><th>Size</th><th>Saved</th></tr>{% for n, kb, when in backups %}<tr><td>{{ n }}</td><td>{{ kb }} KB</td><td>{{ when }}</td></tr>{% endfor %}</table>
+<p>To restore one, quit the agent, then run <code>agent --data-dir &lt;this data folder&gt; backup &lt;file&gt;</code>. The database it replaces is saved first. To move to another machine, copy the whole data folder.</p>{% endif %}</div>
 <div class="card"><h3>Telegram alerts (optional)</h3>
 <p>Get a Telegram message when something needs you, and fix it from your phone. Off until you finish the steps below. Messages name the WO, the location, the step and the error, so that text goes to Telegram. This {{ 'Production' if env == 'prod' else 'SB2' }} instance has its own bot and its own settings; {{ other_env }} needs a separate bot, set up on its own Settings page if you want it.</p>
 <ol class="steps">

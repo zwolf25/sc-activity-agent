@@ -18,7 +18,7 @@ def plans(n=400, **cfg):
 def test_plan_is_ordered_and_ends_in_approved_invoice():
     for p in plans(100):
         assert [s["due_at"] for s in p] == sorted(s["due_at"] for s in p)
-        assert p[-1]["kind"] == "invoice_decide" and p[-1]["payload"]["approve"] is True
+        assert [s["kind"] for s in p[-2:]] == ["invoice_decide", "invoice_pay"] and p[-2]["payload"]["approve"] is True
 
 
 def test_every_check_in_has_later_check_out_same_day_and_precedes_review():
@@ -44,17 +44,30 @@ def test_proposal_rate_and_check_in_after_proposal_approval():
 
 
 def test_first_time_fix_controls_visit_count():
-    multi = sum(len([s for s in p if s["kind"] == "check_in"]) > 1 for p in plans(1000, first_time_fix=100))
-    assert multi == 0
-    multi = sum(len([s for s in p if s["kind"] == "check_in"]) > 1 for p in plans(1000, first_time_fix=50))
-    assert 400 < multi < 600
+    first = lambda p: [s for s in p if s["kind"] == "check_in" and not s["payload"].get("tech")]
+    assert sum(len(first(p)) > 1 for p in plans(1000, first_time_fix=100)) == 0
+    assert 400 < sum(len(first(p)) > 1 for p in plans(1000, first_time_fix=50)) < 600
+
+
+def test_multi_tech_visits_pair_a_second_tech_inside_the_first():
+    ps = plans(1000, multi_tech=100)
+    assert sum(any(s["payload"].get("tech") for s in p) for p in ps) > 900
+    assert not any(s["payload"].get("tech") for p in plans(300, multi_tech=0) for s in p)
+    for p in ps:
+        by = {}
+        for s in p:
+            if s["kind"] in ("check_in", "check_out"):
+                by[(s["kind"], s["payload"]["visit"], s["payload"].get("tech", 0))] = s["due_at"]
+        for (kind, v, t), at in by.items():
+            if kind == "check_in" and t:
+                assert by[("check_in", v, 0)] < at < by[("check_out", v, 0)] and at < by[("check_out", v, t)]
 
 
 def test_rejected_invoice_is_resubmitted():
     for p in plans(300, invoice_approval=0):
         kinds = [(s["kind"], s["payload"].get("approve")) for s in p if s["kind"].startswith("invoice")]
         assert kinds == [("invoice_submit", None), ("invoice_decide", False), ("invoice_submit", None),
-                         ("invoice_decide", True)]
+                         ("invoice_decide", True), ("invoice_pay", None)]
 
 
 def test_notes_fill_every_slot_for_every_situation():
@@ -183,3 +196,22 @@ def test_update_banner_clears_once_the_running_version_catches_up(tmp_path):
     assert update.pending(s)["tag"] == "v99.0.0"
     s.put("update_check", {"at": 1, "found": {"tag": "v" + __version__, "notes": ""}})
     assert update.pending(s) is None
+
+
+def test_each_thread_gets_its_own_db_connection(tmp_path):
+    import threading
+    from sc_activity_agent.store import Store
+    s = Store(tmp_path)
+    errs = []
+
+    def hammer(n):
+        try:
+            for i in range(200):
+                s.put(f"k{n}", i)
+                s.get(f"k{n}")
+        except Exception as e:  # noqa: BLE001
+            errs.append(e)
+    ts = [threading.Thread(target=hammer, args=(n,)) for n in range(4)]
+    [t.start() for t in ts]
+    [t.join() for t in ts]
+    assert not errs and s.get("k3") == 199

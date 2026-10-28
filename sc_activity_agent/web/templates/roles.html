@@ -1,7 +1,0 @@
-{% extends "base.html" %}{% block body %}
-<form method="post" class="card tbl"><p>Pick the user who does each action. "Default" applies to every location. A location column overrides it.</p>
-<table><thead><tr><th>Action</th>{% for sc in scopes %}<th>{{ 'Default' if sc == '*' else sc }}</th>{% endfor %}</tr></thead><tbody>
-{% for a in actions %}<tr><td>{{ a.replace('_', ' ') }}</td>{% for sc in scopes %}<td><select name="{{ sc }}|{{ a }}">
-{% if sc != '*' %}<option value="">(use default)</option>{% endif %}
-{% for u in users %}<option value="{{ u.id }}" {{ 'selected' if u.id in cur.get((sc, a), [])[:1] }}>{{ u.username }} ({{ u.side[0]|upper }})</option>{% endfor %}</select></td>{% endfor %}</tr>{% endfor %}
-</tbody></table><div class="row"><span></span><button class="primary">Save</button></div></form>{% endblock %}

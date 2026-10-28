@@ -9,6 +9,7 @@ import time
 import urllib.request
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, Form, Query, Request
@@ -23,11 +24,15 @@ from ..alerts import EVENTS, Alerts, AlertError
 from ..client import ScApp, ScError
 from ..handlers import ACTION, cancel_wo
 
-ACTIONS = sorted(set(ACTION.values()))
+# what a user can be set to do, by connection side: key, label (users.can_do stores the keys; they match handlers.ACTION values)
+CAN_DO = {"subscriber": [("create_wo", "Create WOs"), ("subscriber_note", "Add notes"), ("review", "Review WOs"),
+                         ("proposal_decide", "Decide proposals"), ("invoice_decide", "Decide and pay invoices")],
+          "provider": [("accept", "Accept WOs"), ("provider_note", "Add notes"), ("check_in", "Check in"), ("check_out", "Check out"),
+                       ("proposal_create", "Create proposals"), ("invoice_submit", "Submit invoices")]}
 
 HERE = Path(__file__).parent
 NAV = [("dashboard", "Dashboard"), ("behavior", "Behavior"), ("locations", "Locations"), ("connections", "Connections"),
-       ("roles", "Roles"), ("audit", "Audit log"), ("errors", "Errors"), ("cleanup", "Cleanup"), ("settings", "Settings")]
+       ("audit", "Audit log"), ("errors", "Errors"), ("cleanup", "Cleanup"), ("settings", "Settings")]
 # key, label, hint, min, max, step
 SLIDERS = [("wo_per_month", "Work orders per month", "Per enabled location, weekdays only", 0, 600, 5),
            ("proposal_rate", "Proposal rate %", "Share of WOs that get a proposal", 0, 100, 1),
@@ -37,7 +42,9 @@ SLIDERS = [("wo_per_month", "Work orders per month", "Per enabled location, week
            ("prov_notes", "Provider notes per WO", "Average", 0, 8, 0.5),
            ("late_checkin", "Late check-in %", "Provider arrives after the scheduled date", 0, 100, 1),
            ("late_days", "Average days late", "", 1, 7, 1),
-           ("time_on_site", "Time on site factor", "Multiplier on check-in to check-out time", 0.5, 2, 0.1),
+           ("time_on_site_hrs", "Average time on site (hours)", "Check-in to check-out per visit", 0.5, 8, 0.5),
+           ("pay_days", "Average days to pay", "After the invoice is approved (30 = Net 30 terms)", 1, 90, 1),
+           ("multi_tech", "Two-technician visits %", "Share of visits worked by 2 technicians (needs 2 check-in techs on the provider)", 0, 100, 1),
            ("first_time_fix", "First-time fix %", "Rest need 2 or 3 visits", 0, 100, 1),
            ("hours_start", "Activity starts (hour)", "Local time at the location", 0, 23, 1),
            ("hours_end", "Activity ends (hour)", "", 1, 24, 1)]
@@ -57,7 +64,10 @@ def create_app(store, engine=None, rt=None):
     app = FastAPI(title="SC Activity Agent")
     app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
     tpl = Jinja2Templates(directory=HERE / "templates")
-    db = store.db
+    class _Db:   # request threads differ; resolve the calling thread's connection on every use
+        def __getattr__(self, name):
+            return getattr(store.db, name)
+    db = _Db()
 
     def page(request, name, **ctx):
         failed = db.execute("SELECT COUNT(*) FROM steps WHERE state='failed'").fetchone()[0]
@@ -66,6 +76,17 @@ def create_app(store, engine=None, rt=None):
                     port=store.get("port"), twin_port=store.get("twin_port"), setup=setup_checks(), update=update.pending(store))
         return tpl.TemplateResponse(request, f"{name}.html", {**base, **ctx})
 
+    def missing_actions():
+        """Actions nobody can do yet: the agent would stop on them."""
+        have = {a for (cd,) in db.execute("SELECT can_do FROM users") for a in json.loads(cd)}
+        sides = {r[0] for r in db.execute("SELECT DISTINCT side FROM connections")}
+        return [a for side in sides for a, _ in CAN_DO[side] if a not in have]
+
+    def no_tech():
+        """Provider connections with no user who can check in."""
+        return [c["name"] for c in db.execute("SELECT id,name FROM connections WHERE side='provider'")
+                if not db.execute("SELECT 1 FROM users WHERE conn_id=? AND EXISTS (SELECT 1 FROM json_each(can_do) WHERE value='check_in')", (c["id"],)).fetchone()]
+
     def setup_checks():
         n = lambda sql: db.execute(sql).fetchone()[0]
         has = lambda side: n(f"SELECT COUNT(*) FROM connections c WHERE side='{side}' AND EXISTS(SELECT 1 FROM users u WHERE u.conn_id=c.id)") > 0
@@ -73,7 +94,8 @@ def create_app(store, engine=None, rt=None):
                 ("Subscriber ID and issue list dashboard chosen", bool(store.get("subscriber_id")) and bool(store.get("dashboard_chosen")), "/connections"),
                 ("Provider connection with a user", has("provider"), "/connections"),
                 ("At least one location", n("SELECT COUNT(*) FROM locations") > 0, "/locations"),
-                ("Roles mapped", n("SELECT COUNT(*) FROM roles") > 0, "/roles"),
+                ("Every action has a user", not missing_actions(), "/connections"),
+                ("Every Provider has a check-in tech", not no_tech(), "/connections"),
                 ("Behavior reviewed", bool(store.get("behavior")), "/behavior")]
 
     def pair_status():
@@ -135,9 +157,13 @@ def create_app(store, engine=None, rt=None):
 
     @app.get("/connections")
     def connections(request: Request, msg: str = ""):
-        conns = [dict(c, users=[dict(u) for u in db.execute("SELECT id,username,label FROM users WHERE conn_id=?", (c["id"],))])
+        conns = [dict(c, users=[dict(u) for u in db.execute("SELECT id,username,label,can_do FROM users WHERE conn_id=?", (c["id"],))])
                  for c in db.execute("SELECT id,side,name,client_id,provider_id FROM connections ORDER BY side DESC, id")]
-        return page(request, "connections", conns=conns, msg=msg, dashboards=store.get("dashboards_cache", []),
+        for c in conns:
+            for u in c["users"]:
+                u["can_do"] = json.loads(u["can_do"])
+            c["actions"] = CAN_DO[c["side"]]
+        return page(request, "connections", conns=conns, idle=[a for a in missing_actions()], techless=no_tech(), msg=msg, dashboards=store.get("dashboards_cache", []),
                     dashboard=store.get("dashboard_id", 3151), subscriber_id=store.get("subscriber_id", ""))
 
     @app.post("/dashboards/load")
@@ -171,7 +197,30 @@ def create_app(store, engine=None, rt=None):
 
     @app.post("/connections/{cid}/users")
     def add_user(cid: int, username: str = Form(...), password: str = Form(...), label: str = Form("")):
-        db.execute("INSERT INTO users(conn_id,username,password,label) VALUES(?,?,?,?)", (cid, username.strip(), store.enc(password), label))
+        c = db.execute("SELECT client_id, client_secret FROM connections WHERE id=?", (cid,)).fetchone()
+        try:   # log in first: a user that cannot sign in is not saved
+            ScApp(store.get("env"), c["client_id"], store.dec(c["client_secret"])).token(username.strip(), password)
+        except (ScError, OSError) as e:
+            return RedirectResponse("/connections?msg=" + quote(f"{username.strip()} was not added: {getattr(e, 'body', None) or e}"), 303)
+        side = db.execute("SELECT side FROM connections WHERE id=?", (cid,)).fetchone()["side"]
+        first = not db.execute("SELECT 1 FROM users WHERE conn_id=?", (cid,)).fetchone()   # the first user on a connection can do everything
+        db.execute("INSERT INTO users(conn_id,username,password,label,can_do) VALUES(?,?,?,?,?)",
+                   (cid, username.strip(), store.enc(password), label, json.dumps([a for a, _ in CAN_DO[side]] if first else [])))
+        db.commit()
+        return RedirectResponse("/connections", 303)
+
+    @app.post("/users/{uid}/can-do")
+    async def set_can_do(uid: int, request: Request):
+        side = db.execute("SELECT c.side FROM users u JOIN connections c ON c.id=u.conn_id WHERE u.id=?", (uid,)).fetchone()["side"]
+        ok = {a for a, _ in CAN_DO[side]}
+        picked = [a for a in (await request.form()).getlist("can_do") if a in ok]
+        db.execute("UPDATE users SET can_do=? WHERE id=?", (json.dumps(picked), uid))
+        db.commit()
+        return RedirectResponse("/connections", 303)
+
+    @app.post("/users/{uid}/label")
+    def set_label(uid: int, label: str = Form("")):
+        db.execute("UPDATE users SET label=? WHERE id=?", (label.strip(), uid))
         db.commit()
         return RedirectResponse("/connections", 303)
 
@@ -200,7 +249,8 @@ def create_app(store, engine=None, rt=None):
     @app.get("/audit")
     def audit(request: Request, q: str = "", failed: str = ""):
         like = f"%{q}%"
-        rows = db.execute("SELECT * FROM api_log WHERE (?='' OR user LIKE ? OR path LIKE ? OR action LIKE ? OR CAST(sc_wo AS TEXT) LIKE ?) "
+        rows = db.execute("SELECT l.*, (SELECT label FROM users u WHERE u.username=l.user LIMIT 1) AS label FROM api_log l "
+                          "WHERE (?='' OR user LIKE ? OR path LIKE ? OR action LIKE ? OR CAST(sc_wo AS TEXT) LIKE ?) "
                           "AND (?='' OR http>=400 OR http IS NULL OR http=0) ORDER BY id DESC LIMIT 200",
                           (q, like, like, like, like, failed)).fetchall()
         return page(request, "audit", rows=rows, q=q, failed=failed)
@@ -386,28 +436,6 @@ def create_app(store, engine=None, rt=None):
         db.commit()
         return RedirectResponse("/locations", 303)
 
-    @app.get("/roles")
-    def roles(request: Request):
-        users = [dict(u) for u in db.execute("SELECT u.id, u.username, c.side, c.name cname FROM users u JOIN connections c ON c.id=u.conn_id ORDER BY c.side DESC, u.id")]
-        scopes = ["*"] + [r["store_id"] for r in db.execute("SELECT store_id FROM locations ORDER BY store_id")]
-        cur = {(r["location"], r["action"]): json.loads(r["user_ids"]) for r in db.execute("SELECT * FROM roles")}
-        return page(request, "roles", users=users, scopes=scopes, actions=ACTIONS, cur=cur)
-
-    @app.post("/roles")
-    async def save_roles(request: Request):
-        form = await request.form()
-        for key in form:
-            if key.count("|") == 1:
-                loc, action = key.split("|")
-                ids = [int(v) for v in form.getlist(key)[:1] if v]
-                if ids:
-                    db.execute("INSERT INTO roles(location,action,user_ids) VALUES(?,?,?) ON CONFLICT(location,action) DO UPDATE SET user_ids=excluded.user_ids",
-                               (loc, action, json.dumps(ids)))
-                elif loc != "*":
-                    db.execute("DELETE FROM roles WHERE location=? AND action=?", (loc, action))
-        db.commit()
-        return RedirectResponse("/roles", 303)
-
     @app.get("/cleanup")
     def cleanup(request: Request, msg: str = ""):
         rows = db.execute("SELECT * FROM work_orders ORDER BY created_at DESC LIMIT 500").fetchall()
@@ -469,7 +497,13 @@ def create_app(store, engine=None, rt=None):
         al = Alerts(store)
         return page(request, "settings", login=autostart.enabled(store.dir, store.get("env")),
                     policy=store.get("resume_policy", "catch_up"), msg=msg, al=al.cfg, token_set=bool(store.get("alerts_token")),
+                    backups=[(n, s // 1024, datetime.fromtimestamp(t).strftime("%b %d %H:%M")) for n, s, t in update.backups(store)],
                     events=EVENTS, alert_error=store.get("alert_error"), other_env="SB2" if store.get("env") == "prod" else "Production")
+
+    @app.post("/backup")
+    def backup_now():
+        update.backup(store)
+        return RedirectResponse("/settings?msg=Backed+up+the+database.", 303)
 
     @app.post("/alerts/token")
     def alerts_token(token: str = Form(...)):

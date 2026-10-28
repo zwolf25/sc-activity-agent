@@ -7,5 +7,6 @@ def test_stage_follows_last_done_step():
     assert stage([("check_in", {}), ("check_out", {"final": False})]) == "Awaiting return"
     assert stage([("check_out", {"final": True})]) == "Awaiting review"
     assert stage([("invoice_submit", {}), ("invoice_decide", {"approve": False})]) == "Invoice rejected"
-    assert stage([("invoice_decide", {"approve": True})]) == "Closed"
+    assert stage([("invoice_decide", {"approve": True})]) == "Payment due"
+    assert stage([("invoice_decide", {"approve": True}), ("invoice_pay", {})]) == "Closed"
     assert stage([("proposal_create", {}), ("proposal_decide", {"approve": True})]) == "Scheduled"
