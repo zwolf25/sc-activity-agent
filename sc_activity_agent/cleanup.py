@@ -81,7 +81,7 @@ def finish_plan(store, rt, w, now):
     c, rng, tz = {**planner.DEFAULTS, **store.get("behavior", {})}, rt.rng, loc["tz"] or "America/New_York"
     t, steps = now, []
     gap = _eta(w, "ScheduledDate") - (_eta(w, "CallDate") or _eta(w, "CreatedDate"))   # original ETA minus call date
-    if 0 < gap < c["emergency_hours"] * 3600 and _eta(w, "ScheduledDate") > now:   # urgent and the visit still ahead: the availability exchange comes first (B-08)
+    if 0 < gap <= c["emergency_hours"] * 3600 and _eta(w, "ScheduledDate") > now:   # urgent and the visit still ahead: the availability exchange comes first (B-08)
         for kind, lo, hi, payload in (("sub_note", 300, 900, {"situation": "followup"}), ("prov_note", 600, 1200, {"situation": "eta"})):
             t = planner._fit(t + rng.randint(lo, hi), t, c, tz, rng)
             steps.append({"kind": kind, "due_at": t, "payload": payload})

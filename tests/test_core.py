@@ -254,3 +254,11 @@ def test_emergency_hours_sets_the_threshold_and_zero_turns_it_off():
     assert "proposal_create" in kinds({})                               # 20 h is over the 8 h default
     assert "proposal_create" not in kinds({"emergency_hours": 24})
     assert "proposal_create" in kinds({"emergency_hours": 0})
+
+
+def test_emergency_threshold_is_inclusive():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    now = datetime(2026, 10, 28, 9, 0, tzinfo=ZoneInfo("America/New_York")).timestamp()
+    has = lambda secs: any(s["kind"] == "proposal_create" for s in planner.build_plan(random.Random(1), now, {"proposal_rate": 100, "emergency_hours": 8}, eta=now + secs))
+    assert not has(8 * 3600) and has(8 * 3600 + 1)
