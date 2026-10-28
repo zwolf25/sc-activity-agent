@@ -376,3 +376,27 @@ def test_preflight_skips_field_steps_on_a_wo_a_user_completed_but_still_reviews(
     assert [c for c in calls if c[2] != "GET"] == []
     h["review"](None, wo, step("review", situation="review"))
     assert any(c[2] != "GET" for c in calls)
+
+
+def test_decline_reschedule_and_cancel_steps_call_the_right_endpoints(tmp_path):
+    s = setup(tmp_path)
+    s.db.execute("UPDATE locations SET tz='America/New_York'")
+    s.db.commit()
+    seen = []
+
+    class App(FakeApp):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            if method != "GET":
+                seen.append((method, path, params, body))
+            return super().call(user, method, path, params, body, **kw)
+    rt = Runtime(s, {1: App("sub", []), 2: App("prov", [])}, random.Random(1))
+    h = make_handlers(rt)
+    wo = _wo(s)
+    h["decline"](None, wo, step("decline", reason=1))
+    h["reschedule"](None, wo, step("reschedule", to=NOW + 2 * 86400, from_ts=NOW, reason=12))
+    h["cancel"](None, wo, step("cancel", situation="declined"))
+    assert seen[0] == ("PUT", "/workorders/9/decline", None, {"DeclineReasonId": 1})   # no Note: it fails with 501
+    m, path, params, body = seen[1]
+    assert (m, path, params) == ("PUT", "/workorders/9/scheduledate", {"rescheduleReasonCode": 12}) and body["Value"].startswith("2025-10-25T")
+    assert seen[2][1] == "/workorders/9/status" and seen[2][3]["Status"]["Extended"] == "CANCELED"
+    assert s.db.execute("SELECT state FROM work_orders WHERE sc_id=9").fetchone()[0] == "cancelled"

@@ -3,7 +3,7 @@ import datetime as dt
 import json
 from zoneinfo import ZoneInfo
 
-STAGES = ["Scheduled", "Proposal pending", "On site", "Awaiting return", "Awaiting review", "Invoice due",
+STAGES = ["Declined", "Scheduled", "Proposal pending", "On site", "Awaiting return", "Awaiting review", "Invoice due",
           "Invoice pending", "Invoice rejected", "Payment due", "Closed"]
 
 
@@ -15,6 +15,8 @@ def stage(done):
             st = "Proposal pending"
         elif kind == "proposal_decide":
             st = "Scheduled"
+        elif kind == "decline":
+            st = "Declined"
         elif kind == "check_in":
             st = "On site"
         elif kind == "check_out":
@@ -39,7 +41,7 @@ def by_stage(db):
 
 
 NOTE = {"ack": "acknowledge", "eta": "ETA update", "onsite": "on site", "return": "return visit", "parts": "parts needed",
-        "access": "access", "followup": "follow-up", "created": "WO created"}
+        "access": "access", "followup": "follow-up", "created": "WO created", "reschedule": "reschedule"}
 
 
 def detail(kind, p):
@@ -55,6 +57,12 @@ def detail(kind, p):
         return f"Visit {p.get('visit', 1)}, " + ("work complete" if p.get("final") else "parts on order, return visit")
     if kind == "invoice_pay":
         return "Marks the invoice paid"
+    if kind == "decline":
+        return "Provider declines"
+    if kind == "reschedule":
+        return "Moves the scheduled date later"
+    if kind == "cancel":
+        return "Cancels after the decline"
     if kind == "invoice_submit":
         return "Resubmission after reject" if p.get("situation") == "invoice_fix" else ""
     return ""

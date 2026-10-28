@@ -4,6 +4,7 @@ Verified on SB2: sub_note, accept, prov_note, check_in, check_out, review. invoi
 import datetime as dt
 import json
 import time
+from zoneinfo import ZoneInfo
 
 from . import content
 from .client import ScError
@@ -12,6 +13,7 @@ ACTION = {"accept": "accept", "prov_note": "provider_note", "sub_note": "subscri
           "proposal_create": "proposal_create", "proposal_decide": "proposal_decide", "check_in": "check_in",
           "check_out": "check_out", "invoice_submit": "invoice_submit", "invoice_decide": "invoice_decide",
           "invoice_pay": "invoice_decide",   # the same Subscriber user decides and pays; no new role row for existing instances
+          "decline": "accept", "reschedule": "accept", "cancel": "subscriber_note",   # a provider who can accept can also decline and reschedule
           "create": "create_wo"}
 
 
@@ -102,6 +104,20 @@ def make_handlers(rt):
     def accept(engine, wo, step):
         text = content.note("provider", "ack", ctx_of(wo), rt.rng)
         call(wo, step, "PUT", f"/workorders/{wo['sc_id']}/accept", body={"Note": text})
+
+    def decline(engine, wo, step):
+        # no Note: a note on a decline fails with 501 even though the decline goes through (SB2, 2026-10-28)
+        call(wo, step, "PUT", f"/workorders/{wo['sc_id']}/decline", body={"DeclineReasonId": json.loads(step["payload"])["reason"]})
+
+    def reschedule(engine, wo, step):
+        p = json.loads(step["payload"])
+        tz = (rt.location(wo["location"])["tz"] or "America/New_York")
+        app, user = rt.user_for(wo["location"], "reschedule", wo, step)
+        app.call(user, "PUT", f"/workorders/{wo['sc_id']}/scheduledate", params={"rescheduleReasonCode": p["reason"]}, action="reschedule", wo=wo["sc_id"],
+                 write=True, body={"Value": dt.datetime.fromtimestamp(p["to"], ZoneInfo(tz)).strftime("%Y-%m-%dT%H:%M:%S"), "Actor": user[0]})
+
+    def cancel(engine, wo, step):
+        cancel_wo(rt, wo, content.note("subscriber", json.loads(step["payload"])["situation"], ctx_of(wo), rt.rng))
 
     def checkio(path, body, wo, step):
         try:
@@ -261,11 +277,11 @@ def make_handlers(rt):
 
     handlers = {"accept": accept, "prov_note": note("provider"), "sub_note": note("subscriber"), "check_in": check_in,
                 "check_out": check_out, "review": review, "invoice_submit": invoice_submit,
-                "invoice_decide": invoice_decide, "invoice_pay": invoice_pay, "proposal_create": proposal_create, "proposal_decide": proposal_decide}
+                "invoice_decide": invoice_decide, "invoice_pay": invoice_pay, "decline": decline, "reschedule": reschedule, "cancel": cancel, "proposal_create": proposal_create, "proposal_decide": proposal_decide}
     return {k: guarded(k, f) for k, f in handlers.items()}
 
 
-ALREADY_DONE_WHEN_COMPLETED = {"accept", "check_in", "check_out", "proposal_create", "proposal_decide"}
+ALREADY_DONE_WHEN_COMPLETED = {"accept", "decline", "reschedule", "check_in", "check_out", "proposal_create", "proposal_decide"}
 
 
 def preflight(rt, call, wo, step, kind):
@@ -281,7 +297,7 @@ def preflight(rt, call, wo, step, kind):
     return st.get("Primary") == "COMPLETED" and kind in ALREADY_DONE_WHEN_COMPLETED
 
 
-FIELD = {"accept", "prov_note", "sub_note", "check_in", "check_out", "proposal_create", "proposal_decide", "review"}
+FIELD = {"accept", "decline", "reschedule", "prov_note", "sub_note", "check_in", "check_out", "proposal_create", "proposal_decide", "review"}
 
 
 def end_plan(rt, wo):
