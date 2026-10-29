@@ -6,7 +6,7 @@ import threading
 import time
 from pathlib import Path
 
-from . import PACKAGED, __version__
+from . import PACKAGED, __version__, awake
 from .store import Store
 
 DEFAULT_PORT = {"prod": 8080, "sb2": 8081}
@@ -122,6 +122,10 @@ def free_port(start=8080):
 
 def cmd_run(args, store):
     sys.stdout.reconfigure(line_buffering=True)   # a log that is killed mid-run must still show its last lines
+    from .launcher import lock_data_dir
+    lock = lock_data_dir(store.dir)   # kept open for the life of the process
+    if lock is None:   # the launcher and Start at login can both start an agent; two would run every step twice
+        sys.exit(f"Another agent already runs on {store.dir}. Exiting.")
     if PACKAGED and not args.no_ui:
         # the desktop shell reads this file to learn where the console is; a busy port moves to the next free one
         port = store.get("port") or free_port(DEFAULT_PORT["prod"])
@@ -130,6 +134,7 @@ def cmd_run(args, store):
         if not store.get("env"):
             from .welcome import wait_for_env
             wait_for_env(store, port)
+    from .handlers import watch
     engine, rt = build_engine(store, with_rt=True)
     if not args.no_ui:
         import threading
@@ -160,12 +165,15 @@ def cmd_run(args, store):
             if twin.get("resume_after_update"):
                 threading.Thread(target=ensure_running, args=(d, twin.get("port")), daemon=True).start()
     print(f"agent {__version__} running ({store.get('env')}). Ctrl+C to stop.")
+    caffeinate = None
     try:
         while True:
+            if not PACKAGED:
+                caffeinate = awake.sync(store, caffeinate)
             engine.paused_at = store.get("paused_at")
             # one failing piece must not stop the others, or the whole agent
             for name, fn in (("step", engine.tick), ("update", lambda: (update.check(store), [])[1]),
-                             ("create", creator.tick),
+                             ("create", creator.tick), ("watch", lambda: watch(store, rt)),
                              ("cleanup", lambda: sweep_in_thread(store, rt))):
                 try:
                     for key, outcome in fn():

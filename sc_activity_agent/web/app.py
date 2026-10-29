@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .. import cleanup as cleanup_mod
-from .. import PACKAGED, __version__, autostart, planner, status, update
+from .. import PACKAGED, __version__, autostart, awake, planner, status, update
 from .. import locations as locations_mod
 from ..alerts import EVENTS, Alerts, AlertError
 from ..client import ScApp, ScError
@@ -46,6 +46,11 @@ SLIDERS = [("wo_per_month", "Work orders per month", "Per enabled location, week
            ("time_on_site_hrs", "Average time on site (hours)", "Check-in to check-out per visit", 0.5, 8, 0.5),
            ("pay_days", "Average days to pay", "After the invoice is approved (30 = Net 30 terms)", 1, 90, 1),
            ("multi_tech", "Two-technician visits %", "Share of visits worked by 2 technicians (needs 2 check-in techs on the provider)", 0, 100, 1),
+           ("emergency_hours", "Treat as emergency up to (hours)", "A WO whose original ETA is at most this many hours after its call date gets the fast emergency plan; 0 = never", 0, 72, 1),
+           ("decline", "Provider declines %", "The provider declines instead of accepting; the WO is cancelled 1 to 3 days later. Turn off auto-reassign for the trade (SC admin) or the WO moves to another provider", 0, 100, 1),
+           ("reassign", "Reassign after a decline %", "Of the declines, the share the Subscriber moves to another provider with a contract for the trade at the location; the rest, and any with no such provider, are cancelled", 0, 100, 1),
+           ("reschedule", "Reschedules %", "The provider moves the scheduled date 1 to 3 business days later than the original date", 0, 100, 1),
+           ("watch", "Background status check", "1 = also read one active WO per hour; every write already reads its WO first", 0, 1, 1),
            ("first_time_fix", "First-time fix %", "Rest need 2 or 3 visits", 0, 100, 1),
            ("hours_start", "Activity starts (hour)", "Local time at the location", 0, 23, 1),
            ("hours_end", "Activity ends (hour)", "", 1, 24, 1)]
@@ -497,6 +502,7 @@ def create_app(store, engine=None, rt=None):
     def settings(request: Request, msg: str = ""):
         al = Alerts(store)
         return page(request, "settings", login=autostart.enabled(store.dir, store.get("env")),
+                    awake_ui=awake.supported() and not PACKAGED, awake_on=store.get("keep_awake", True),
                     policy=store.get("resume_policy", "catch_up"), msg=msg, al=al.cfg, token_set=bool(store.get("alerts_token")),
                     backups=[(n, s // 1024, datetime.fromtimestamp(t).strftime("%b %d %H:%M")) for n, s, t in update.backups(store)],
                     events=EVENTS, alert_error=store.get("alert_error"), other_env="SB2" if store.get("env") == "prod" else "Production")
@@ -571,8 +577,10 @@ def create_app(store, engine=None, rt=None):
         return RedirectResponse("/settings?msg=Telegram alerts removed.", 303)
 
     @app.post("/settings")
-    def save_settings(resume_policy: str = Form(...), login: str = Form("off")):
+    def save_settings(resume_policy: str = Form(...), login: str = Form("off"), awake_on: str = Form("off")):
         store.put("resume_policy", resume_policy)
+        if awake.supported() and not PACKAGED:
+            store.put("keep_awake", awake_on == "on")
         env = store.get("env")
         if login == "on" and not autostart.enabled(store.dir, env):
             autostart.enable(store.dir, env)

@@ -7,7 +7,7 @@ DEFAULTS = {
     "proposal_rate": 10, "proposal_approval": 90, "invoice_approval": 95,
     "sub_notes": 2.0, "prov_notes": 3.0,
     "late_checkin": 15, "late_days": 2,
-    "time_on_site_hrs": 2.0, "pay_days": 30, "multi_tech": 5, "first_time_fix": 80,
+    "time_on_site_hrs": 2.0, "pay_days": 30, "multi_tech": 5, "watch": 0, "emergency_hours": 8, "decline": 0, "reassign": 0, "reschedule": 0, "first_time_fix": 80,
     "hours_start": 8, "hours_end": 17,
     "resume_policy": "catch_up",
 }
@@ -44,28 +44,57 @@ def _fit(ts, prev, c, tz, rng):
     return new
 
 
-def build_plan(rng, now, cfg, tz="America/New_York"):
+def build_plan(rng, now, cfg, tz="America/New_York", eta=None):
     """now: epoch seconds when the WO is created. Returns list of dicts {kind, due_at, payload}, sorted by due_at.
     Times are epoch seconds. Kinds: accept, prov_note, sub_note, proposal_create, proposal_decide, check_in, check_out,
-    review, invoice_submit, invoice_decide, invoice_pay."""
+    review, invoice_submit, invoice_decide, invoice_pay, decline, reassign, reschedule, cancel. eta: epoch seconds of the scheduled visit when it is known. An ETA no more
+    than cfg emergency_hours after the call date (default 8; 0 turns it off) makes an emergency plan: a confirm-availability exchange before the visit, no proposal, no late arrival (B-08).
+    The ETA decides, not the priority label."""
     c = {**DEFAULTS, **cfg}
     steps = []
 
     def add(kind, due, **payload):
         steps.append({"kind": kind, "due_at": due, "payload": payload})
 
+    emergency = eta is not None and 0 < c["emergency_hours"] and eta - now <= c["emergency_hours"] * 3600
     created = datetime.fromtimestamp(now, ZoneInfo(tz))
     sched_day = _biz_day(created.date(), rng.randint(1, 5))
-    add("accept", now + rng.randint(300, 2400), situation="ack")
-    add("prov_note", now + rng.randint(2700, 5400), situation="eta")
+    if c["decline"] and rng.random() * 100 < c["decline"]:   # B-11: the provider declines; the WO ends cancelled a few days later
+        d_at = now + rng.randint(1800, 4 * 3600)
+        add("decline", d_at, reason=rng.choice([1, 2, 3, 6]))
+        if c["reassign"] and rng.random() * 100 < c["reassign"]:   # B-20: the Subscriber hands it to another provider; the step plans the rest, or cancels when nobody has a contract
+            add("reassign", d_at + rng.randint(3600, 3 * 3600), reason=3)
+            return _fit_all(steps, c, tz, rng)
+        add("cancel", d_at + rng.randint(1, 3) * 86400 + rng.randint(0, 4 * 3600), situation="declined")
+        return _fit_all(steps, c, tz, rng)
+    if emergency:
+        add("accept", now + rng.randint(120, 900), situation="ack")
+        add("sub_note", now + rng.randint(900, 1500), situation="followup")   # the subscriber asks for confirmation
+        add("prov_note", now + rng.randint(1600, 2400), situation="eta")      # the provider confirms availability
+    else:
+        add("accept", now + rng.randint(300, 2400), situation="ack")
+        add("prov_note", now + rng.randint(2700, 5400), situation="eta")
 
     # first-time-fix decides how many visits; each visit is a check-in/out pair on its own business day
     visits = 1 if rng.random() * 100 < c["first_time_fix"] else rng.choice([2, 2, 3])
-    late = rng.random() * 100 < c["late_checkin"]
+    late = rng.random() * 100 < c["late_checkin"] and not emergency
     day = _biz_day(sched_day, rng.randint(1, max(1, int(c["late_days"]) * 2 - 1))) if late else sched_day
     span = c["hours_end"] - c["hours_start"]
-    has_proposal = rng.random() * 100 < c["proposal_rate"]
+    has_proposal = rng.random() * 100 < c["proposal_rate"] and not emergency
     t = _at(day, c["hours_start"] + rng.random() * span * 0.4, tz)
+    if eta is not None:   # the visit is anchored to the known ETA (moved to the next activity window when it falls outside)
+        t = _fit(max(eta, now + 2400), now + 2400, c, tz, rng)
+        day = datetime.fromtimestamp(t, ZoneInfo(tz)).date()
+
+    if c["reschedule"] and not (emergency or has_proposal or late) and rng.random() * 100 < c["reschedule"]:
+        # B-11: the provider moves the scheduled date later than the original; the visits follow the new date
+        r_at = now + rng.randint(3600, 6 * 3600)
+        if r_at < t - 3600:
+            day2 = _biz_day(day, rng.randint(1, 3))
+            t2 = _at(day2, c["hours_start"] + rng.random() * span * 0.4, tz)
+            add("reschedule", r_at, to=t2, from_ts=t, reason=rng.choice([8, 10, 11, 12, 13]))
+            add("prov_note", r_at + rng.randint(120, 600), situation="reschedule")
+            day, t = day2, t2
 
     if has_proposal:
         # check-in is blocked until the proposal is approved, so the proposal precedes the first visit
@@ -128,6 +157,10 @@ def build_plan(rng, now, cfg, tz="America/New_York"):
     for _ in range(max(0, _poisson(rng, c["prov_notes"]) - 2)):  # ack/eta/onsite notes already count
         add("prov_note", rng.uniform(lo, hi), situation=rng.choice(["access", "eta"]))
     add("invoice_pay", dec_at + max(2, rng.gauss(c["pay_days"], c["pay_days"] * 0.25)) * 86400)   # after the notes block so notes still end at the decision
+    return _fit_all(steps, c, tz, rng)
+
+
+def _fit_all(steps, c, tz, rng):
     steps.sort(key=lambda s: s["due_at"])
     prev = 0
     for st in steps:   # planned times can fall at night or on a weekend: fit them to the activity window, order unchanged

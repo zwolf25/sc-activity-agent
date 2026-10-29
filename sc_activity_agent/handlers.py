@@ -3,14 +3,17 @@
 Verified on SB2: sub_note, accept, prov_note, check_in, check_out, review. invoice_submit, invoice_decide (approve and reject). Proposals: create (provider), assignWO then approve (subscriber) and reject verified on SB2."""
 import datetime as dt
 import json
+import time
+from zoneinfo import ZoneInfo
 
-from . import content
+from . import content, planner
 from .client import ScError
 
 ACTION = {"accept": "accept", "prov_note": "provider_note", "sub_note": "subscriber_note", "review": "review",
           "proposal_create": "proposal_create", "proposal_decide": "proposal_decide", "check_in": "check_in",
           "check_out": "check_out", "invoice_submit": "invoice_submit", "invoice_decide": "invoice_decide",
           "invoice_pay": "invoice_decide",   # the same Subscriber user decides and pays; no new role row for existing instances
+          "decline": "accept", "reschedule": "accept", "reassign": "subscriber_note", "cancel": "subscriber_note",   # a provider who can accept can also decline and reschedule
           "create": "create_wo"}
 
 
@@ -101,6 +104,62 @@ def make_handlers(rt):
     def accept(engine, wo, step):
         text = content.note("provider", "ack", ctx_of(wo), rt.rng)
         call(wo, step, "PUT", f"/workorders/{wo['sc_id']}/accept", body={"Note": text})
+
+    def decline(engine, wo, step):
+        # no Note: a note on a decline fails with 501 even though the decline goes through (SB2, 2026-10-28)
+        call(wo, step, "PUT", f"/workorders/{wo['sc_id']}/decline", body={"DeclineReasonId": json.loads(step["payload"])["reason"]})
+
+    def reassign(engine, wo, step):
+        """B-20: after a decline, move the WO to another provider connection that holds a contract for its trade at the location
+        (the API refuses the move otherwise), then plan the new provider's work. With no such provider, cancel as a plain decline does."""
+        p = json.loads(step["payload"])
+        loc, ctx = rt.location(wo["location"]), ctx_of(wo)
+        app, user = rt.user_for(wo["location"], "reassign", wo, step)
+        rows = rt.store.db.execute(
+            "SELECT DISTINCT c.provider_id FROM connections c JOIN users u ON u.conn_id=c.id WHERE c.side='provider' AND c.provider_id IS NOT NULL "
+            "AND EXISTS (SELECT 1 FROM json_each(u.can_do) WHERE value='accept')").fetchall()
+        # ctx may not carry the provider (a WO is routed by contract rank), so read the live one
+        current = (call(wo, step, "GET", f"/workorders/{wo['sc_id']}").get("Provider") or {}).get("Id") or ctx.get("provider_id")
+        targets = []
+        for r in rows:
+            if r["provider_id"] == current:
+                continue
+            try:
+                found = app.call(user, "GET", "/contracts", params={"locationDbId": loc["db_id"], "providerId": r["provider_id"], "trade": wo["trade"]},
+                                 action="reassign_lookup", wo=wo["sc_id"], write=False)
+            except ScError as e:
+                if e.status >= 500:
+                    raise   # a server fault is not "no contract": let the engine retry the step instead of cancelling the WO
+                continue
+            if (found or {}).get("Contracts"):
+                targets.append(r["provider_id"])
+        new = rt.rng.choice(targets) if targets else None
+        if new is not None:
+            try:
+                app.call(user, "PUT", f"/workorders/{wo['sc_id']}/reassign", action="reassign", wo=wo["sc_id"], write=True,
+                         body={"ProviderId": new, "ReasonId": p["reason"]})
+            except ScError as e:
+                if e.status != 400:
+                    raise
+                new = None   # refused (for example the contract changed): fall back to the cancel
+        now = time.time()
+        if new is None:
+            insert_steps(rt.store, wo["id"], step["seq"], [("cancel", now + rt.rng.randint(1, 3) * 86400, {"situation": "declined"})])
+            return
+        rt.save_ctx(wo, provider_id=new, techs={})
+        cfg = {**planner.DEFAULTS, **rt.store.get("behavior", {}), "decline": 0, "reschedule": 0, "reassign": 0}
+        plan = planner.build_plan(rt.rng, now, cfg, loc["tz"] or "America/New_York")
+        insert_steps(rt.store, wo["id"], step["seq"], [(s["kind"], s["due_at"], s["payload"]) for s in plan])
+
+    def reschedule(engine, wo, step):
+        p = json.loads(step["payload"])
+        tz = (rt.location(wo["location"])["tz"] or "America/New_York")
+        app, user = rt.user_for(wo["location"], "reschedule", wo, step)
+        app.call(user, "PUT", f"/workorders/{wo['sc_id']}/scheduledate", params={"rescheduleReasonCode": p["reason"]}, action="reschedule", wo=wo["sc_id"],
+                 write=True, body={"Value": dt.datetime.fromtimestamp(p["to"], ZoneInfo(tz)).strftime("%Y-%m-%dT%H:%M:%S"), "Actor": user[0]})
+
+    def cancel(engine, wo, step):
+        cancel_wo(rt, wo, content.note("subscriber", json.loads(step["payload"])["situation"], ctx_of(wo), rt.rng))
 
     def checkio(path, body, wo, step):
         try:
@@ -237,6 +296,8 @@ def make_handlers(rt):
         WO makes the field steps moot, and a check-in/out the user already did is done. Anything else is a real failure."""
         def run(engine, wo, step):
             try:
+                if preflight(rt, call, wo, step, kind):
+                    return
                 return fn(engine, wo, step)
             except ScError as e:
                 if e.status not in (400, 403, 409):
@@ -258,11 +319,27 @@ def make_handlers(rt):
 
     handlers = {"accept": accept, "prov_note": note("provider"), "sub_note": note("subscriber"), "check_in": check_in,
                 "check_out": check_out, "review": review, "invoice_submit": invoice_submit,
-                "invoice_decide": invoice_decide, "invoice_pay": invoice_pay, "proposal_create": proposal_create, "proposal_decide": proposal_decide}
+                "invoice_decide": invoice_decide, "invoice_pay": invoice_pay, "decline": decline, "reassign": reassign, "reschedule": reschedule, "cancel": cancel, "proposal_create": proposal_create, "proposal_decide": proposal_decide}
     return {k: guarded(k, f) for k, f in handlers.items()}
 
 
-FIELD = {"accept", "prov_note", "sub_note", "check_in", "check_out", "proposal_create", "proposal_decide", "review"}
+ALREADY_DONE_WHEN_COMPLETED = {"accept", "decline", "reassign", "reschedule", "check_in", "check_out", "proposal_create", "proposal_decide"}
+
+
+def preflight(rt, call, wo, step, kind):
+    """B-39: read the live WO before a write. A cancelled WO ends the plan; a WO a user already completed makes the field steps
+    moot. Returns True when the step must not run. A failed read changes nothing: the step runs and its own guard handles it."""
+    try:
+        st = (call(wo, step, "GET", f"/workorders/{wo['sc_id']}") or {}).get("Status", {})
+    except ScError:
+        return False
+    if st.get("Extended") == "CANCELED":
+        end_plan(rt, wo)
+        return True
+    return st.get("Primary") == "COMPLETED" and kind in ALREADY_DONE_WHEN_COMPLETED
+
+
+FIELD = {"accept", "decline", "reassign", "reschedule", "prov_note", "sub_note", "check_in", "check_out", "proposal_create", "proposal_decide", "review"}
 
 
 def end_plan(rt, wo):
@@ -270,6 +347,31 @@ def end_plan(rt, wo):
     rt.store.db.execute("UPDATE work_orders SET state='cancelled' WHERE id=?", (wo["id"],))
     rt.store.db.execute("UPDATE steps SET state='skipped' WHERE wo_id=? AND state IN ('pending','failed')", (wo["id"],))
     rt.store.db.commit()
+
+
+WATCH_EVERY, WATCH_MAX = 3600, 1   # off by default (behavior.watch): the preflight read already catches changes before each write
+
+
+def watch(store, rt, clock=time.time):
+    """B-39: read the live status of the WOs that still have pending steps, least recently read first. A WO the user cancelled
+    ends its plan here instead of failing a step later. Returns [(sc_id, outcome)]."""
+    if not store.get("behavior", {}).get("watch") or store.get("paused_at") is not None or clock() - store.get("watch_at", 0) < WATCH_EVERY:
+        return []
+    store.put("watch_at", clock())
+    out = []
+    for wo in store.db.execute(
+            "SELECT w.* FROM work_orders w WHERE w.state='active' AND EXISTS (SELECT 1 FROM steps s WHERE s.wo_id=w.id AND s.state='pending') "
+            "ORDER BY COALESCE(json_extract(w.ctx,'$.watched'),0) LIMIT ?", (WATCH_MAX,)).fetchall():
+        try:
+            app, user = rt.user_for(wo["location"], "sub_note", wo)
+            st = (app.call(user, "GET", f"/workorders/{wo['sc_id']}", action="watch", wo=wo["sc_id"]) or {}).get("Status", {})
+        except ScError:
+            continue   # a failed read changes nothing; the next pass tries again
+        rt.save_ctx(wo, watched=clock())
+        if st.get("Extended") == "CANCELED":
+            end_plan(rt, wo)
+            out.append((wo["sc_id"], "cancelled by a user: plan ended"))
+    return out
 
 
 def cancel_wo(rt, wo, note="Cancelled by SC Activity Agent cleanup"):

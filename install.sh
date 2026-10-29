@@ -47,7 +47,7 @@ echo "Installing $TAG"
 "$HOME_DIR/venv/bin/python" -m pip install --quiet --upgrade "https://github.com/$REPO/archive/refs/tags/$TAG.zip"
 
 AGENT="$HOME_DIR/venv/bin/agent"
-DATA="$HOME/.sc-activity-agent"
+DATA="${SC_AGENT_DATA:-$HOME/.sc-activity-agent}"
 [ -f "$DATA/agent.db" ] || "$AGENT" --data-dir "$DATA" init --env "$ENVIRONMENT"
 "$AGENT" --data-dir "$DATA" install-app
 echo

@@ -319,3 +319,147 @@ def test_first_tech_out_of_a_crew_visit_does_not_complete_the_wo(tmp_path):
     s.db.execute("DELETE FROM work_orders")
     out(_wo(s, provider_id=2000078685, techs={"1.0": 2, "1.1": 2}))
     assert bodies[-1]["PrimaryStatus"] == "PartsOnOrder"
+
+
+def test_watch_ends_the_plan_of_a_wo_cancelled_by_a_user(tmp_path):
+    from sc_activity_agent.handlers import watch
+    s = setup(tmp_path)
+    s.put("behavior", {"watch": 1})
+    plan = planner.build_plan(random.Random(4), NOW, {})
+    add_plan(s, "HQ-NYC", "HVAC", 5001, plan, {**CTX}, NOW)
+    add_plan(s, "HQ-NYC", "HVAC", 5002, plan, {**CTX}, NOW)
+
+    class App(FakeApp):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            if method == "GET" and path.startswith("/workorders/"):
+                return {"Status": {"Primary": "COMPLETED", "Extended": "CANCELED" if path.endswith("5002") else "OPEN"}}
+            return super().call(user, method, path, params, body, **kw)
+    rt = Runtime(s, {1: App("sub", []), 2: App("prov", [])}, random.Random(1))
+    assert watch(s, rt, lambda: 10000) == []   # one WO per pass: 5001 first, still open
+    assert watch(s, rt, lambda: 10100) == []   # throttled: not again within the hour
+    assert watch(s, rt, lambda: 14000) == [(5002, "cancelled by a user: plan ended")]
+    assert s.db.execute("SELECT state FROM work_orders WHERE sc_id=5002").fetchone()[0] == "cancelled"
+    assert s.db.execute("SELECT state FROM work_orders WHERE sc_id=5001").fetchone()[0] == "active"
+    s.put("behavior", {})
+    assert watch(s, rt, lambda: 10 ** 6) == []   # off by default
+
+
+def _preflight_app(status):
+    class App(FakeApp):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            if method == "GET" and path.startswith("/workorders/"):
+                self.calls.append((self.name, user[0], method, path))
+                return {"Status": status}
+            return super().call(user, method, path, params, body, **kw)
+    return App
+
+
+def test_preflight_ends_the_plan_before_any_write_on_a_cancelled_wo(tmp_path):
+    s = setup(tmp_path)
+    calls = []
+    App = _preflight_app({"Primary": "COMPLETED", "Extended": "CANCELED"})
+    rt = Runtime(s, {1: App("sub", calls), 2: App("prov", calls)}, random.Random(1))
+    add_plan(s, "HQ-NYC", "HVAC", 5001, planner.build_plan(random.Random(4), NOW, {}), {**CTX}, NOW)
+    Engine(s, make_handlers(rt), clock=lambda: NOW + 10 ** 7, per_tick=50).tick()
+    assert {c[2] for c in calls} == {"GET"}   # no write was attempted
+    assert s.db.execute("SELECT state FROM work_orders WHERE sc_id=5001").fetchone()[0] == "cancelled"
+
+
+def test_preflight_skips_field_steps_on_a_wo_a_user_completed_but_still_reviews(tmp_path):
+    s = setup(tmp_path)
+    calls = []
+    App = _preflight_app({"Primary": "COMPLETED", "Extended": "COMPLETED"})
+    rt = Runtime(s, {1: App("sub", calls), 2: App("prov", calls)}, random.Random(1))
+    h = make_handlers(rt)
+    wo = _wo(s)
+    h["check_in"](None, wo, step("check_in", visit=1))
+    assert [c for c in calls if c[2] != "GET"] == []
+    h["review"](None, wo, step("review", situation="review"))
+    assert any(c[2] != "GET" for c in calls)
+
+
+def test_decline_reschedule_and_cancel_steps_call_the_right_endpoints(tmp_path):
+    s = setup(tmp_path)
+    s.db.execute("UPDATE locations SET tz='America/New_York'")
+    s.db.commit()
+    seen = []
+
+    class App(FakeApp):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            if method != "GET":
+                seen.append((method, path, params, body))
+            return super().call(user, method, path, params, body, **kw)
+    rt = Runtime(s, {1: App("sub", []), 2: App("prov", [])}, random.Random(1))
+    h = make_handlers(rt)
+    wo = _wo(s)
+    h["decline"](None, wo, step("decline", reason=1))
+    h["reschedule"](None, wo, step("reschedule", to=NOW + 2 * 86400, from_ts=NOW, reason=12))
+    h["cancel"](None, wo, step("cancel", situation="declined"))
+    assert seen[0] == ("PUT", "/workorders/9/decline", None, {"DeclineReasonId": 1})   # no Note: it fails with 501
+    m, path, params, body = seen[1]
+    assert (m, path, params) == ("PUT", "/workorders/9/scheduledate", {"rescheduleReasonCode": 12}) and body["Value"].startswith("2025-10-25T")
+    assert seen[2][1] == "/workorders/9/status" and seen[2][3]["Status"]["Extended"] == "CANCELED"
+    assert s.db.execute("SELECT state FROM work_orders WHERE sc_id=9").fetchone()[0] == "cancelled"
+
+
+def _reassign_setup(tmp_path, contract):
+    s = setup(tmp_path)
+    s.db.execute("INSERT INTO connections VALUES(3,'provider','P2','c','x',2000000677)")
+    _tech(s, 3, 3, can=("accept", "check_in"))
+    s.db.execute("UPDATE locations SET db_id=11, tz='America/New_York'")
+    s.db.execute("INSERT INTO work_orders(sc_id,location,trade,state,created_at,ctx) VALUES(9,'HQ-NYC','DOORS','active',0,?)",
+                 (json.dumps({**CTX, "provider_id": 2000078685}),))
+    s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,payload) VALUES(1,0,'reassign',0,'{\"reason\":3}')")
+    s.db.commit()
+    seen = []
+
+    class App(FakeApp):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            seen.append((method, path, params, body))
+            if path == "/contracts":
+                return {"Contracts": [{"Id": 1}] if contract and params["providerId"] == 2000000677 else []}
+            return super().call(user, method, path, params, body, **kw)
+    rt = Runtime(s, {1: App("sub", []), 2: App("prov", []), 3: App("prov2", [])}, random.Random(1))
+    wo = s.db.execute("SELECT * FROM work_orders").fetchone()
+    return s, rt, wo, seen
+
+
+def test_reassign_moves_the_wo_to_a_provider_with_a_contract_and_plans_its_work(tmp_path):
+    s, rt, wo, seen = _reassign_setup(tmp_path, contract=True)
+    make_handlers(rt)["reassign"](None, wo, {"id": 1, "seq": 0, "kind": "reassign", "payload": '{"reason":3}'})
+    assert ("PUT", "/workorders/9/reassign", None, {"ProviderId": 2000000677, "ReasonId": 3}) in seen
+    assert ("GET", "/contracts", {"locationDbId": 11, "providerId": 2000000677, "trade": "DOORS"}, None) in seen
+    assert json.loads(s.db.execute("SELECT ctx FROM work_orders").fetchone()[0])["provider_id"] == 2000000677
+    kinds = [r[0] for r in s.db.execute("SELECT kind FROM steps ORDER BY seq")]
+    assert kinds[0] == "reassign" and kinds[1] == "accept" and "cancel" not in kinds
+
+
+def test_reassign_never_targets_the_current_provider_even_when_ctx_lacks_it(tmp_path):
+    s, rt, wo, seen = _reassign_setup(tmp_path, contract=True)
+    s.db.execute("UPDATE work_orders SET ctx=?", (json.dumps(CTX),))
+    s.db.commit()
+    wo = s.db.execute("SELECT * FROM work_orders").fetchone()
+    make_handlers(rt)["reassign"](None, wo, {"id": 1, "seq": 0, "kind": "reassign", "payload": '{"reason":3}'})
+    assert not any(c[1] == "/contracts" and c[2]["providerId"] == 2000078685 for c in seen)
+
+
+def test_reassign_with_no_contract_elsewhere_cancels_like_a_plain_decline(tmp_path):
+    s, rt, wo, seen = _reassign_setup(tmp_path, contract=False)
+    make_handlers(rt)["reassign"](None, wo, {"id": 1, "seq": 0, "kind": "reassign", "payload": '{"reason":3}'})
+    assert not any(c[0] == "PUT" for c in seen)
+    assert [r[0] for r in s.db.execute("SELECT kind FROM steps ORDER BY seq")] == ["reassign", "cancel"]
+
+
+def test_reassign_retries_on_a_server_error_instead_of_cancelling(tmp_path):
+    from sc_activity_agent.client import ScError
+    s, rt, wo, seen = _reassign_setup(tmp_path, contract=True)
+
+    class Down(FakeApp):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            if path == "/contracts":
+                raise ScError(500, "boom", path)
+            return super().call(user, method, path, params, body, **kw)
+    rt.apps[1] = Down("sub", [])
+    with pytest.raises(ScError):
+        make_handlers(rt)["reassign"](None, wo, {"id": 1, "seq": 0, "kind": "reassign", "payload": '{"reason":3}'})
+    assert [r[0] for r in s.db.execute("SELECT kind FROM steps ORDER BY seq")] == ["reassign"]

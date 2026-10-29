@@ -215,3 +215,78 @@ def test_each_thread_gets_its_own_db_connection(tmp_path):
     [t.start() for t in ts]
     [t.join() for t in ts]
     assert not errs and s.get("k3") == 199
+
+
+def test_emergency_plan_visits_within_hours_with_an_availability_exchange():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    tz = ZoneInfo("America/New_York")
+    now = datetime(2026, 10, 28, 9, 0, tzinfo=tz).timestamp()   # Wednesday morning
+    for seed in range(200):
+        p = planner.build_plan(random.Random(seed), now, {"proposal_rate": 100, "late_checkin": 100}, eta=now + 3 * 3600)
+        first_in = next(s for s in p if s["kind"] == "check_in")["due_at"]
+        assert first_in - now <= 8 * 3600
+        assert not any(s["kind"] == "proposal_create" for s in p)
+        early = [s["kind"] for s in p if s["due_at"] < first_in]
+        assert early[0] == "accept" and {"sub_note", "prov_note"} <= set(early)   # random notes may interleave
+        d = datetime.fromtimestamp(first_in, tz)
+        assert 8 <= d.hour + d.minute / 60 <= 17 and d.weekday() < 5
+
+
+def test_eta_over_eight_hours_is_a_normal_plan_anchored_to_the_eta():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    tz = ZoneInfo("America/New_York")
+    now = datetime(2026, 10, 28, 9, 0, tzinfo=tz).timestamp()
+    eta = datetime(2026, 10, 30, 10, 0, tzinfo=tz).timestamp()
+    for seed in range(100):
+        p = planner.build_plan(random.Random(seed), now, {"proposal_rate": 0, "late_checkin": 0, "first_time_fix": 100}, eta=eta)
+        assert next(s for s in p if s["kind"] == "check_in")["due_at"] >= eta
+
+
+def test_emergency_hours_sets_the_threshold_and_zero_turns_it_off():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    tz = ZoneInfo("America/New_York")
+    now = datetime(2026, 10, 28, 9, 0, tzinfo=tz).timestamp()
+    eta = now + 20 * 3600
+    kinds = lambda cfg: [s["kind"] for s in planner.build_plan(random.Random(1), now, {"proposal_rate": 100, **cfg}, eta=eta)]
+    assert "proposal_create" in kinds({})                               # 20 h is over the 8 h default
+    assert "proposal_create" not in kinds({"emergency_hours": 24})
+    assert "proposal_create" in kinds({"emergency_hours": 0})
+
+
+def test_emergency_threshold_is_inclusive():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    now = datetime(2026, 10, 28, 9, 0, tzinfo=ZoneInfo("America/New_York")).timestamp()
+    has = lambda secs: any(s["kind"] == "proposal_create" for s in planner.build_plan(random.Random(1), now, {"proposal_rate": 100, "emergency_hours": 8}, eta=now + secs))
+    assert not has(8 * 3600) and has(8 * 3600 + 1)
+
+
+def test_decline_plan_is_a_decline_then_a_cancel_and_nothing_else():
+    for seed in range(50):
+        p = planner.build_plan(random.Random(seed), NOW, {"decline": 100})
+        assert [s["kind"] for s in p] == ["decline", "cancel"]
+        assert p[1]["due_at"] - p[0]["due_at"] >= 86400 - 3600
+    assert planner.build_plan(random.Random(1), NOW, {"decline": 0})[0]["kind"] == "accept"
+
+
+def test_reschedule_moves_the_visit_later_than_the_original_date():
+    n = 0
+    for seed in range(200):
+        p = planner.build_plan(random.Random(seed), NOW, {"reschedule": 100, "proposal_rate": 0, "late_checkin": 0})
+        r = [s for s in p if s["kind"] == "reschedule"]
+        if not r:
+            continue
+        n += 1
+        pay, first_in = r[0]["payload"], next(s for s in p if s["kind"] == "check_in")["due_at"]
+        assert pay["to"] > pay["from_ts"] and first_in >= pay["to"] - 1 and r[0]["due_at"] < pay["from_ts"]
+    assert n > 100
+
+
+def test_declined_plan_can_end_in_a_reassign_instead_of_a_cancel():
+    for seed in range(10):
+        p = planner.build_plan(random.Random(seed), NOW, {"decline": 100, "reassign": 100})
+        assert [s["kind"] for s in p] == ["decline", "reassign"]
+        assert planner.build_plan(random.Random(seed), NOW, {"decline": 100, "reassign": 0})[-1]["kind"] == "cancel"

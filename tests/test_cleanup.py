@@ -121,3 +121,17 @@ def test_finish_is_never_automatic_on_prod_and_saving_does_not_start_a_sweep(tmp
     assert s.get("cleanup")["sweep"] == "cancel" and cleanup.sweep(s, rt, clock=lambda: s.get("last_sweep") + 60) == []
     c.post("/cleanup/auto", data={"sweep": "finish", "confirm": "1"})
     assert s.get("cleanup")["sweep"] == "cancel"            # refused on prod
+
+
+def test_finish_plan_adds_the_availability_exchange_only_when_the_eta_is_inside_the_emergency_hours(tmp_path):
+    s, app, rt = setup(tmp_path, [])
+    s.db.execute("INSERT INTO connections VALUES(2,'provider','P','c','x',77)")
+    s.db.commit()
+    iso = lambda h: __import__("datetime").datetime.fromtimestamp(NOW + h * 3600, __import__("datetime").timezone.utc).isoformat()
+    for i, h in ((11, 3), (12, 30), (13, -5)):
+        cleanup.finish_plan(s, rt, {**wo(i), "ScheduledDate": iso(h), "CallDate": iso(-1), "_location": "HQ"}, NOW)
+    s.put("behavior", {"emergency_hours": 2})   # call date to ETA is 4 hours: over this threshold
+    cleanup.finish_plan(s, rt, {**wo(14), "ScheduledDate": iso(3), "CallDate": iso(-1), "_location": "HQ"}, NOW)
+    kinds = lambda i: [r[0] for r in s.db.execute("SELECT kind FROM steps WHERE wo_id=(SELECT id FROM work_orders WHERE sc_id=?) ORDER BY seq", (i,))]
+    assert kinds(11)[:3] == ["sub_note", "prov_note", "check_in"]
+    assert kinds(12)[0] == kinds(13)[0] == kinds(14)[0] == "check_in"

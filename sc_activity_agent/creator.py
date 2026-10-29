@@ -140,8 +140,12 @@ class Creator:
             raise ScError(409, f"no issue resolves on the dashboard of {loc['store_id']}", "create")
         b = {**planner.DEFAULTS, **self.store.get("behavior", {})}
         tz = loc["tz"] or "America/New_York"
-        plan = planner.build_plan(self.rng, now, b, tz)
-        first_in = next(s["due_at"] for s in plan if s["kind"] == "check_in")
+        # an EMERGENCY issue is the one case where we pick a same-day ETA; every behavior then keys off that ETA, not the label
+        hrs = b["emergency_hours"]
+        eta = now + self.rng.randint(1800, max(1800, int(hrs * 3600 * 0.9))) if issue["priority"] == "EMERGENCY" and hrs else None
+        plan = planner.build_plan(self.rng, now, b, tz, eta=eta)
+        first_in = next((s["payload"]["from_ts"] for s in plan if s["kind"] == "reschedule"), None) \
+            or next((s["due_at"] for s in plan if s["kind"] == "check_in"), now + 2 * 86400)   # a rescheduled WO is created with its original date; a declined one has no visit
         sched = dt.datetime.fromtimestamp(first_in, ZoneInfo(tz))
         locd = {"subscriber_id": loc["subscriber_id"], "id": loc["db_id"], "store_id": loc["store_id"]}
         body = generator.payload(issue, locd, self._header_id(loc, dashboard), area, sched.replace(tzinfo=None),

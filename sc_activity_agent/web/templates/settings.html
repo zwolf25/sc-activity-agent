@@ -5,6 +5,7 @@
 <select name="resume_policy">
 {% for v, t in [('catch_up', 'Catch up over the next hour'), ('push', 'Shift forward by the gap'), ('skip_stale', 'Skip stale notes, then shift')] %}<option value="{{ v }}" {{ 'selected' if policy == v }}>{{ t }}</option>{% endfor %}</select></div>
 {% if not packaged %}<div class="sl set"><div>Start at login<small>Does not wake a sleeping machine</small></div><input type="checkbox" name="login" value="on" {{ 'checked' if login }}></div>{% endif %}
+{% if awake_ui %}<div class="sl set"><div>Keep this Mac awake<small>Plans only run while the Mac is awake. Does not cover lid-close or battery sleep</small></div><input type="checkbox" name="awake_on" value="on" {{ 'checked' if awake_on }}></div>{% endif %}
 <div class="row"><span></span><button class="primary">Save</button></div></form>
 <div class="card"><h3>Updates and support</h3>
 <p>Version {{ version }}. The agent checks for a new release every hour and shows a banner. Updating pauses the agent, saves a backup, installs the release and restarts. If the new version does not start, the old version and your database are put back.</p>
