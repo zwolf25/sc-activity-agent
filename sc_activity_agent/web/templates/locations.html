@@ -1,6 +1,6 @@
 {% extends "base.html" %}{% block body %}
 {% if msg %}<div class="note">{{ msg }}</div>{% endif %}
-<div class="card tbl"><h3>Locations</h3><table><thead><tr><th>Store</th><th>Name</th><th>DB id</th><th>Time zone</th><th>Enabled</th><th></th></tr></thead><tbody>
+<div class="card tbl"><h3>Locations</h3><table data-page="10"><thead><tr><th>Store</th><th>Name</th><th>DB id</th><th>Time zone</th><th>Enabled</th><th></th></tr></thead><tbody>
 {% for l in locs %}<tr><td>{{ l.store_id }}</td><td>{{ l.name }}</td><td class="mono">{{ l.db_id }}</td><td>{{ l.tz }}</td><td><span class="pill {{ 'good' if l.enabled else '' }}">{{ 'On' if l.enabled else 'Off' }}</span></td>
 <td class="row"><form method="post" action="/locations/{{ l.store_id }}/toggle"><button class="sm">Toggle</button></form><form method="post" action="/locations/{{ l.store_id }}/delete"><button class="sm">Remove</button></form></td></tr>{% else %}<tr><td colspan="6">No locations yet.</td></tr>{% endfor %}
 </tbody></table></div>
@@ -8,11 +8,14 @@
 <form method="post" action="/locations/load" class="row"><button class="primary">{{ 'Reload' if loaded else 'Load' }} locations from ServiceChannel</button></form>
 {% if loaded %}<form method="get" action="/locations" class="row"><label class="f">Search<input type="text" name="q" value="{{ q }}" placeholder="Store ID, name, city or state"></label><button class="sm">Search</button></form>
 <form method="post" action="/locations/add-many" class="grpform">
-<table><thead><tr><th></th><th>Store</th><th>Name</th><th>City</th><th>Status</th></tr></thead><tbody>
+<table data-page="20"><thead><tr><th></th><th>Store</th><th>Name</th><th>City</th><th>Status</th></tr></thead><tbody>
 {% for c in pool %}<tr><td><input type="checkbox" name="store_ids" value="{{ c.store_id }}"></td><td>{{ c.store_id }}</td><td>{{ c.name }}</td><td>{{ c.city }}{{ ', ' + c.state if c.state }}</td><td>{{ c.status }}</td></tr>{% else %}<tr><td colspan="5">No matching locations.</td></tr>{% endfor %}
-</tbody></table>{% if pool_n > 50 %}<p class="muted">Showing 50 of {{ pool_n }}. Search to narrow the list.</p>{% endif %}
+</tbody></table>{% if pool_n > 1000 %}<p class="muted">Showing 1000 of {{ pool_n }}. Search to narrow the list.</p>{% endif %}
 <label class="f">Or paste store IDs (a list or CSV; commas, spaces or lines)<textarea name="pasted" rows="2" placeholder="1001, 1002, 1003"></textarea></label>
 <button class="primary">Add selected and pasted</button></form>{% endif %}</div>
-<div class="card tbl"><h3>Trades we can create</h3><p class="muted">Trades where one of your provider connections is Rank 1 at the location. Refreshed daily when the agent creates work orders.{% if checked %} Last read {{ checked }}.{% endif %}</p><form method="post" action="/locations/resync"><button class="sm">Refresh now</button></form><table><thead><tr><th>Location</th><th>Trade</th></tr></thead><tbody>
+<div class="card tbl"><h3>Trades we can create</h3><p class="muted">Trades where one of your provider connections is Rank 1 at the location. Refreshed daily when the agent creates work orders.{% if checked %} Last read {{ checked }}.{% endif %}</p><form method="post" action="/locations/resync"><button class="sm">Refresh now</button></form>
+<div class="filters"><label class="f">Location<select data-filter="trades" data-col="0"><option value="">All locations</option>{% for l in contracts|map(attribute='location')|unique|sort %}<option>{{ l }}</option>{% endfor %}</select></label>
+<label class="f">Trade<select data-filter="trades" data-col="1"><option value="">All trades</option>{% for t in contracts|map(attribute='trade')|unique|sort %}<option>{{ t }}</option>{% endfor %}</select></label></div>
+<table id="trades" data-page="10"><thead><tr><th>Location</th><th>Trade</th></tr></thead><tbody>
 {% for c in contracts %}<tr><td>{{ c.location }}</td><td>{{ c.trade }}</td></tr>{% else %}<tr><td colspan="2">Not checked yet. Appears after the agent's first creation pass.</td></tr>{% endfor %}
-</tbody></table>{% if skipped %}<h3>Skipped trades</h3><p class="muted">On the location's issue list, but another provider is Rank 1, so the agent never creates them.</p><table><thead><tr><th>Location</th><th>Skipped trades</th></tr></thead><tbody>{% for s in skipped %}<tr><td>{{ s.location }}</td><td>{{ s.trades|join(", ") }}</td></tr>{% endfor %}</tbody></table>{% endif %}</div>{% endblock %}
+</tbody></table>{% if skipped %}<h3>Skipped trades</h3><p class="muted">On the location's issue list, but another provider is Rank 1, so the agent never creates them.</p><table data-page="10"><thead><tr><th>Location</th><th>Skipped trades</th></tr></thead><tbody>{% for s in skipped %}<tr><td>{{ s.location }}</td><td>{{ s.trades|join(", ") }}</td></tr>{% endfor %}</tbody></table>{% endif %}</div>{% endblock %}

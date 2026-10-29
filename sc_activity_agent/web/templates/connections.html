@@ -16,12 +16,14 @@
 {% for c in conns %}<div class="card"><div class="row"><h3>{{ c.side }} · {{ c.name }}</h3>
 <form method="post" action="/connections/{{ c.id }}/delete"><button class="sm">Remove</button></form></div>
 <div class="mono">Client ID {{ c.client_id }}{% if c.provider_id %} · Provider {{ c.provider_id }}{% endif %}</div>
-<table><thead><tr><th>User</th><th>Label</th><th></th></tr></thead><tbody>
-{% for u in c.users %}<tr><td>{{ u.username }}{% if u.label %} <span class="mono">({{ u.label }})</span>{% endif %}</td><td><form method="post" action="/users/{{ u.id }}/label" class="row" style="justify-content:flex-start"><input type="text" name="label" value="{{ u.label }}" placeholder="e.g. Maria, HVAC tech"><button class="sm">Save</button></form></td><td class="row"><form method="post" action="/users/{{ u.id }}/test"><button class="sm">Test</button></form>
-<form method="post" action="/users/{{ u.id }}/delete"><button class="sm">Remove</button></form></td></tr>
-<tr><td colspan="3"><form method="post" action="/users/{{ u.id }}/can-do" class="row" style="justify-content:flex-start;flex-wrap:wrap"><b>Can do</b>
-{% for key, label in c.actions %}<label><input type="checkbox" name="can_do" value="{{ key }}" {{ 'checked' if key in u.can_do }}> {{ label }}</label>{% endfor %}<button class="sm">Save</button></form>
-{% if not u.can_do %}<div class="note">Does nothing until something is ticked.</div>{% endif %}</td></tr>{% endfor %}</tbody></table>
+<table class="users"><thead><tr><th>User</th><th>Label</th><th>Can do</th><th></th></tr></thead><tbody>
+{% for u in c.users %}<tr><td>{{ u.username }}</td>
+<td><form method="post" action="/users/{{ u.id }}/label" class="lbl"><input type="text" name="label" value="{{ u.label }}" placeholder="e.g. Maria, HVAC tech"><button class="sm">Save</button></form></td>
+<td><details class="ms"><summary>{% if not u.can_do %}Nothing ticked{% elif u.can_do|length == c.actions|length %}All {{ c.actions|length }} actions{% else %}{{ u.can_do|length }} of {{ c.actions|length }} actions{% endif %}</summary>
+<form method="post" action="/users/{{ u.id }}/can-do" class="pop">{% for key, label in c.actions %}<label class="chk"><input type="checkbox" name="can_do" value="{{ key }}" {{ 'checked' if key in u.can_do }}> {{ label }}</label>{% endfor %}<button class="sm primary">Save</button></form></details>
+{% if not u.can_do %}<small class="muted">Does nothing until something is ticked.</small>{% endif %}</td>
+<td><div class="acts"><form method="post" action="/users/{{ u.id }}/test"><button class="sm">Test</button></form>
+<form method="post" action="/users/{{ u.id }}/delete"><button class="sm">Remove</button></form></div></td></tr>{% endfor %}</tbody></table>
 <form method="post" action="/connections/{{ c.id }}/users" class="row" style="justify-content:flex-start;flex-wrap:wrap">
 <label class="f">Username<input type="text" name="username" required></label><label class="f">Password<input type="password" name="password" required></label>
 <label class="f">Label<input type="text" name="label"></label><button class="primary">Add user</button></form></div>{% endfor %}

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Changed: tables page in the browser. Locations 10, Add locations 20, Trades we can create 10 (with Location and Trade filters), Skipped trades 10, Audit log 20, both Errors tables 20, both Cleanup tables 10, Backups 10. The Add locations list now holds up to 1000 matches (was 50), and ticks survive paging.
+- Changed: Connections shows one row per user, with a Can do dropdown of checkboxes instead of a second row of boxes. Audit log Call text wraps instead of being cut off. Errors has a "Failed steps" header.
+- Changed: Cleanup settings sit inline, and the daily-choice dropdown is no longer full width.
+- Changed: the Dashboard hides done steps by default, as it already did for skipped ones.
 - Changed: the hourly status check is now a toggle in Settings named "Catch cancellations early", on by default, instead of a 0 to 1 slider in Behavior named "Background status check" that was off. Once an hour the agent reads one active WO; if a user cancelled it in ServiceChannel, its plan ends then instead of when the next step comes due. It only reads. An instance that had the old slider set uses the new default (on); switch it off in Settings.
 ## v0.7.0 - 2026-10-29
 - Update note: restart the agent after updating. No database migration and no pause needed. New Behavior settings (declines, reschedules, reassign, background check) default to 0 or off. Keep this Mac awake is on by default on macOS source installs.

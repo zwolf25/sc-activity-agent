@@ -138,6 +138,7 @@ def create_app(store, engine=None, rt=None):
 
     @app.get("/dashboard")
     def dashboard(request: Request, page_no: int = Query(1, alias="page"), hide_done: str = "", hide_skipped: str = "", f: str = ""):
+        hide_done = hide_done or ("" if f else "1")  # f marks a submitted filter form, so unchecked means off
         hide_skipped = hide_skipped or ("" if f else "1")  # f marks a submitted filter form, so unchecked means off
         tz = store.get("tz", "America/New_York")
         rows, total, pages, cur = status.week(db, tz, hide_done=bool(hide_done), hide_skipped=bool(hide_skipped), page=page_no)
@@ -375,7 +376,7 @@ def create_app(store, engine=None, rt=None):
         ql = q.strip().lower()
         if ql:
             pool = [c for c in pool if ql in f"{c['store_id']} {c['name']} {c['city']} {c['state']}".lower()]
-        return page(request, "locations", locs=locs, contracts=con, pool=pool[:50], pool_n=len(pool), q=q, msg=msg, skipped=skipped,
+        return page(request, "locations", locs=locs, contracts=con, pool=pool[:1000], pool_n=len(pool), q=q, msg=msg, skipped=skipped,
                     checked=datetime.fromtimestamp(checked, ZoneInfo(store.get('tz', 'America/New_York'))).strftime('%b %d %H:%M') if checked else None,
                     loaded=store.get("locations_cache") is not None)
 

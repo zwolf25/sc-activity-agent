@@ -16,7 +16,7 @@
   {% for key, label in nav %}<a href="/{{ key }}" class="{{ 'on' if here == key }}">{{ label }}{% if key == 'errors' and failed %}<span class="badge">{{ failed }}</span>{% endif %}</a>{% endfor %}
   <small class="mono" style="color:var(--muted);padding:8px 12px">v{{ version }}</small>
 </nav><main><div class="page on">{% block body %}{% endblock %}</div></main></div>
-</div>{% if packaged and update %}<script>
+</div><script src="/static/ui.js?v={{ version }}"></script>{% if packaged and update %}<script>
 document.getElementById('upd').onclick=async e=>{const b=e.target,T=window.__TAURI__;b.disabled=true;b.textContent='Updating…';
 try{await fetch('/update/prepare',{method:'POST'});const u=await T.updater.check();if(!u)throw new Error('No update found');
 await u.downloadAndInstall();await fetch('/shutdown',{method:'POST'}).catch(()=>{});await T.process.relaunch()}catch(x){b.textContent='Update failed: '+x;await fetch('/resume',{method:'POST'})}}

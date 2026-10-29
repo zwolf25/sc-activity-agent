@@ -27,7 +27,7 @@ One Python process runs two things: an engine loop and a localhost web console. 
 | `content.py` | Note templates keyed by role and situation |
 | `alerts.py` | Optional Telegram alerts and action buttons: outbound only (sendMessage, getUpdates long poll), never raises into the engine |
 | `status.py` | Dashboard counts, the This week table, step context text |
-| `web/` | The console (routes in `app.py`, Jinja templates, one stylesheet) |
+| `web/` | The console (routes in `app.py`, Jinja templates, one stylesheet, `static/ui.js`). Long tables page in the browser: `<table data-page="N">` is paged by `ui.js`, which also drives the filter selects and closes the Can do pickers. Paging is client side so a form that wraps a table (Add locations) keeps every tick across pages. Tables that can grow past a few hundred rows are capped in the route (Audit 200, Add locations 1000), so the page stays small. |
 | `autostart.py`, `launcher.py`, `cli.py` | Start at login, launcher, commands (source installs; the desktop app does its own login start) |
 | `update.py` | Daily release check, the pending-update banner, `agent update` for source installs, and database backups (last 10 kept; also taken before every clean-up run) with `agent backup [name]` to list or restore |
 | `welcome.py` | First-run environment choice in the desktop app |

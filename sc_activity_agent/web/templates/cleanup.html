@@ -2,18 +2,19 @@
 <div class="banner warn">Cancel sets the WO to Completed / Canceled. The API cannot set VOID.</div>{% if msg %}<div class="note">{{ msg }}</div>{% endif %}
 <div class="card"><h3>Clean up old work orders</h3>
 <p>Finds open work orders at your enabled locations that the agent did not create and that have had no activity for a while, then cancels them. Nothing is cancelled until you preview, tick the box and press Cancel all.</p>
-<form method="post" action="/cleanup/preview" class="row">
+<form method="post" action="/cleanup/preview" class="inl">
 <label>No activity for <input type="number" name="days" min="1" max="3650" value="{{ cfg.days }}" style="width:5em"> days</label>
-<label>Never touch WOs with label <input name="protect" value="{{ cfg.protect }}"></label>
+<label>Never touch WOs with label <input type="text" name="protect" value="{{ cfg.protect }}"></label>
 <button>Preview</button></form>
+<hr style="border:0;border-top:1px solid var(--line);width:100%">
 
-<form method="post" action="/cleanup/auto"><label>Every weekday, by itself, with no preview: <select name="sweep"><option value="off"{% if cfg.sweep == 'off' %} selected{% endif %}>do nothing</option><option value="cancel"{% if cfg.sweep == 'cancel' %} selected{% endif %}>cancel idle work orders</option>{% if env != 'prod' %}<option value="finish"{% if cfg.sweep == 'finish' %} selected{% endif %}>finish ours, cancel the rest</option>{% endif %}</select></label>
-<label class="chk"><input type="checkbox" name="confirm" value="1"> I understand this cancels work orders on its own, up to 100 a day</label>
+<form method="post" action="/cleanup/auto" class="inl"><label>Every weekday, no preview: <select name="sweep"><option value="off"{% if cfg.sweep == 'off' %} selected{% endif %}>do nothing</option><option value="cancel"{% if cfg.sweep == 'cancel' %} selected{% endif %}>cancel idle work orders</option>{% if env != 'prod' %}<option value="finish"{% if cfg.sweep == 'finish' %} selected{% endif %}>finish ours, cancel the rest</option>{% endif %}</select></label>
+<label class="chk"><input type="checkbox" name="confirm" value="1"> I understand this cancels WOs by itself, up to 100 a day</label>
 <button class="sm">Save daily choice</button></form>
-<form method="post" action="/cleanup/now"><label class="chk"><input type="checkbox" name="confirm" value="1"> Skip the list: select every idle work order and act now, using the daily choice</label>
+<form method="post" action="/cleanup/now" class="inl"><label class="chk"><input type="checkbox" name="confirm" value="1"> Skip the list: select every idle work order and act now, using the daily choice</label>
 <button class="sm">Clean up now</button></form>
 {% if prev %}<p><b>{{ prev['items']|length }}</b> work order(s) found {{ prev.when }} ({{ prev.days }}+ days idle{% if prev.protected %}, {{ prev.protected }} skipped for label "{{ prev.protect }}"{% endif %}). Each one is re-checked just before it is cancelled.</p>
-{% if prev['items'] %}<div class="tbl"><table><thead><tr><th>WO</th><th>Location</th><th>Trade</th><th>Status</th><th>Last activity</th><th>Provider</th></tr></thead><tbody>
+{% if prev['items'] %}<div class="tbl"><table data-page="10"><thead><tr><th>WO</th><th>Location</th><th>Trade</th><th>Status</th><th>Last activity</th><th>Provider</th></tr></thead><tbody>
 {% for i in prev['items'] %}<tr><td class="mono">{{ i.id }}</td><td>{{ i.location }}</td><td>{{ i.trade }}</td><td>{{ i.status }}</td><td>{{ i.updated[:10] }}</td><td>{{ i.provider }}</td></tr>{% endfor %}
 </tbody></table></div>
 <form method="post" action="/cleanup/run"><label class="chk"><input type="checkbox" name="confirm" value="1"> I reviewed this list and want these work orders cancelled in ServiceChannel</label>
@@ -21,6 +22,6 @@
 {% if runstate %}<p>{% if runstate.running %}Running: {{ runstate.cancelled + runstate.skipped + runstate.errors|length }} of {{ runstate.total }} done.{% else %}Last run: {{ runstate.cancelled }} cancelled, {{ runstate.skipped }} skipped (changed since the preview), {{ runstate.errors|length }} error(s).{% endif %}</p>
 {% for e in runstate.errors[:5] %}<div class="note">{{ e }}</div>{% endfor %}{% endif %}</div>
 <h3>Work orders the agent created</h3>
-<div class="card tbl"><table><thead><tr><th>WO</th><th>Location</th><th>Trade</th><th>State</th><th></th></tr></thead><tbody>
+<div class="card tbl"><table data-page="10"><thead><tr><th>WO</th><th>Location</th><th>Trade</th><th>State</th><th></th></tr></thead><tbody>
 {% for r in rows %}<tr><td class="mono">{{ r.sc_id }}</td><td>{{ r.location }}</td><td>{{ r.trade }}</td><td>{{ r.state }}</td><td>{% if r.state != 'cancelled' %}<form method="post" action="/cleanup/{{ r.id }}/cancel"><button class="sm">Cancel WO</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="5">No work orders created yet.</td></tr>{% endfor %}
 </tbody></table></div>{% endblock %}

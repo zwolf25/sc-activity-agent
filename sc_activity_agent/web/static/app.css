@@ -98,3 +98,20 @@ ol.steps li.ok::marker{color:var(--good,#1a7f37);font-weight:700}
 ol.steps button{white-space:nowrap}
 ol.steps .done{margin-top:6px;font-weight:600;color:var(--good)}
 ol.steps .done::before{content:"\2713 "}
+tr[hidden]{display:none}
+.pager{display:flex;gap:10px;align-items:center;justify-content:flex-end;padding-top:8px}
+.pager:empty{display:none}
+.inl{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.inl input[type=text],.inl input[type=number],.inl select{width:auto}
+.filters{display:flex;flex-wrap:wrap;gap:10px 16px}
+.filters select{width:auto;min-width:160px}
+.call{word-break:break-all;min-width:240px}
+.users td{vertical-align:middle}
+.users .acts{display:flex;gap:6px}
+.users .lbl{display:flex;gap:6px;align-items:center}
+.users .lbl input{min-width:160px}
+details.ms{position:relative}
+details.ms summary{cursor:pointer;list-style:none;border:1px solid var(--line);border-radius:6px;padding:6px 9px;background:var(--surface);min-width:170px;display:flex;justify-content:space-between;gap:8px}
+details.ms summary::-webkit-details-marker{display:none}
+details.ms summary::after{content:"\25BE";color:var(--muted)}
+details.ms .pop{position:absolute;z-index:5;top:100%;left:0;margin-top:4px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:230px;box-shadow:0 4px 14px rgba(0,0,0,.2)}

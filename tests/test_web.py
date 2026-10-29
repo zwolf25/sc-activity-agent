@@ -145,9 +145,9 @@ def test_dashboard_this_week_paginates_and_hides_done(tmp_path):
     for i in range(12):
         s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,state) VALUES(1,?,?,?,?)", (i, "prov_note", wed + i, "done" if i < 3 else "pending"))
     s.db.commit()
-    p1, p2 = c.get("/dashboard").text, c.get("/dashboard?page=2").text
+    p1, p2 = c.get("/dashboard?f=1").text, c.get("/dashboard?page=2&f=1").text   # f=1: filter form submitted, nothing hidden
     assert "This week" in p1 and "Page 1 of 2" in p1 and p1.count("prov note") == 10 and p2.count("prov note") == 2
-    hidden = c.get("/dashboard?hide_done=1").text
+    hidden = c.get("/dashboard").text   # done rows are hidden by default
     assert hidden.count("prov note") == 9 and "Page 1 of" not in hidden and "done</span>" not in hidden
     assert "API calls in the last hour" not in p1
     s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,state) VALUES(1,99,'sub_note',?, 'skipped')", (wed,))
