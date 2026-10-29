@@ -75,8 +75,9 @@ def _eta(w, key):
         return 0
 
 
-def finish_plan(store, rt, w, now):
-    """Give a WO held by one of our providers a short plan: accept, one visit, review, invoice, approve. Times fit the activity window."""
+def finish_plan(store, rt, w, now, accept=False):
+    """Give a WO held by one of our providers a short plan: one visit, review, invoice, approve. Times fit the activity window.
+    accept adds the Provider's accept first, for a WO that is still OPEN (B-51)."""
     loc = store.db.execute("SELECT * FROM locations WHERE store_id=?", (w["_location"],)).fetchone()
     c, rng, tz = {**planner.DEFAULTS, **store.get("behavior", {})}, rt.rng, loc["tz"] or "America/New_York"
     t, steps = now, []
@@ -85,7 +86,10 @@ def finish_plan(store, rt, w, now):
         for kind, lo, hi, payload in (("sub_note", 300, 900, {"situation": "followup"}), ("prov_note", 600, 1200, {"situation": "eta"})):
             t = planner._fit(t + rng.randint(lo, hi), t, c, tz, rng)
             steps.append({"kind": kind, "due_at": t, "payload": payload})
-    # no accept step: idle WOs are mostly past acceptance and the API refuses it with 904 (seen live on Prod, 2026-10-27)
+    # no accept step unless asked: idle WOs are mostly past acceptance and the API refuses it with 904 (seen live on Prod, 2026-10-27)
+    if accept:
+        t = planner._fit(t + rng.randint(300, 1800), t, c, tz, rng)
+        steps.append({"kind": "accept", "due_at": t, "payload": {"situation": "ack"}})
     for kind, lo, hi, payload in (("check_in", 600, 3600, {"visit": 1, "situation": "onsite"}),
                                   ("check_out", 5400, 10800, {"visit": 1, "final": True, "situation": "complete"}),
                                   ("review", 3600, 28800, {"situation": "review"}), ("invoice_submit", 7200, 21600, {"situation": "invoice"}),

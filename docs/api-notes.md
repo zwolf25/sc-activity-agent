@@ -188,3 +188,5 @@ Provider app and user (SydeTech, Production app does not exist on SB2; a separat
 - **Not checked by the API:** hours billed against time on site. Nothing compared the 2 billed hours with the check-in and check-out times, so that flag would be the agent's own.
 
 - **COMPLETED/NO CHARGE (SB2, 2026-10-29, WO 359213720):** Subscriber `PUT /workorders/{id}/status {Status:{Primary:COMPLETED, Extended:"NO CHARGE"}, Note}` returns 200 ("changed from COMPLETED/CONFIRMED to COMPLETED/NO CHARGE") on a WO with Nte 0. Such a WO shows `Status.CanCreateInvoice: false`, and an invoice POST returns 1104 "Invoice Total > NTE 0.0000".
+
+- **Hand-made WO pickup (SB2, 2026-10-29, B-51):** `GET /odata/locations({dbId})/workorders?$filter=CreatedDate gt <utc> and (Status/Primary eq 'OPEN' or ...)&$expand=Provider($select=Id)&$select=Id,Trade` works and returns the provider id. `GET /workorders/{id}` has no `CreatedDate` (it has `CallDate`). A fresh WO is `OPEN` with `Extended` empty; after the Provider accepts it is `IN PROGRESS` / `DISPATCH CONFIRMED`. So the plan adds an accept step only for `OPEN`.

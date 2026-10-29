@@ -19,6 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .. import cleanup as cleanup_mod
+from .. import pickup as pickup_mod
 from .. import PACKAGED, __version__, autostart, awake, planner, status, update
 from .. import locations as locations_mod
 from ..alerts import EVENTS, Alerts, AlertError
@@ -507,7 +508,7 @@ def create_app(store, engine=None, rt=None):
     def settings(request: Request, msg: str = ""):
         al = Alerts(store)
         return page(request, "settings", login=autostart.enabled(store.dir, store.get("env")),
-                    awake_ui=awake.supported() and not PACKAGED, awake_on=store.get("keep_awake", True), check_on=store.get("status_check", True),
+                    awake_ui=awake.supported() and not PACKAGED, awake_on=store.get("keep_awake", True), check_on=store.get("status_check", True), pickup_on=pickup_mod.settings(store)["on"],
                     policy=store.get("resume_policy", "catch_up"), msg=msg, al=al.cfg, token_set=bool(store.get("alerts_token")),
                     backups=[(n, s // 1024, datetime.fromtimestamp(t).strftime("%b %d %H:%M")) for n, s, t in update.backups(store)],
                     events=EVENTS, alert_error=store.get("alert_error"), other_env="SB2" if store.get("env") == "prod" else "Production")
@@ -582,8 +583,9 @@ def create_app(store, engine=None, rt=None):
         return RedirectResponse("/settings?msg=Telegram alerts removed.", 303)
 
     @app.post("/settings")
-    def save_settings(resume_policy: str = Form(...), login: str = Form("off"), awake_on: str = Form("off"), check_on: str = Form("off")):
+    def save_settings(resume_policy: str = Form(...), login: str = Form("off"), awake_on: str = Form("off"), check_on: str = Form("off"), pickup_on: str = Form("off")):
         store.put("resume_policy", resume_policy)
+        store.put("pickup", {**pickup_mod.settings(store), "on": pickup_on == "on"})
         store.put("status_check", check_on == "on")
         if awake.supported() and not PACKAGED:
             store.put("keep_awake", awake_on == "on")
