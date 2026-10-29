@@ -64,6 +64,9 @@ We read proposals through `GET /odata/proposals?$filter=Id eq {id}` instead.
 ### 11. Error messages that hide the cause
 - 502 `Cannot find issue choice for AreaName = ''` is returned for a bad issue, a bad area and a bad dashboard alike, and the area name is blank even when `AreaId` was sent.
 - A create for a trade where the Subscriber has no contract with us does not fail: it assigns to whichever provider is Rank 1 (we saw Brad's Demo Co). That is reasonable, but nothing in the response says so. The true "no contract at all" error never appeared in our tests.
+- A Provider user from the wrong provider gets `917 Invalid Tracking Number` on `POST /invoices` and `502 Work order is not found` on the WO, not a permission error. When the integration tries several users, the real error is hidden behind these.
+- `POST /invoices` on a WO with `Nte` 0 returns `1104 Invoice Total > NTE 0.0000`. The WO reports `Status.CanCreateInvoice: false`, but nothing in the error says the WO cannot be invoiced.
+- A Labors line without `SkillLevel` returns `1194`. The required fields (`SkillLevel`, `LaborType`, `NumOfTech`, `HourlyRate`, `Hours`, `Amount`) are only in the developer guide, not in the error.
 
 ### 12. A rejected proposal can be approved again, and an approved one cannot be linked
 - `PUT /proposals/{id}/approve` on a proposal that was already rejected returns 204 and flips it to Approved. `PUT /proposals/{id}/assignWO` on an already approved proposal returns 400 `Proposal already approved`.
@@ -77,6 +80,8 @@ We read proposals through `GET /odata/proposals?$filter=Id eq {id}` instead.
 - **Review has no endpoint:** the Subscriber confirms completed work with `PUT /workorders/{id}/status` set to COMPLETED / CONFIRMED. We found it by trial.
 - **Cancel after approval:** cancelling (COMPLETED / CANCELED) a WO with an approved invoice returns 400.
 - **`GET /contracts`:** returns only contract ids. `locationId` returned 503 `Location is not found`, while `locationDbId` works.
+- **One invoice at a time:** a second `POST /invoices` while one is OPEN or APPROVED returns `1105 Invoice exists`. Partial invoices and credit memos on the same WO are therefore not possible through the API. A new invoice works only after a reject.
+- **Reject reason:** `PUT /invoices/{id}/reject` accepts `reasonId` but does not record it. Only `comments` is kept.
 - **Rate limits:** the docs say about 20 calls/min. We saw an app limit of 40/min (429 with `Retry-After`).
 - **Slow responses:** the full issue list for one dashboard is about 145 KB and exceeded 30 seconds once. SB2 also had a short outage on 2026-10-26 (500s and hangs) that cleared on its own.
 - **OAuth password grant:** a bad client id returns a 302, a bad user returns 400. Useful for diagnosis, but undocumented.
