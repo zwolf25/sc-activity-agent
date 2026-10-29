@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed: `agent status`, `get`, `plan`, `pause`, `resume`, `tick`, `step`, `set`, `cleanup` and `backup` no longer create an empty instance (folder, key and database) at a mistyped or wrong `--data-dir`. They exit with "no agent instance at <path>". Only `init`, `run`, `open` and `install-app` create a folder. (Shipped in 0.7.1; changelog line added afterwards.)
+
 ## v0.7.1 - 2026-10-29
 
 - Update note: restart the agent after updating. No database migration and no pause needed.
