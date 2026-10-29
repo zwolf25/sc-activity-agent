@@ -118,7 +118,8 @@ def make_handlers(rt):
         rows = rt.store.db.execute(
             "SELECT DISTINCT c.provider_id FROM connections c JOIN users u ON u.conn_id=c.id WHERE c.side='provider' AND c.provider_id IS NOT NULL "
             "AND EXISTS (SELECT 1 FROM json_each(u.can_do) WHERE value='accept')").fetchall()
-        current = ctx.get("provider_id")
+        # ctx may not carry the provider (a WO is routed by contract rank), so read the live one
+        current = (call(wo, step, "GET", f"/workorders/{wo['sc_id']}").get("Provider") or {}).get("Id") or ctx.get("provider_id")
         targets = []
         for r in rows:
             if r["provider_id"] == current:

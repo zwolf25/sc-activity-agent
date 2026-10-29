@@ -434,6 +434,15 @@ def test_reassign_moves_the_wo_to_a_provider_with_a_contract_and_plans_its_work(
     assert kinds[0] == "reassign" and kinds[1] == "accept" and "cancel" not in kinds
 
 
+def test_reassign_never_targets_the_current_provider_even_when_ctx_lacks_it(tmp_path):
+    s, rt, wo, seen = _reassign_setup(tmp_path, contract=True)
+    s.db.execute("UPDATE work_orders SET ctx=?", (json.dumps(CTX),))
+    s.db.commit()
+    wo = s.db.execute("SELECT * FROM work_orders").fetchone()
+    make_handlers(rt)["reassign"](None, wo, {"id": 1, "seq": 0, "kind": "reassign", "payload": '{"reason":3}'})
+    assert not any(c[1] == "/contracts" and c[2]["providerId"] == 2000078685 for c in seen)
+
+
 def test_reassign_with_no_contract_elsewhere_cancels_like_a_plain_decline(tmp_path):
     s, rt, wo, seen = _reassign_setup(tmp_path, contract=False)
     make_handlers(rt)["reassign"](None, wo, {"id": 1, "seq": 0, "kind": "reassign", "payload": '{"reason":3}'})
