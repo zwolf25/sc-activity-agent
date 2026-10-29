@@ -1,4 +1,4 @@
-"""B-51: give a plan to work orders people create by hand at our locations. Once an hour (setting pickup.on, off by default) it
+"""B-51: give a plan to work orders people create by hand at our locations. Once an hour (setting pickup.on, on by default) it
 lists recent active WOs, keeps those held by one of our providers in a trade where Rank 1 is ours, and plans them with
 cleanup.finish_plan. The protect label and the age limit keep it off real customers' work."""
 import time
@@ -7,7 +7,7 @@ from . import cleanup
 from .client import ScError
 
 EVERY, MAX_PER_PASS = 3600, 10   # shortcut: runs in the main loop, so a pass of ~12 calls at 15 calls/min holds the step loop about a minute an hour; move to a thread like the sweep if that shows
-DEFAULTS = {"on": False, "days": 7}
+DEFAULTS = {"on": True, "days": 7}
 
 
 def settings(store):

@@ -137,7 +137,7 @@ def test_finish_plan_adds_the_availability_exchange_only_when_the_eta_is_inside_
     assert kinds(12)[0] == kinds(13)[0] == kinds(14)[0] == "check_in"
 
 
-def test_pickup_plans_only_recent_wos_of_ours_in_our_trades_and_is_off_until_turned_on(tmp_path):
+def test_pickup_plans_only_recent_wos_of_ours_in_our_trades_and_can_be_turned_off(tmp_path):
     from sc_activity_agent import pickup
     s, app, rt = setup(tmp_path, [wo(i, upd=NEW, status=st) for i, st in ((1, "OPEN"), (2, "OPEN"), (3, "OPEN"), (4, "IN PROGRESS"), (5, "OPEN"), (7, "OPEN"))])
     s.db.execute("INSERT INTO connections VALUES(2,'provider','P','c','x',77)")
@@ -147,7 +147,8 @@ def test_pickup_plans_only_recent_wos_of_ours_in_our_trades_and_is_off_until_tur
     app.listing[2]["Labels"] = [{"Id": 1, "Label": "Do Not Touch"}]   # protect label, any case
     app.listing[4]["Trade"] = "PLUMBING"
     creator = type("C", (), {"our_trades": lambda self, loc: {"HVAC"}})()
-    assert pickup.tick(s, rt, creator, clock=lambda: NOW) == []   # off by default
+    s.put("pickup", {"on": False})
+    assert pickup.tick(s, rt, creator, clock=lambda: NOW) == []
     s.put("pickup", {"on": True})
     out = pickup.tick(s, rt, creator, clock=lambda: NOW)
     assert sorted(i for i, _ in out) == [1, 4]   # not 2 (foreign provider), 3 (protected), 5 (trade), 7 (the agent's own)

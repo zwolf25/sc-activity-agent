@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- New: the agent can plan work orders that people create by hand at your locations. Off by default; turn it on in Settings ("Plan work orders people create by hand"). Once an hour it finds WOs from the last 7 days that are held by one of your providers, in a trade where your provider is Rank 1, and that do not carry the protect label. Each gets a short plan (accept if still open, a visit, review, invoice, decision). WOs held by other providers are left alone. It acts as the Provider and Subscriber, so leave it off on Production until you want that. Restart the agent after updating; no migration.
+- New: the agent can plan work orders that people create by hand at your locations. On by default; turn it off in Settings ("Plan work orders people create by hand"). Once an hour it finds WOs from the last 7 days that are held by one of your providers, in a trade where your provider is Rank 1, and that do not carry the protect label. Each gets a short plan (accept if still open, a visit, review, invoice, decision). WOs held by other providers are left alone. It acts as the Provider and Subscriber on those WOs. After you update, it starts within an hour; switch it off first in Settings if you do not want that. Restart the agent after updating; no migration.
 - Changed: `install.ps1` (Windows) takes the data folder from `SC_AGENT_DATA` when set, as `install.sh` already does. Checked by reading only; not run on Windows.
 - A work order with an NTE of 0 is no longer invoiced (ServiceChannel refuses it). The Subscriber closes it as COMPLETED / NO CHARGE and the plan ends. Restart the agent after updating; no migration.
 ## v0.8.0 - 2026-10-29
