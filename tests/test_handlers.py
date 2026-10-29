@@ -1,3 +1,4 @@
+import datetime as dt
 import json
 import random
 
@@ -5,7 +6,8 @@ import pytest
 
 from sc_activity_agent import planner
 from sc_activity_agent.engine import Engine, add_plan
-from sc_activity_agent.handlers import Runtime, make_handlers
+from sc_activity_agent.client import Park
+from sc_activity_agent.handlers import Runtime, follow, make_handlers
 from sc_activity_agent.store import Store
 
 NOW = 1_761_220_800
@@ -475,3 +477,64 @@ def test_reassign_skips_the_old_plans_pending_steps_and_a_no_show_cancels_with_i
         assert old == "skipped"
         cancels = [json.loads(r[0]) for r in s.db.execute("SELECT payload FROM steps WHERE kind='cancel'")]
         assert cancels == ([] if contract else [{"situation": "noshow_cancel"}])
+
+
+def _row(s):
+    return s.db.execute("SELECT * FROM work_orders WHERE sc_id=5001").fetchone()
+
+
+def _live_app(**live):
+    class App(FakeApp):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            if method == "GET" and path.startswith("/workorders/"):
+                self.calls.append((self.name, user[0], method, path))
+                return {"Status": {"Primary": "OPEN"}, **live}
+            return super().call(user, method, path, params, body, **kw)
+    return App
+
+
+def _follow_setup(tmp_path, **live):
+    s = setup(tmp_path)
+    calls = []
+    App = _live_app(**live)
+    rt = Runtime(s, {1: App("sub", calls), 2: App("prov", calls)}, random.Random(1))
+    add_plan(s, "HQ-NYC", "HVAC", 5001, planner.build_plan(random.Random(4), NOW, {}), {**CTX}, NOW)
+    return s, rt
+
+
+def test_preflight_follows_a_later_scheduled_date_and_a_new_nte_and_priority(tmp_path):
+    s, rt = _follow_setup(tmp_path, ScheduledDate="2026-11-05T15:00:00Z", Nte=900.0, Priority="High")
+    wo = _row(s)
+    rt.save_ctx(wo, sched=dt.datetime(2026, 11, 3, 15, tzinfo=dt.UTC).timestamp())   # the date the plan was built on
+    wo = _row(s)
+    first = s.db.execute("SELECT id, seq, due_at FROM steps WHERE wo_id=? ORDER BY seq", (wo["id"],)).fetchall()
+    h = make_handlers(rt)
+    h["accept"](None, wo, s.db.execute("SELECT * FROM steps WHERE id=?", (first[0]["id"],)).fetchone())
+    after = s.db.execute("SELECT due_at FROM steps WHERE wo_id=? ORDER BY seq", (wo["id"],)).fetchall()
+    assert after[0]["due_at"] == first[0]["due_at"]   # the running step and the ones before it stay put
+    ci = next(i for i, f in enumerate(first) if f["seq"] == s.db.execute("SELECT seq FROM steps WHERE kind='check_in'").fetchone()[0])
+    assert [a["due_at"] for a in after[:ci]] == [f["due_at"] for f in first[:ci]]   # the accept and early notes stay on time
+    assert all(a["due_at"] >= f["due_at"] + 2 * 86400 for a, f in zip(after[ci:], first[ci:]))   # the visit and all after it follow the new date
+    ctx = json.loads(_row(s)["ctx"])
+    assert (ctx["nte"], ctx["priority"]) == (900.0, "High")
+    assert ctx["sched"] == dt.datetime(2026, 11, 5, 15, tzinfo=dt.UTC).timestamp()
+
+
+def test_preflight_parks_the_plan_on_a_status_or_provider_it_does_not_know(tmp_path):
+    s, rt = _follow_setup(tmp_path, Status={"Primary": "VOID"})
+    out = Engine(s, make_handlers(rt), clock=lambda: NOW + 10 ** 7, per_tick=50).tick()
+    assert out[0][1] == "failed"   # no retries: straight to the Errors page
+    assert "Skip the step" in s.db.execute("SELECT error FROM steps WHERE id=?", (out[0][0],)).fetchone()[0]
+    rt.save_ctx(_row(s), provider_id=1)
+    with pytest.raises(Park):
+        follow(rt, _row(s), s.db.execute("SELECT * FROM steps").fetchone(), {"Provider": {"Id": 777}})
+
+
+def test_a_check_in_waits_for_its_new_time_when_a_user_moved_the_date_later(tmp_path):
+    s, rt = _follow_setup(tmp_path, ScheduledDate="2026-11-05T15:00:00Z")
+    rt.save_ctx(_row(s), sched=dt.datetime(2026, 11, 3, 15, tzinfo=dt.UTC).timestamp())
+    ci = s.db.execute("SELECT * FROM steps WHERE kind='check_in'").fetchone()
+    s.db.execute("UPDATE steps SET state='done' WHERE seq<?", (ci["seq"],))
+    out = Engine(s, make_handlers(rt), clock=lambda: ci["due_at"] + 1, per_tick=50).tick()
+    now = s.db.execute("SELECT state, due_at, attempts FROM steps WHERE id=?", (ci["id"],)).fetchone()
+    assert (now["state"], now["attempts"]) == ("pending", 0) and now["due_at"] >= ci["due_at"] + 2 * 86400

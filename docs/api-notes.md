@@ -173,3 +173,7 @@ Provider app and user (SydeTech, Production app does not exist on SB2; a separat
 - The WO's saved context may not hold the provider (routing is by contract rank), so the step reads `Provider.Id` from `GET /workorders/{id}`. Without that it picked the current provider and got 400 `Invalid provider id` (ErrorCode 101) for reassigning to the provider already on the WO.
 - Reassign after check-in (SB2, 2026-10-29, WO 367579886): a WO IN PROGRESS / ON SITE reassigns with 200. The provider changes and the WO returns to OPEN with an empty extended status, so the new provider accepts and visits from scratch. Nothing in the API stops it, so the handler works from any point in a plan.
 - No-show (SB2, 2026-10-29, WO 367624710): the provider accepted and never checked in. A Subscriber note, then `PUT /reassign` (reason 3) returned 200, and the new provider accepted the WO.
+
+## B-39 follow-up: what a live WO read exposes (SB2, 2026-10-29, WO 367624710)
+- `GET /workorders/{id}` carries `ScheduledDate` (UTC, `Z`), `Nte`, `Priority` ("Normal"), `Provider.Id` and `Status.Primary`/`Extended`, enough to notice a reschedule, an NTE or priority edit, a provider change and a status the plan does not know.
+- A provider reschedule (`PUT /scheduledate`, reason 12) moved `ScheduledDate` and the agent shifted the pending visit steps on the next write step; a check-in that came due was held back until its new time. The NTE and priority edits were not exercised live, only read.

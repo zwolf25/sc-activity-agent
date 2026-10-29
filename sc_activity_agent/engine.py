@@ -6,7 +6,7 @@ import time
 from zoneinfo import ZoneInfo
 
 from .alerts import Alerts
-from .client import ScError
+from .client import Later, Park, ScError
 
 MERGE_SECONDS = 1800  # a new gap starting this soon after an unread one extends it
 GAP_SECONDS = 600  # silence longer than this between ticks is a gap (sleep, shutdown, crash)
@@ -148,10 +148,12 @@ class Engine:
                 self.handlers[st["kind"]](self, wo, st)
                 self.store.db.execute("UPDATE steps SET state='done', done_at=?, error=NULL WHERE id=?", (now, st["id"]))
                 out.append((st["id"], "done"))
+            except Later:
+                pass   # follow() already re-timed the step
             except Exception as e:  # a handler bug must fail its step, not loop forever on it
                 if isinstance(e, ScError) and e.status == 0:  # paused mid-tick
                     break
-                n = st["attempts"] + 1
+                n = MAX_ATTEMPTS if isinstance(e, Park) else st["attempts"] + 1
                 if n >= MAX_ATTEMPTS:
                     self.store.db.execute("UPDATE steps SET state='failed', attempts=?, error=? WHERE id=?", (n, str(e), st["id"]))
                     out.append((st["id"], "failed"))

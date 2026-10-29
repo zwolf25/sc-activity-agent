@@ -18,6 +18,14 @@ ENVS = {
 }
 
 
+class Park(Exception):
+    """The live WO changed in a way the plan cannot follow. The step fails at once (no retries) so the Errors page shows it."""
+
+
+class Later(Exception):
+    """The running step was moved to a later time (the WO's scheduled date changed). It stays pending and is not counted as an attempt."""
+
+
 class ScError(Exception):
     def __init__(self, status, body, path=""):
         super().__init__(f"{status} {path}: {str(body)[:300]}")

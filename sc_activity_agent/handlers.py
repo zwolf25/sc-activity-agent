@@ -7,7 +7,7 @@ import time
 from zoneinfo import ZoneInfo
 
 from . import content, planner
-from .client import ScError
+from .client import Later, Park, ScError
 
 ACTION = {"accept": "accept", "prov_note": "provider_note", "sub_note": "subscriber_note", "review": "review",
           "proposal_create": "proposal_create", "proposal_decide": "proposal_decide", "check_in": "check_in",
@@ -66,7 +66,8 @@ class Runtime:
         return self.store.db.execute("SELECT * FROM locations WHERE store_id=?", (store_id,)).fetchone()
 
     def save_ctx(self, wo, **kw):
-        ctx = {**json.loads(wo["ctx"]), **kw}
+        # merge into the stored context, not the row the caller holds: preflight may have saved newer values this step
+        ctx = {**json.loads(self.store.db.execute("SELECT ctx FROM work_orders WHERE id=?", (wo["id"],)).fetchone()[0]), **kw}
         self.store.db.execute("UPDATE work_orders SET ctx=? WHERE id=?", (json.dumps(ctx), wo["id"]))
         self.store.db.commit()
         return ctx
@@ -159,6 +160,7 @@ def make_handlers(rt):
         app, user = rt.user_for(wo["location"], "reschedule", wo, step)
         app.call(user, "PUT", f"/workorders/{wo['sc_id']}/scheduledate", params={"rescheduleReasonCode": p["reason"]}, action="reschedule", wo=wo["sc_id"],
                  write=True, body={"Value": dt.datetime.fromtimestamp(p["to"], ZoneInfo(tz)).strftime("%Y-%m-%dT%H:%M:%S"), "Actor": user[0]})
+        rt.save_ctx(wo, sched=None)   # our own move: the next preflight reads the new date as the baseline
 
     def cancel(engine, wo, step):
         cancel_wo(rt, wo, content.note("subscriber", json.loads(step["payload"])["situation"], ctx_of(wo), rt.rng))
@@ -298,7 +300,7 @@ def make_handlers(rt):
         WO makes the field steps moot, and a check-in/out the user already did is done. Anything else is a real failure."""
         def run(engine, wo, step):
             try:
-                if preflight(rt, call, wo, step, kind):
+                if preflight(rt, call, wo, step, kind, getattr(engine, "snap", lambda ts: ts)):
                     return
                 return fn(engine, wo, step)
             except ScError as e:
@@ -328,17 +330,61 @@ def make_handlers(rt):
 ALREADY_DONE_WHEN_COMPLETED = {"accept", "decline", "reassign", "reschedule", "check_in", "check_out", "proposal_create", "proposal_decide"}
 
 
-def preflight(rt, call, wo, step, kind):
+KNOWN_STATUS = {"OPEN", "IN PROGRESS", "ON HOLD", "COMPLETED"}
+
+
+def preflight(rt, call, wo, step, kind, snap=lambda ts: ts):
     """B-39: read the live WO before a write. A cancelled WO ends the plan; a WO a user already completed makes the field steps
-    moot. Returns True when the step must not run. A failed read changes nothing: the step runs and its own guard handles it."""
+    moot; a changed date, NTE or priority is followed (see `follow`). Returns True when the step must not run. A failed read
+    changes nothing: the step runs and its own guard handles it."""
     try:
-        st = (call(wo, step, "GET", f"/workorders/{wo['sc_id']}") or {}).get("Status", {})
+        w = call(wo, step, "GET", f"/workorders/{wo['sc_id']}") or {}
     except ScError:
         return False
+    st = w.get("Status", {})
     if st.get("Extended") == "CANCELED":
         end_plan(rt, wo)
         return True
-    return st.get("Primary") == "COMPLETED" and kind in ALREADY_DONE_WHEN_COMPLETED
+    if st.get("Primary") == "COMPLETED" and kind in ALREADY_DONE_WHEN_COMPLETED:
+        return True
+    follow(rt, wo, step, w, snap)
+    return False
+
+
+def follow(rt, wo, step, w, snap=lambda ts: ts):
+    """B-39: bring the plan in line with what a user changed on the live WO. NTE and priority go into the saved context (invoice
+    and proposal amounts and the notes read it). A later scheduled date moves the remaining steps by the same amount. A status
+    the plan does not know, or a provider the plan did not assign, parks the plan: the step fails at once for the Errors page."""
+    ctx = json.loads(wo["ctx"])
+    prov = (w.get("Provider") or {}).get("Id")
+    if w.get("Status", {}).get("Primary", "OPEN") not in KNOWN_STATUS:
+        raise Park(f"WO status {w.get('Status')} is not one the plan knows. Skip the step to carry on, or cancel the WO.")
+    if ctx.get("provider_id") and prov and prov != ctx["provider_id"]:
+        raise Park(f"A user moved the WO to provider {prov}; the plan was built for {ctx['provider_id']}. Skip the step to carry on, or cancel the WO.")
+    new = {k: v for k, v in (("nte", w.get("Nte")), ("priority", w.get("Priority"))) if v is not None and v != ctx.get(k)}
+    live, later = w.get("ScheduledDate"), False
+    if live:
+        ts = dt.datetime.fromisoformat(live.replace("Z", "+00:00")).timestamp()
+        known = ctx.get("sched")
+        if known is not None and abs(ts - known) > 300:
+            rows = rt.store.db.execute("SELECT id, kind, due_at FROM steps WHERE wo_id=? AND state='pending' AND seq>=? ORDER BY seq", (wo["id"], step["seq"])).fetchall()
+            i = next((i for i, r in enumerate(rows) if r["kind"] == "check_in"), None)
+            if i is not None:   # the visit and everything after it; earlier notes and the accept stay on time
+                rows = rows[i:]
+                # land the visit inside activity hours on a weekday, and move every step by that same amount so spacing and the check-out day hold
+                delta = snap(rows[0]["due_at"] + ts - known) - rows[0]["due_at"]
+                floor = step["due_at"]   # nothing moves before the running step
+                for r in rows:   # shifted, never into the past, order kept
+                    floor = max(r["due_at"] + delta, floor)
+                    rt.store.db.execute("UPDATE steps SET due_at=? WHERE id=?", (floor, r["id"]))
+                rt.store.db.commit()
+                later = rows[0]["id"] == step["id"] and floor > step["due_at"]
+        if known is None or abs(ts - known) > 300:
+            new["sched"] = ts
+    if new:
+        rt.save_ctx(wo, **new)
+    if later:
+        raise Later()   # the running step itself moved (a check-in for the old date): it waits for its new time
 
 
 FIELD = {"accept", "decline", "reassign", "reschedule", "prov_note", "sub_note", "check_in", "check_out", "proposal_create", "proposal_decide", "review"}
