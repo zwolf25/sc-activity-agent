@@ -324,7 +324,6 @@ def test_first_tech_out_of_a_crew_visit_does_not_complete_the_wo(tmp_path):
 def test_watch_ends_the_plan_of_a_wo_cancelled_by_a_user(tmp_path):
     from sc_activity_agent.handlers import watch
     s = setup(tmp_path)
-    s.put("behavior", {"watch": 1})
     plan = planner.build_plan(random.Random(4), NOW, {})
     add_plan(s, "HQ-NYC", "HVAC", 5001, plan, {**CTX}, NOW)
     add_plan(s, "HQ-NYC", "HVAC", 5002, plan, {**CTX}, NOW)
@@ -340,8 +339,8 @@ def test_watch_ends_the_plan_of_a_wo_cancelled_by_a_user(tmp_path):
     assert watch(s, rt, lambda: 14000) == [(5002, "cancelled by a user: plan ended")]
     assert s.db.execute("SELECT state FROM work_orders WHERE sc_id=5002").fetchone()[0] == "cancelled"
     assert s.db.execute("SELECT state FROM work_orders WHERE sc_id=5001").fetchone()[0] == "active"
-    s.put("behavior", {})
-    assert watch(s, rt, lambda: 10 ** 6) == []   # off by default
+    s.put("status_check", False)
+    assert watch(s, rt, lambda: 10 ** 6) == []   # the Settings toggle turns it off
 
 
 def _preflight_app(status):

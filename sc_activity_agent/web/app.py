@@ -50,7 +50,6 @@ SLIDERS = [("wo_per_month", "Work orders per month", "Per enabled location, week
            ("decline", "Provider declines %", "The provider declines instead of accepting; the WO is cancelled 1 to 3 days later. Turn off auto-reassign for the trade (SC admin) or the WO moves to another provider", 0, 100, 1),
            ("reassign", "Reassign after a decline %", "Of the declines, the share the Subscriber moves to another provider with a contract for the trade at the location; the rest, and any with no such provider, are cancelled", 0, 100, 1),
            ("reschedule", "Reschedules %", "The provider moves the scheduled date 1 to 3 business days later than the original date", 0, 100, 1),
-           ("watch", "Background status check", "1 = also read one active WO per hour; every write already reads its WO first", 0, 1, 1),
            ("first_time_fix", "First-time fix %", "Rest need 2 or 3 visits", 0, 100, 1),
            ("hours_start", "Activity starts (hour)", "Local time at the location", 0, 23, 1),
            ("hours_end", "Activity ends (hour)", "", 1, 24, 1)]
@@ -502,7 +501,7 @@ def create_app(store, engine=None, rt=None):
     def settings(request: Request, msg: str = ""):
         al = Alerts(store)
         return page(request, "settings", login=autostart.enabled(store.dir, store.get("env")),
-                    awake_ui=awake.supported() and not PACKAGED, awake_on=store.get("keep_awake", True),
+                    awake_ui=awake.supported() and not PACKAGED, awake_on=store.get("keep_awake", True), check_on=store.get("status_check", True),
                     policy=store.get("resume_policy", "catch_up"), msg=msg, al=al.cfg, token_set=bool(store.get("alerts_token")),
                     backups=[(n, s // 1024, datetime.fromtimestamp(t).strftime("%b %d %H:%M")) for n, s, t in update.backups(store)],
                     events=EVENTS, alert_error=store.get("alert_error"), other_env="SB2" if store.get("env") == "prod" else "Production")
@@ -577,8 +576,9 @@ def create_app(store, engine=None, rt=None):
         return RedirectResponse("/settings?msg=Telegram alerts removed.", 303)
 
     @app.post("/settings")
-    def save_settings(resume_policy: str = Form(...), login: str = Form("off"), awake_on: str = Form("off")):
+    def save_settings(resume_policy: str = Form(...), login: str = Form("off"), awake_on: str = Form("off"), check_on: str = Form("off")):
         store.put("resume_policy", resume_policy)
+        store.put("status_check", check_on == "on")
         if awake.supported() and not PACKAGED:
             store.put("keep_awake", awake_on == "on")
         env = store.get("env")

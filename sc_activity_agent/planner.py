@@ -7,7 +7,7 @@ DEFAULTS = {
     "proposal_rate": 10, "proposal_approval": 90, "invoice_approval": 95,
     "sub_notes": 2.0, "prov_notes": 3.0,
     "late_checkin": 15, "late_days": 2,
-    "time_on_site_hrs": 2.0, "pay_days": 30, "multi_tech": 5, "watch": 0, "emergency_hours": 8, "decline": 0, "reassign": 0, "reschedule": 0, "first_time_fix": 80,
+    "time_on_site_hrs": 2.0, "pay_days": 30, "multi_tech": 5, "emergency_hours": 8, "decline": 0, "reassign": 0, "reschedule": 0, "first_time_fix": 80,
     "hours_start": 8, "hours_end": 17,
     "resume_policy": "catch_up",
 }

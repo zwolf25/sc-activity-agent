@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Changed: the hourly status check is now a toggle in Settings named "Catch cancellations early", on by default, instead of a 0 to 1 slider in Behavior named "Background status check" that was off. Once an hour the agent reads one active WO; if a user cancelled it in ServiceChannel, its plan ends then instead of when the next step comes due. It only reads. An instance that had the old slider set uses the new default (on); switch it off in Settings.
 ## v0.7.0 - 2026-10-29
 - Update note: restart the agent after updating. No database migration and no pause needed. New Behavior settings (declines, reschedules, reassign, background check) default to 0 or off. Keep this Mac awake is on by default on macOS source installs.
 - New: Behavior setting "Reassign after a decline %" (default 0). Of the WOs the provider declines, this share is moved by the Subscriber to another provider connection that holds a contract for the trade at the location, and that provider's work is planned as normal. A decline with no such provider is cancelled 1 to 3 days later, as before. The new provider needs its own connection and a user who can accept.

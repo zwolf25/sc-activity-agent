@@ -349,13 +349,13 @@ def end_plan(rt, wo):
     rt.store.db.commit()
 
 
-WATCH_EVERY, WATCH_MAX = 3600, 1   # off by default (behavior.watch): the preflight read already catches changes before each write
+WATCH_EVERY, WATCH_MAX = 3600, 1   # on by default (setting status_check, Settings page); the preflight read alone only catches changes before a write
 
 
 def watch(store, rt, clock=time.time):
     """B-39: read the live status of the WOs that still have pending steps, least recently read first. A WO the user cancelled
     ends its plan here instead of failing a step later. Returns [(sc_id, outcome)]."""
-    if not store.get("behavior", {}).get("watch") or store.get("paused_at") is not None or clock() - store.get("watch_at", 0) < WATCH_EVERY:
+    if not store.get("status_check", True) or store.get("paused_at") is not None or clock() - store.get("watch_at", 0) < WATCH_EVERY:
         return []
     store.put("watch_at", clock())
     out = []
