@@ -48,6 +48,7 @@ SLIDERS = [("wo_per_month", "Work orders per month", "Per enabled location, week
            ("multi_tech", "Two-technician visits %", "Share of visits worked by 2 technicians (needs 2 check-in techs on the provider)", 0, 100, 1),
            ("emergency_hours", "Treat as emergency up to (hours)", "A WO whose original ETA is at most this many hours after its call date gets the fast emergency plan; 0 = never", 0, 72, 1),
            ("decline", "Provider declines %", "The provider declines instead of accepting; the WO is cancelled 1 to 3 days later. Turn off auto-reassign for the trade (SC admin) or the WO moves to another provider", 0, 100, 1),
+           ("reassign", "Reassign after a decline %", "Of the declines, the share the Subscriber moves to another provider with a contract for the trade at the location; the rest, and any with no such provider, are cancelled", 0, 100, 1),
            ("reschedule", "Reschedules %", "The provider moves the scheduled date 1 to 3 business days later than the original date", 0, 100, 1),
            ("watch", "Background status check", "1 = also read one active WO per hour; every write already reads its WO first", 0, 1, 1),
            ("first_time_fix", "First-time fix %", "Rest need 2 or 3 visits", 0, 100, 1),

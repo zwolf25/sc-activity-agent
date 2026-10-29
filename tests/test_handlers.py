@@ -400,3 +400,42 @@ def test_decline_reschedule_and_cancel_steps_call_the_right_endpoints(tmp_path):
     assert (m, path, params) == ("PUT", "/workorders/9/scheduledate", {"rescheduleReasonCode": 12}) and body["Value"].startswith("2025-10-25T")
     assert seen[2][1] == "/workorders/9/status" and seen[2][3]["Status"]["Extended"] == "CANCELED"
     assert s.db.execute("SELECT state FROM work_orders WHERE sc_id=9").fetchone()[0] == "cancelled"
+
+
+def _reassign_setup(tmp_path, contract):
+    s = setup(tmp_path)
+    s.db.execute("INSERT INTO connections VALUES(3,'provider','P2','c','x',2000000677)")
+    _tech(s, 3, 3, can=("accept", "check_in"))
+    s.db.execute("UPDATE locations SET db_id=11, tz='America/New_York'")
+    s.db.execute("INSERT INTO work_orders(sc_id,location,trade,state,created_at,ctx) VALUES(9,'HQ-NYC','DOORS','active',0,?)",
+                 (json.dumps({**CTX, "provider_id": 2000078685}),))
+    s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,payload) VALUES(1,0,'reassign',0,'{\"reason\":3}')")
+    s.db.commit()
+    seen = []
+
+    class App(FakeApp):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            seen.append((method, path, params, body))
+            if path == "/contracts":
+                return {"Contracts": [{"Id": 1}] if contract and params["providerId"] == 2000000677 else []}
+            return super().call(user, method, path, params, body, **kw)
+    rt = Runtime(s, {1: App("sub", []), 2: App("prov", []), 3: App("prov2", [])}, random.Random(1))
+    wo = s.db.execute("SELECT * FROM work_orders").fetchone()
+    return s, rt, wo, seen
+
+
+def test_reassign_moves_the_wo_to_a_provider_with_a_contract_and_plans_its_work(tmp_path):
+    s, rt, wo, seen = _reassign_setup(tmp_path, contract=True)
+    make_handlers(rt)["reassign"](None, wo, {"id": 1, "seq": 0, "kind": "reassign", "payload": '{"reason":3}'})
+    assert ("PUT", "/workorders/9/reassign", None, {"ProviderId": 2000000677, "ReasonId": 3}) in seen
+    assert ("GET", "/contracts", {"locationDbId": 11, "providerId": 2000000677, "trade": "DOORS"}, None) in seen
+    assert json.loads(s.db.execute("SELECT ctx FROM work_orders").fetchone()[0])["provider_id"] == 2000000677
+    kinds = [r[0] for r in s.db.execute("SELECT kind FROM steps ORDER BY seq")]
+    assert kinds[0] == "reassign" and kinds[1] == "accept" and "cancel" not in kinds
+
+
+def test_reassign_with_no_contract_elsewhere_cancels_like_a_plain_decline(tmp_path):
+    s, rt, wo, seen = _reassign_setup(tmp_path, contract=False)
+    make_handlers(rt)["reassign"](None, wo, {"id": 1, "seq": 0, "kind": "reassign", "payload": '{"reason":3}'})
+    assert not any(c[0] == "PUT" for c in seen)
+    assert [r[0] for r in s.db.execute("SELECT kind FROM steps ORDER BY seq")] == ["reassign", "cancel"]

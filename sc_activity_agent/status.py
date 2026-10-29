@@ -59,6 +59,8 @@ def detail(kind, p):
         return "Marks the invoice paid"
     if kind == "decline":
         return "Provider declines"
+    if kind == "reassign":
+        return "Moves the WO to another provider, or cancels if none can take it"
     if kind == "reschedule":
         return "Moves the scheduled date later"
     if kind == "cancel":

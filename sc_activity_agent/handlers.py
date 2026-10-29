@@ -6,14 +6,14 @@ import json
 import time
 from zoneinfo import ZoneInfo
 
-from . import content
+from . import content, planner
 from .client import ScError
 
 ACTION = {"accept": "accept", "prov_note": "provider_note", "sub_note": "subscriber_note", "review": "review",
           "proposal_create": "proposal_create", "proposal_decide": "proposal_decide", "check_in": "check_in",
           "check_out": "check_out", "invoice_submit": "invoice_submit", "invoice_decide": "invoice_decide",
           "invoice_pay": "invoice_decide",   # the same Subscriber user decides and pays; no new role row for existing instances
-          "decline": "accept", "reschedule": "accept", "cancel": "subscriber_note",   # a provider who can accept can also decline and reschedule
+          "decline": "accept", "reschedule": "accept", "reassign": "subscriber_note", "cancel": "subscriber_note",   # a provider who can accept can also decline and reschedule
           "create": "create_wo"}
 
 
@@ -108,6 +108,45 @@ def make_handlers(rt):
     def decline(engine, wo, step):
         # no Note: a note on a decline fails with 501 even though the decline goes through (SB2, 2026-10-28)
         call(wo, step, "PUT", f"/workorders/{wo['sc_id']}/decline", body={"DeclineReasonId": json.loads(step["payload"])["reason"]})
+
+    def reassign(engine, wo, step):
+        """B-20: after a decline, move the WO to another provider connection that holds a contract for its trade at the location
+        (the API refuses the move otherwise), then plan the new provider's work. With no such provider, cancel as a plain decline does."""
+        p = json.loads(step["payload"])
+        loc, ctx = rt.location(wo["location"]), ctx_of(wo)
+        app, user = rt.user_for(wo["location"], "reassign", wo, step)
+        rows = rt.store.db.execute(
+            "SELECT DISTINCT c.provider_id FROM connections c JOIN users u ON u.conn_id=c.id WHERE c.side='provider' AND c.provider_id IS NOT NULL "
+            "AND EXISTS (SELECT 1 FROM json_each(u.can_do) WHERE value='accept')").fetchall()
+        current = ctx.get("provider_id")
+        targets = []
+        for r in rows:
+            if r["provider_id"] == current:
+                continue
+            try:
+                found = app.call(user, "GET", "/contracts", params={"locationDbId": loc["db_id"], "providerId": r["provider_id"], "trade": wo["trade"]},
+                                 action="reassign_lookup", wo=wo["sc_id"], write=False)
+            except ScError:
+                continue
+            if (found or {}).get("Contracts"):
+                targets.append(r["provider_id"])
+        new = rt.rng.choice(targets) if targets else None
+        if new is not None:
+            try:
+                app.call(user, "PUT", f"/workorders/{wo['sc_id']}/reassign", action="reassign", wo=wo["sc_id"], write=True,
+                         body={"ProviderId": new, "ReasonId": p["reason"]})
+            except ScError as e:
+                if e.status != 400:
+                    raise
+                new = None   # refused (for example the contract changed): fall back to the cancel
+        now = time.time()
+        if new is None:
+            insert_steps(rt.store, wo["id"], step["seq"], [("cancel", now + rt.rng.randint(1, 3) * 86400, {"situation": "declined"})])
+            return
+        rt.save_ctx(wo, provider_id=new, techs={})
+        cfg = {**planner.DEFAULTS, **rt.store.get("behavior", {}), "decline": 0, "reschedule": 0, "reassign": 0}
+        plan = planner.build_plan(rt.rng, now, cfg, loc["tz"] or "America/New_York")
+        insert_steps(rt.store, wo["id"], step["seq"], [(s["kind"], s["due_at"], s["payload"]) for s in plan])
 
     def reschedule(engine, wo, step):
         p = json.loads(step["payload"])
@@ -277,11 +316,11 @@ def make_handlers(rt):
 
     handlers = {"accept": accept, "prov_note": note("provider"), "sub_note": note("subscriber"), "check_in": check_in,
                 "check_out": check_out, "review": review, "invoice_submit": invoice_submit,
-                "invoice_decide": invoice_decide, "invoice_pay": invoice_pay, "decline": decline, "reschedule": reschedule, "cancel": cancel, "proposal_create": proposal_create, "proposal_decide": proposal_decide}
+                "invoice_decide": invoice_decide, "invoice_pay": invoice_pay, "decline": decline, "reassign": reassign, "reschedule": reschedule, "cancel": cancel, "proposal_create": proposal_create, "proposal_decide": proposal_decide}
     return {k: guarded(k, f) for k, f in handlers.items()}
 
 
-ALREADY_DONE_WHEN_COMPLETED = {"accept", "decline", "reschedule", "check_in", "check_out", "proposal_create", "proposal_decide"}
+ALREADY_DONE_WHEN_COMPLETED = {"accept", "decline", "reassign", "reschedule", "check_in", "check_out", "proposal_create", "proposal_decide"}
 
 
 def preflight(rt, call, wo, step, kind):
@@ -297,7 +336,7 @@ def preflight(rt, call, wo, step, kind):
     return st.get("Primary") == "COMPLETED" and kind in ALREADY_DONE_WHEN_COMPLETED
 
 
-FIELD = {"accept", "decline", "reschedule", "prov_note", "sub_note", "check_in", "check_out", "proposal_create", "proposal_decide", "review"}
+FIELD = {"accept", "decline", "reassign", "reschedule", "prov_note", "sub_note", "check_in", "check_out", "proposal_create", "proposal_decide", "review"}
 
 
 def end_plan(rt, wo):

@@ -7,7 +7,7 @@ DEFAULTS = {
     "proposal_rate": 10, "proposal_approval": 90, "invoice_approval": 95,
     "sub_notes": 2.0, "prov_notes": 3.0,
     "late_checkin": 15, "late_days": 2,
-    "time_on_site_hrs": 2.0, "pay_days": 30, "multi_tech": 5, "watch": 0, "emergency_hours": 8, "decline": 0, "reschedule": 0, "first_time_fix": 80,
+    "time_on_site_hrs": 2.0, "pay_days": 30, "multi_tech": 5, "watch": 0, "emergency_hours": 8, "decline": 0, "reassign": 0, "reschedule": 0, "first_time_fix": 80,
     "hours_start": 8, "hours_end": 17,
     "resume_policy": "catch_up",
 }
@@ -47,7 +47,7 @@ def _fit(ts, prev, c, tz, rng):
 def build_plan(rng, now, cfg, tz="America/New_York", eta=None):
     """now: epoch seconds when the WO is created. Returns list of dicts {kind, due_at, payload}, sorted by due_at.
     Times are epoch seconds. Kinds: accept, prov_note, sub_note, proposal_create, proposal_decide, check_in, check_out,
-    review, invoice_submit, invoice_decide, invoice_pay, decline, reschedule, cancel. eta: epoch seconds of the scheduled visit when it is known. An ETA no more
+    review, invoice_submit, invoice_decide, invoice_pay, decline, reassign, reschedule, cancel. eta: epoch seconds of the scheduled visit when it is known. An ETA no more
     than cfg emergency_hours after the call date (default 8; 0 turns it off) makes an emergency plan: a confirm-availability exchange before the visit, no proposal, no late arrival (B-08).
     The ETA decides, not the priority label."""
     c = {**DEFAULTS, **cfg}
@@ -62,6 +62,9 @@ def build_plan(rng, now, cfg, tz="America/New_York", eta=None):
     if c["decline"] and rng.random() * 100 < c["decline"]:   # B-11: the provider declines; the WO ends cancelled a few days later
         d_at = now + rng.randint(1800, 4 * 3600)
         add("decline", d_at, reason=rng.choice([1, 2, 3, 6]))
+        if c["reassign"] and rng.random() * 100 < c["reassign"]:   # B-20: the Subscriber hands it to another provider; the step plans the rest, or cancels when nobody has a contract
+            add("reassign", d_at + rng.randint(3600, 3 * 3600), reason=3)
+            return _fit_all(steps, c, tz, rng)
         add("cancel", d_at + rng.randint(1, 3) * 86400 + rng.randint(0, 4 * 3600), situation="declined")
         return _fit_all(steps, c, tz, rng)
     if emergency:

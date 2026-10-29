@@ -283,3 +283,10 @@ def test_reschedule_moves_the_visit_later_than_the_original_date():
         pay, first_in = r[0]["payload"], next(s for s in p if s["kind"] == "check_in")["due_at"]
         assert pay["to"] > pay["from_ts"] and first_in >= pay["to"] - 1 and r[0]["due_at"] < pay["from_ts"]
     assert n > 100
+
+
+def test_declined_plan_can_end_in_a_reassign_instead_of_a_cancel():
+    for seed in range(10):
+        p = planner.build_plan(random.Random(seed), NOW, {"decline": 100, "reassign": 100})
+        assert [s["kind"] for s in p] == ["decline", "reassign"]
+        assert planner.build_plan(random.Random(seed), NOW, {"decline": 100, "reassign": 0})[-1]["kind"] == "cancel"
