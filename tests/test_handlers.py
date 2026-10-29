@@ -439,3 +439,18 @@ def test_reassign_with_no_contract_elsewhere_cancels_like_a_plain_decline(tmp_pa
     make_handlers(rt)["reassign"](None, wo, {"id": 1, "seq": 0, "kind": "reassign", "payload": '{"reason":3}'})
     assert not any(c[0] == "PUT" for c in seen)
     assert [r[0] for r in s.db.execute("SELECT kind FROM steps ORDER BY seq")] == ["reassign", "cancel"]
+
+
+def test_reassign_retries_on_a_server_error_instead_of_cancelling(tmp_path):
+    from sc_activity_agent.client import ScError
+    s, rt, wo, seen = _reassign_setup(tmp_path, contract=True)
+
+    class Down(FakeApp):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            if path == "/contracts":
+                raise ScError(500, "boom", path)
+            return super().call(user, method, path, params, body, **kw)
+    rt.apps[1] = Down("sub", [])
+    with pytest.raises(ScError):
+        make_handlers(rt)["reassign"](None, wo, {"id": 1, "seq": 0, "kind": "reassign", "payload": '{"reason":3}'})
+    assert [r[0] for r in s.db.execute("SELECT kind FROM steps ORDER BY seq")] == ["reassign"]

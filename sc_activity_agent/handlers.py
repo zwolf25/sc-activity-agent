@@ -126,7 +126,9 @@ def make_handlers(rt):
             try:
                 found = app.call(user, "GET", "/contracts", params={"locationDbId": loc["db_id"], "providerId": r["provider_id"], "trade": wo["trade"]},
                                  action="reassign_lookup", wo=wo["sc_id"], write=False)
-            except ScError:
+            except ScError as e:
+                if e.status >= 500:
+                    raise   # a server fault is not "no contract": let the engine retry the step instead of cancelling the WO
                 continue
             if (found or {}).get("Contracts"):
                 targets.append(r["provider_id"])
