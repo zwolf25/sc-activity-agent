@@ -7,7 +7,7 @@ DEFAULTS = {
     "proposal_rate": 10, "proposal_approval": 90, "invoice_approval": 95,
     "sub_notes": 2.0, "prov_notes": 3.0,
     "late_checkin": 15, "late_days": 2,
-    "time_on_site_hrs": 2.0, "pay_days": 30, "multi_tech": 5, "emergency_hours": 8, "decline": 0, "reassign": 0, "no_show": 0, "reschedule": 0, "first_time_fix": 80,
+    "time_on_site_hrs": 2.0, "pay_days": 30, "multi_tech": 5, "emergency_hours": 8, "decline": 0, "reassign": 0, "invoice_rate_flaw": 0, "invoice_hours_flaw": 0, "no_show": 0, "reschedule": 0, "first_time_fix": 80,
     "hours_start": 8, "hours_end": 17,
     "resume_policy": "catch_up",
 }
@@ -147,12 +147,14 @@ def build_plan(rng, now, cfg, tz="America/New_York", eta=None):
     review_at = final_out + rng.randint(3600, 86400)
     add("review", review_at, situation="review")
     inv_at = review_at + rng.randint(7200, 2 * 86400)  # invoices follow the review
-    add("invoice_submit", inv_at, situation="invoice")
-    if rng.random() * 100 < c["invoice_approval"]:
+    roll = rng.random() * 100   # B-12: a flawed first invoice is always rejected, then resubmitted correctly
+    flaw = "rate" if roll < c["invoice_rate_flaw"] else "hours" if roll < c["invoice_rate_flaw"] + c["invoice_hours_flaw"] else None
+    add("invoice_submit", inv_at, situation="invoice", **({"flaw": flaw} if flaw else {}))
+    if not flaw and rng.random() * 100 < c["invoice_approval"]:
         dec_at = inv_at + rng.randint(3600, 2 * 86400)
         add("invoice_decide", dec_at, approve=True)
     else:
-        add("invoice_decide", inv_at + rng.randint(3600, 86400), approve=False)
+        add("invoice_decide", inv_at + rng.randint(3600, 86400), approve=False, **({"flaw": flaw} if flaw else {}))
         add("invoice_submit", inv_at + 2 * 86400, situation="invoice_fix")
         dec_at = inv_at + 3 * 86400
         add("invoice_decide", dec_at, approve=True)

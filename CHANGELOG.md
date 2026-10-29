@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Invoices are now line items: labor hours match time on site at the provider's agreed rate, plus 0 to 2 materials lines, always under the NTE. The agent learns the agreed rate from the first invoice.
+- New settings, both default 0: "Invoices with a wrong rate %" and "Invoices billing extra hours %". A flawed first invoice is rejected and resubmitted clean.
+- The Subscriber now rejects any invoice that ServiceChannel flags for a rate mismatch, or that bills well over the time on site, even when the plan meant to approve, and the Provider resubmits. Restart the agent after updating; no migration.
 - Fixed: `agent status`, `get`, `plan`, `pause`, `resume`, `tick`, `step`, `set`, `cleanup` and `backup` no longer create an empty instance (folder, key and database) at a mistyped or wrong `--data-dir`. They exit with "no agent instance at <path>". Only `init`, `run`, `open` and `install-app` create a folder. (Shipped in 0.7.1; changelog line added afterwards.)
 
 ## v0.7.1 - 2026-10-29

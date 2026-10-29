@@ -73,6 +73,12 @@ T = {  # (role, situation) -> templates; {slots} filled from ctx
     ("subscriber", "invoice_ok"): [
         "Invoice approved.",
         "Approved. Thank you for the quick turnaround."],
+    ("subscriber", "invoice_no_rate"): [
+        "Invoice rejected. The labor rate does not match the agreed rate. Please correct and resubmit.",
+        "Rejecting: the hourly rate billed is above our agreed rate. Resubmit at the contract rate."],
+    ("subscriber", "invoice_no_hours"): [
+        "Invoice rejected. The labor hours are more than the time on site. Please correct and resubmit.",
+        "Rejecting: hours billed do not match the check-in and check-out times. Resubmit with the hours on site."],
     ("subscriber", "invoice_no"): [
         "Invoice rejected. The labor hours do not match the time on site. Please correct and resubmit.",
         "Rejecting for now. Please attach the missing detail and resubmit."],

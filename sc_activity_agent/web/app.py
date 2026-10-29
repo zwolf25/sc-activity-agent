@@ -39,6 +39,8 @@ SLIDERS = [("wo_per_month", "Work orders per month", "Per enabled location, week
            ("proposal_rate", "Proposal rate %", "Share of WOs that get a proposal", 0, 100, 1),
            ("proposal_approval", "Proposal approval %", "Rest are rejected", 0, 100, 1),
            ("invoice_approval", "Invoice approval %", "Rest are rejected and resubmitted", 0, 100, 1),
+           ("invoice_rate_flaw", "Invoices with a wrong rate %", "The provider bills labor above the agreed rate. The Subscriber sees the rate flag, rejects, and the provider resubmits at the agreed rate", 0, 100, 1),
+           ("invoice_hours_flaw", "Invoices billing extra hours %", "The provider bills more labor hours than the time on site. The Subscriber rejects, and the provider resubmits with the hours on site", 0, 100, 1),
            ("sub_notes", "Subscriber notes per WO", "Average", 0, 8, 0.5),
            ("prov_notes", "Provider notes per WO", "Average", 0, 8, 0.5),
            ("late_checkin", "Late check-in %", "Provider arrives after the scheduled date", 0, 100, 1),

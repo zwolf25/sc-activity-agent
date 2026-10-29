@@ -538,3 +538,59 @@ def test_a_check_in_waits_for_its_new_time_when_a_user_moved_the_date_later(tmp_
     out = Engine(s, make_handlers(rt), clock=lambda: ci["due_at"] + 1, per_tick=50).tick()
     now = s.db.execute("SELECT state, due_at, attempts FROM steps WHERE id=?", (ci["id"],)).fetchone()
     assert (now["state"], now["attempts"]) == ("pending", 0) and now["due_at"] >= ci["due_at"] + 2 * 86400
+
+
+def _invoice_app(inv, bodies):
+    class App(FakeApp):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            if path == "/invoices" and method == "POST":
+                bodies.append(body)
+                return {"Id": 777}
+            if path.startswith("/invoices/") and method == "GET":
+                return inv
+            return super().call(user, method, path, params, body, **kw)
+    return App
+
+
+def _invoice_wo(tmp_path, inv=None, nte=500.0, **plan_cfg):
+    s = setup(tmp_path)
+    bodies, calls = [], []
+    App = _invoice_app(inv or {"Status": "OPEN"}, bodies)
+    rt = Runtime(s, {1: App("sub", calls), 2: App("prov", calls)}, random.Random(1))
+    add_plan(s, "HQ-NYC", "HVAC", 5001, planner.build_plan(random.Random(4), NOW, plan_cfg), {**CTX, "nte": nte}, NOW)
+    wo = _row(s)
+    s.db.execute("UPDATE steps SET state='done', done_at=due_at WHERE wo_id=? AND kind NOT LIKE 'invoice%'", (wo["id"],))
+    s.db.commit()
+    return s, rt, wo, bodies
+
+
+def test_plan_with_a_flawed_first_invoice_rejects_it_then_resubmits_clean():
+    steps = planner.build_plan(random.Random(4), NOW, {"invoice_rate_flaw": 100})
+    inv = [x for x in steps if x["kind"].startswith("invoice_") and x["kind"] != "invoice_pay"]
+    assert [(x["kind"], x["payload"].get("flaw"), x["payload"].get("approve")) for x in inv] == [
+        ("invoice_submit", "rate", None), ("invoice_decide", "rate", False), ("invoice_submit", None, None), ("invoice_decide", None, True)]
+
+
+def test_invoice_lines_bill_the_hours_on_site_and_a_flawed_one_bills_more_but_stays_under_the_nte(tmp_path):
+    s, rt, wo, bodies = _invoice_wo(tmp_path)
+    h = make_handlers(rt)
+    h["invoice_submit"](None, wo, {**step("invoice_submit", situation="invoice"), "due_at": NOW, "seq": 99})
+    h["invoice_submit"](None, _row(s), {**step("invoice_submit", flaw="hours"), "due_at": NOW, "seq": 99})
+    clean, flawed = bodies
+    for b in bodies:
+        assert b["InvoiceTotal"] <= 500.0 and b["Labors"][0]["Amount"] == round(b["Labors"][0]["Hours"] * b["Labors"][0]["HourlyRate"], 2)
+        assert b["InvoiceTotal"] == round(b["InvoiceAmountsDetails"]["LaborAmount"] + b["InvoiceAmountsDetails"]["MaterialAmount"], 2)
+    assert flawed["Labors"][0]["Hours"] > clean["Labors"][0]["Hours"] * 1.25 + 0.5
+    assert flawed["InvoiceNumber"] != clean["InvoiceNumber"]
+
+
+def test_an_invoice_the_api_flags_is_rejected_even_when_the_plan_meant_to_approve_and_gets_a_resubmission(tmp_path):
+    s, rt, wo, _ = _invoice_wo(tmp_path, inv={"Status": "OPEN", "WithMismatchedRates": True, "Labors": [{"Hours": 1, "AgreedRate": 80.0}]})
+    rt.save_ctx(wo, invoice_id=777)
+    s.db.execute("UPDATE steps SET kind='invoice_decide', payload='{\"approve\": true}' WHERE kind='invoice_decide' AND seq=(SELECT MIN(seq) FROM steps WHERE kind='invoice_decide')")
+    dec = s.db.execute("SELECT * FROM steps WHERE kind='invoice_decide' ORDER BY seq").fetchone()
+    calls = rt.apps[1].calls
+    make_handlers(rt)["invoice_decide"](None, _row(s), dec)
+    assert [c for c in calls if c[2] == "PUT"][-1][3].endswith("/reject")
+    after = [r[0] for r in s.db.execute("SELECT kind FROM steps WHERE wo_id=? AND seq>? ORDER BY seq", (dec["wo_id"], dec["seq"]))]
+    assert after[:2] == ["invoice_submit", "invoice_decide"]   # the provider resubmits and the Subscriber decides again
