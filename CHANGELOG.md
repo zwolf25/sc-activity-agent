@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.7.0 - 2026-10-29
+- Update note: restart the agent after updating. No database migration and no pause needed. New Behavior settings (declines, reschedules, reassign, background check) default to 0 or off. Keep this Mac awake is on by default on macOS source installs.
 - New: Behavior setting "Reassign after a decline %" (default 0). Of the WOs the provider declines, this share is moved by the Subscriber to another provider connection that holds a contract for the trade at the location, and that provider's work is planned as normal. A decline with no such provider is cancelled 1 to 3 days later, as before. The new provider needs its own connection and a user who can accept.
 - Fixed: the launcher and Start at login could each start an agent, so two ran on one data folder and every step could run twice. An agent now takes a lock on its data folder at start; a second one exits with a message.
 - Fixed: the periodic WO status check (B-39) never ran, because its import sat in the wrong function.
