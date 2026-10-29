@@ -1,12 +1,12 @@
 # SC Activity Agent installer for Windows.
 #   irm https://raw.githubusercontent.com/zwolf25/sc-activity-agent/main/install.ps1 | iex
 # Needs Python 3.11 or newer. Installs into %USERPROFILE%\.sc-activity-agent-app (its own virtual environment).
-# The data folder is separate and is never touched by an install or update.
+# The data folder is separate and is never touched by an install or update. Set SC_AGENT_DATA to choose it (default %USERPROFILE%\.sc-activity-agent).
 param([string]$Environment = "prod")   # prod or sb2; locked per data folder
 $ErrorActionPreference = "Stop"
 $Repo = "zwolf25/sc-activity-agent"
 $AppDir = Join-Path $env:USERPROFILE ".sc-activity-agent-app"
-$Data = Join-Path $env:USERPROFILE ".sc-activity-agent"
+$Data = if ($env:SC_AGENT_DATA) { $env:SC_AGENT_DATA } else { Join-Path $env:USERPROFILE ".sc-activity-agent" }
 
 $py = $null
 foreach ($c in @(@("py", "-3.13"), @("py", "-3.12"), @("py", "-3.11"), @("python"), @("python3"))) {

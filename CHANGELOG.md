@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Changed: `install.ps1` (Windows) takes the data folder from `SC_AGENT_DATA` when set, as `install.sh` already does. Checked by reading only; not run on Windows.
 - A work order with an NTE of 0 is no longer invoiced (ServiceChannel refuses it). The Subscriber closes it as COMPLETED / NO CHARGE and the plan ends. Restart the agent after updating; no migration.
 ## v0.8.0 - 2026-10-29
 
