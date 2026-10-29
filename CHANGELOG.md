@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- A work order with an NTE of 0 is no longer invoiced (ServiceChannel refuses it). The Subscriber closes it as COMPLETED / NO CHARGE and the plan ends. Restart the agent after updating; no migration.
 ## v0.8.0 - 2026-10-29
 
 - Invoices are now line items: labor hours match time on site at the provider's agreed rate, plus 0 to 2 materials lines, always under the NTE. The agent learns the agreed rate from the first invoice.

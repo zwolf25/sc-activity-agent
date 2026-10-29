@@ -211,11 +211,23 @@ def make_handlers(rt):
             v[k] = min(t, v[k]) if k in v else t
         return sum(max(0, v["check_out"] - v["check_in"]) for v in visits.values() if len(v) == 2) / 3600
 
+    def no_charge(wo):
+        """A WO with no NTE cannot be invoiced: the Subscriber closes it as COMPLETED/NO CHARGE (verified on SB2) and the plan ends."""
+        app, user = rt.user_for(wo["location"], "sub_note", wo)
+        app.call(user, "PUT", f"/workorders/{wo['sc_id']}/status", action="no_charge", wo=wo["sc_id"], write=True,
+                 body={"Status": {"Primary": "COMPLETED", "Extended": "NO CHARGE"}, "Note": "No NTE on this work order, closing with no charge."})
+        rt.store.db.execute("UPDATE work_orders SET state='closed' WHERE id=?", (wo["id"],))
+        rt.store.db.execute("UPDATE steps SET state='skipped' WHERE wo_id=? AND state IN ('pending','failed')", (wo["id"],))
+        rt.store.db.commit()
+
     def invoice_submit(engine, wo, step):
         """Line-item invoice (B-12): labor at the agreed rate for the hours on site, plus materials up to a share of the NTE. A flawed
         first invoice (payload flaw) bills the wrong rate or extra hours. The API refuses a total above the NTE (1104)."""
         c = ctx_of(wo)
         flaw = json.loads(step["payload"]).get("flaw")
+        live = call(wo, step, "GET", f"/workorders/{wo['sc_id']}") or {}
+        if live.get("Nte") is not None and float(live["Nte"]) <= 0:
+            return no_charge(wo)   # the API refuses any invoice above an NTE of 0 (1104), so the WO closes as No Charge
         nte = float(c.get("nte") or 0)
         rates = rt.store.get("agreed_rates", {})
         key = f"{c.get('provider_id')}:2"

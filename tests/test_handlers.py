@@ -594,3 +594,23 @@ def test_an_invoice_the_api_flags_is_rejected_even_when_the_plan_meant_to_approv
     assert [c for c in calls if c[2] == "PUT"][-1][3].endswith("/reject")
     after = [r[0] for r in s.db.execute("SELECT kind FROM steps WHERE wo_id=? AND seq>? ORDER BY seq", (dec["wo_id"], dec["seq"]))]
     assert after[:2] == ["invoice_submit", "invoice_decide"]   # the provider resubmits and the Subscriber decides again
+
+
+def test_a_wo_with_a_zero_nte_closes_as_no_charge_instead_of_invoicing(tmp_path):
+    s, rt, wo, bodies = _invoice_wo(tmp_path)
+    puts = []
+
+    class App(rt.apps[1].__class__):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            if path.startswith("/workorders/") and method == "GET":
+                return {"Nte": 0.0, "Status": {"Primary": "COMPLETED", "Extended": "CONFIRMED"}}
+            if method == "PUT":
+                puts.append(body)
+                return {}
+            return super().call(user, method, path, params, body, **kw)
+    rt.apps[1], rt.apps[2] = App("sub", []), App("prov", [])
+    sub = s.db.execute("SELECT * FROM steps WHERE kind='invoice_submit' ORDER BY seq").fetchone()
+    make_handlers(rt)["invoice_submit"](None, wo, sub)
+    assert bodies == [] and puts[-1]["Status"] == {"Primary": "COMPLETED", "Extended": "NO CHARGE"}
+    assert s.db.execute("SELECT state FROM work_orders WHERE id=?", (wo["id"],)).fetchone()[0] == "closed"
+    assert s.db.execute("SELECT count(*) FROM steps WHERE wo_id=? AND state='pending'", (wo["id"],)).fetchone()[0] == 0
