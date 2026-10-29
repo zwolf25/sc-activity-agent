@@ -2,8 +2,10 @@
 
 ## Unreleased
 
-- The agent follows changes users make to a WO in ServiceChannel. If the scheduled date moves later, the visit and every step after it move with it (inside activity hours, on a weekday), and a check-in that was due waits for the new time. A changed NTE or priority is picked up for later invoice and proposal amounts and notes. If a WO gets a status the plan does not know, or is moved to a provider the plan was not built for, its plan parks: the step fails at once and shows on the Errors page instead of retrying. Needs the usual restart; nothing pauses.
+## v0.7.1 - 2026-10-29
 
+- Update note: restart the agent after updating. No database migration and no pause needed.
+- The agent follows changes users make to a WO in ServiceChannel. If the scheduled date moves later, the visit and every step after it move with it (inside activity hours, on a weekday), and a check-in that was due waits for the new time. A changed NTE or priority is picked up for later invoice and proposal amounts and notes. If a WO gets a status the plan does not know, or is moved to a provider the plan was not built for, its plan parks: the step fails at once and shows on the Errors page instead of retrying. Needs the usual restart; nothing pauses.
 - New: Behavior setting "Provider no-shows %" (default 0). The provider accepts, then never arrives. A few hours after the visit time the Subscriber adds a note about the missed visit, then moves the WO to another provider connection that holds a contract for the trade (the same step as "Reassign after a decline %"), and that provider's work is planned as normal. With no such provider the WO is cancelled with a no-show note.
 - Fixed: when a WO moves to another provider, the old plan's pending steps (for example a check-out) are skipped, so they no longer run as the new provider.
 - Fixed: with more than one Provider connection, a WO could be created without its provider recorded when the Rank 1 cache was older than the provider list, so its steps ran as a random provider's user and failed with "WorkOrder not found". An older cache entry is now re-read, and adding or removing a connection clears the cache.
