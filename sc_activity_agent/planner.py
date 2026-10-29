@@ -7,7 +7,7 @@ DEFAULTS = {
     "proposal_rate": 10, "proposal_approval": 90, "invoice_approval": 95,
     "sub_notes": 2.0, "prov_notes": 3.0,
     "late_checkin": 15, "late_days": 2,
-    "time_on_site_hrs": 2.0, "pay_days": 30, "multi_tech": 5, "emergency_hours": 8, "decline": 0, "reassign": 0, "reschedule": 0, "first_time_fix": 80,
+    "time_on_site_hrs": 2.0, "pay_days": 30, "multi_tech": 5, "emergency_hours": 8, "decline": 0, "reassign": 0, "no_show": 0, "reschedule": 0, "first_time_fix": 80,
     "hours_start": 8, "hours_end": 17,
     "resume_policy": "catch_up",
 }
@@ -111,6 +111,13 @@ def build_plan(rng, now, cfg, tz="America/New_York", eta=None):
         if day.weekday() >= 5:
             day = _biz_day(day, 1)
             t = _at(day, c["hours_start"] + rng.random() * span * 0.4, tz)
+
+    if c["no_show"] and not (emergency or has_proposal) and rng.random() * 100 < c["no_show"]:
+        # B-20: the provider accepted but never arrives; the Subscriber notes it and moves the WO (or cancels when nobody can take it)
+        miss = t + rng.randint(2, 4) * 3600
+        add("sub_note", miss, situation="noshow")
+        add("reassign", miss + rng.randint(1800, 5400), reason=3, cancel="noshow_cancel")
+        return _fit_all(steps, c, tz, rng)
 
     for v in range(visits):
         if v:

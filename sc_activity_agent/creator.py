@@ -45,7 +45,7 @@ class Creator:
         """Trades where Rank 1 at this location is one of our provider connections. Cached for RANK_TTL; force re-reads now."""
         cache = self.store.get("rank1", {})
         hit = cache.get(loc["store_id"])
-        if hit and not force and self.clock() - hit["at"] < RANK_TTL:
+        if hit and "owners" in hit and not force and self.clock() - hit["at"] < RANK_TTL:   # no owners = an older cache entry: re-read
             return set(hit["trades"])
         owners = {}   # trade -> provider id, so a WO's provider-side steps run as that provider's users
         get = lambda p: self._get(loc, p)

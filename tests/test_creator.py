@@ -92,8 +92,11 @@ def test_unresolvable_issue_is_redrawn_not_posted(tmp_path):
 def test_resync_rereads_rank_one_and_records_skipped_trades(tmp_path):
     s, app, c = setup(tmp_path)
     loc = s.db.execute("SELECT * FROM locations").fetchone()
-    s.put("rank1", {"HQ": {"at": NOW + 9 * 3600, "trades": ["STALE"]}})   # fresh cache: normal reads would trust it
+    s.put("rank1", {"HQ": {"at": NOW + 9 * 3600, "trades": ["STALE"], "owners": {"STALE": 1}}})   # fresh cache: normal reads would trust it
     assert c.our_trades(loc) == {"STALE"}
+    s.put("rank1", {"HQ": {"at": NOW + 9 * 3600, "trades": ["STALE"]}})   # an older entry without owners is re-read, so WOs get a provider
+    assert c.our_trades(loc) == {"DOORS"} and "owners" in s.get("rank1")["HQ"]
+    s.put("rank1", {"HQ": {"at": NOW + 9 * 3600, "trades": ["STALE"], "owners": {"STALE": 1}}})
     assert c.resync(loc) == {"DOORS"}
     hit = s.get("rank1")["HQ"]
     assert hit["trades"] == ["DOORS"] and hit["skipped"] == ["ELECTRICAL"]

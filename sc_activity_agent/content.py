@@ -13,6 +13,12 @@ T = {  # (role, situation) -> templates; {slots} filled from ctx
         "We need to move the visit to {sched_day}. The tech's earlier schedule ran over, sorry for the change.",
         "Rescheduling the {issue} repair. New date is in the work order and the tech will arrive around the same time of day.",
         "Pushing the visit out a few days so we can bring the right parts for the {equipment}."],
+    ("subscriber", "noshow"): [
+        "Your tech did not arrive for the {sched_day} visit and we have not heard from anyone. Escalating this work order.",
+        "No check-in for the {issue} repair on {sched_day} and no update. We need to find another provider for this."],
+    ("subscriber", "noshow_cancel"): [
+        "Provider never showed and nobody else can take it right now. Cancelling this request; we will log a new one.",
+        "No other provider is available after the missed visit. Cancelling this work order."],
     ("subscriber", "declined"): [
         "No provider coverage after the decline, cancelling this request. We will log a new one.",
         "Provider declined and nobody else can take it right now. Cancelling this work order."],

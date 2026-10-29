@@ -39,7 +39,7 @@ def repo(store):
 
 
 def check(store, fetch=_fetch, clock=time.time, force=False):
-    """Returns {"tag", "notes"} when a newer release exists, else None. Cached for a day. Network errors return None."""
+    """Returns {"tag", "notes"} when a newer release exists, else None. Cached for CHECK_EVERY (an hour). Network errors return None."""
     r = repo(store)
     if not r:
         return None
@@ -51,7 +51,7 @@ def check(store, fetch=_fetch, clock=time.time, force=False):
         rel = fetch(f"https://api.github.com/repos/{r}/releases/latest")
         if _ver(rel["tag_name"]) > _ver(__version__):
             found = {"tag": rel["tag_name"], "notes": rel.get("body") or ""}
-    except Exception:  # offline, rate-limited or no release yet: try again tomorrow
+    except Exception:  # offline, rate-limited or no release yet: try again at the next check
         return pending(store)
     store.put("update_check", {"at": clock(), "found": found})
     return found

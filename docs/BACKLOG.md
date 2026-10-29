@@ -15,33 +15,30 @@ Ordered list of enhancements after v1. The order is the priority: rank 1 is next
 | Rank | ID | Enhancement | Size | Why | Source |
 |------|----|-------------|------|-----|--------|
 | 1 | B-39 | [Target 0.7.0] (Done: proposal and invoice decisions, user-cancelled or completed WO, user check-in; live-tested on SB2 2026-10-26 for cancel and check-in. Preflight live-WO read before every write added in 0.7.0 dev (periodic watch is a Settings toggle, on by default since 0.7.1). Still open: other user changes such as a rescheduled WO or edits to NTE or priority) Pick up manual changes: before each step, read the live WO, proposal and invoice status. If the user already did the planned action (approved, checked in, completed), mark the step done and continue. If the user did something different (rejected a proposal, cancelled the WO, completed it early), re-plan from the new state instead of erroring: rejected proposal runs the revised-proposal branch, a cancelled WO ends its plan, anything unrecognized parks the plan and shows it on the Errors page. Spike result (2026-10-26): the API lets a planned approve overturn a user's rejection, and assignWO fails on an already approved proposal, so the status read must come first | L, spike | Real users click around demo data. Today a step that finds the object already changed fails or repeats | Zac |
-| 2 | B-08 | [Target 0.7.0] (Done on branch v0.7: ETA-driven emergency plans for created and finishing-cleanup WOs) Emergency timing: read WO priority and ETA. Any WO with an ETA under 8 hours gets more activity, including back-and-forth notes that confirm provider availability before the visit | M | Urgent WOs are where flat timing looks most fake | Zac |
-| 3 | B-11 | [Target 0.7.0] (Done on branch v0.7: sliders default 0; spike in api-notes) Provider declines (low rate) and reschedules (higher rate). A reschedule is the Provider moving the scheduled date later than the original date set by the issue list | L, spike | Real queues have refusals and date changes. Reschedules re-time the plan | Zac |
-| 4 | B-20 | [Target 0.7.0] (Built on branch v0.7 for the decline path: slider default 0; spike in api-notes. Live-tested on SB2 through the new provider's acceptance; the no-show outcome and reassign after check-in are left) Reassign WOs between providers, for example after a decline or a no-show | L, spike | Completes the decline path. Adds no-show as an outcome | Zac |
-| 5 | B-49 | Partly answered 2026-10-28: a Python source install survives the same launch paths (launchd, Finder-style open), so the Python install path (install.sh) is the workaround, and the cause is the ad-hoc signed bundle (B-50). Still ask IT whether Falcon/Rapid7 blocked it. Original question: find why macOS kills the agent child about 2 s after the console opens when the app is launched from Finder or `open` (works from a terminal and from a launchd job; started 2026-10-28 08:52; ad-hoc signed app, security software on the machine). First read the new `[shell ...]` exit line in agent.log (signal 9 vs a code). If it is a system kill, try a LaunchAgent that runs `agent-core run` directly | M, spike | The app cannot be opened normally on Zac's machine | Zac |
-| 6 | B-50 | Apple Developer ID signing and notarization of the desktop app (US$99 a year) so it opens from Finder and Gatekeeper without a workaround; B-49 shows the ad-hoc signed app is killed on Zac's machine | M | Wider rollout of the desktop app | Zac |
-| 5 | B-12 | Invoice variety and validation: time on site and labor rate flags, over-NTE, partial, credit memo. Subscriber approves or rejects based on the flags | L, spike | Exercises the invoice validation logic and rejection paths | Zac + Claude |
-| 6 | B-22 | Complete checklists on WOs | M, spike | Checklists are part of real completion | Zac |
-| 7 | B-23 | Create WOs with assets attached | M, spike | Asset-linked work is the normal case in many accounts | Zac |
-| 8 | B-24 | Providers attach assets to WOs when onsite | M, spike | Pairs with B-23 | Zac |
-| 9 | B-14 | Photos on WOs: relevant to the trade and issue only, with variety (several images per issue type) | M, spike | Real WOs carry photos. Needs a curated image set per issue type, with licensing checked | Zac |
-| 10 | B-25 | Star ratings on WOs. A low rating moves the WO to Unsatisfactory and the provider returns onsite to finish | L, spike | Adds a rework loop | Zac |
-| 11 | B-15 | Provider-side PM WOs: find PM WOs and move them through the process. Subscribers cannot create PMs through the API, so the agent only picks up existing ones | L, spike | PM is a large share of real volume | Zac |
-| 12 | B-26 | PM compliance flows: pass and fail documentation, and the related follow-up | L, spike | Builds on B-15 | Zac |
-| 13 | B-27 | Linked WOs (parent and child) | M, spike | Common for multi-visit and multi-trade jobs | Zac |
-| 14 | B-28 | Recall WOs | M, spike | Rework against a closed WO. Pairs with B-25 | Zac |
-| 15 | B-29 | Avoided WOs: Guided Troubleshooting resolves the issue, and duplicate WOs are detected and avoided | L, spike | Tests the "WO never gets created" paths | Zac |
-| 16 | B-30 | Site audits that result in WOs created | L, spike | A second source of WOs besides the issue list | Zac |
-| 17 | B-31 | Snow and landscaping WOs done by providers with CIWO | L, spike | CIWO has its own check-in model | Zac |
-| 18 | B-32 | Quarterly RFP: a Subscriber runs an RFP with several bidding providers, then issues WOs to the winners | XL, spike | Needs several provider connections and contract changes | Zac |
-| 19 | B-33 | FTM techs and FTM WOs through the process | L, spike | Needs the FTM product model first | Zac |
-| 20 | B-05 | Per-location behavior overrides | M | Locations should differ in volume and trade mix | Claude |
-| 21 | B-07 | Seasonal and holiday weighting (HVAC in summer, quiet holidays) | M | Flat weekday activity is an easy tell | Claude |
-| 22 | B-04 | Deep link from the console to the WO in the ServiceChannel Subscriber view, in place of a WO detail page | S, spike | Finds the WO URL pattern. Keeps the console small | Zac |
-| 23 | B-09 | Scenario presets (quiet week, busy week, storm surge) | S | One click to change load | Claude |
-| 24 | B-16 | Clock speed-up mode for demos on SB2 | M | A full lifecycle in minutes | Claude |
-| 25 | B-13 | Repeat issues on the same asset | M | Needs B-23. Feeds repeat-repair reports | Claude |
-| 26 | B-34 | RT workflows | XL, spike | Very hard. Last on purpose | Zac |
+| 2 | B-49 | Partly answered 2026-10-28: a Python source install survives the same launch paths (launchd, Finder-style open), so the Python install path (install.sh) is the workaround, and the cause is the ad-hoc signed bundle (B-50). Still ask IT whether Falcon/Rapid7 blocked it. Original question: find why macOS kills the agent child about 2 s after the console opens when the app is launched from Finder or `open` (works from a terminal and from a launchd job; started 2026-10-28 08:52; ad-hoc signed app, security software on the machine). First read the new `[shell ...]` exit line in agent.log (signal 9 vs a code). If it is a system kill, try a LaunchAgent that runs `agent-core run` directly | M, spike | The app cannot be opened normally on Zac's machine | Zac |
+| 3 | B-50 | Apple Developer ID signing and notarization of the desktop app (US$99 a year) so it opens from Finder and Gatekeeper without a workaround; B-49 shows the ad-hoc signed app is killed on Zac's machine | M | Wider rollout of the desktop app | Zac |
+| 4 | B-12 | Invoice variety and validation: time on site and labor rate flags, over-NTE, partial, credit memo. Subscriber approves or rejects based on the flags | L, spike | Exercises the invoice validation logic and rejection paths | Zac + Claude |
+| 5 | B-22 | Complete checklists on WOs | M, spike | Checklists are part of real completion | Zac |
+| 6 | B-23 | Create WOs with assets attached | M, spike | Asset-linked work is the normal case in many accounts | Zac |
+| 7 | B-24 | Providers attach assets to WOs when onsite | M, spike | Pairs with B-23 | Zac |
+| 8 | B-14 | Photos on WOs: relevant to the trade and issue only, with variety (several images per issue type) | M, spike | Real WOs carry photos. Needs a curated image set per issue type, with licensing checked | Zac |
+| 9 | B-25 | Star ratings on WOs. A low rating moves the WO to Unsatisfactory and the provider returns onsite to finish | L, spike | Adds a rework loop | Zac |
+| 10 | B-15 | Provider-side PM WOs: find PM WOs and move them through the process. Subscribers cannot create PMs through the API, so the agent only picks up existing ones | L, spike | PM is a large share of real volume | Zac |
+| 11 | B-26 | PM compliance flows: pass and fail documentation, and the related follow-up | L, spike | Builds on B-15 | Zac |
+| 12 | B-27 | Linked WOs (parent and child) | M, spike | Common for multi-visit and multi-trade jobs | Zac |
+| 13 | B-28 | Recall WOs | M, spike | Rework against a closed WO. Pairs with B-25 | Zac |
+| 14 | B-29 | Avoided WOs: Guided Troubleshooting resolves the issue, and duplicate WOs are detected and avoided | L, spike | Tests the "WO never gets created" paths | Zac |
+| 15 | B-30 | Site audits that result in WOs created | L, spike | A second source of WOs besides the issue list | Zac |
+| 16 | B-31 | Snow and landscaping WOs done by providers with CIWO | L, spike | CIWO has its own check-in model | Zac |
+| 17 | B-32 | Quarterly RFP: a Subscriber runs an RFP with several bidding providers, then issues WOs to the winners | XL, spike | Needs several provider connections and contract changes | Zac |
+| 18 | B-33 | FTM techs and FTM WOs through the process | L, spike | Needs the FTM product model first | Zac |
+| 19 | B-05 | Per-location behavior overrides | M | Locations should differ in volume and trade mix | Claude |
+| 20 | B-07 | Seasonal and holiday weighting (HVAC in summer, quiet holidays) | M | Flat weekday activity is an easy tell | Claude |
+| 21 | B-04 | Deep link from the console to the WO in the ServiceChannel Subscriber view, in place of a WO detail page | S, spike | Finds the WO URL pattern. Keeps the console small | Zac |
+| 22 | B-09 | Scenario presets (quiet week, busy week, storm surge) | S | One click to change load | Claude |
+| 23 | B-16 | Clock speed-up mode for demos on SB2 | M | A full lifecycle in minutes | Claude |
+| 24 | B-13 | Repeat issues on the same asset | M | Needs B-23. Feeds repeat-repair reports | Claude |
+| 25 | B-34 | RT workflows | XL, spike | Very hard. Last on purpose | Zac |
 
 ## Ideas waiting for a spec
 None yet. Zac's new ideas go here first, then get sized and ranked.
@@ -49,6 +46,9 @@ None yet. Zac's new ideas go here first, then get sized and ranked.
 ## Done
 | ID | Item | Version |
 |----|------|---------|
+| B-08 | Emergency timing: read WO priority and ETA. Any WO with an ETA under 8 hours gets more activity, including back-and-forth notes that confirm provider availability before the visit (Done on branch v0.7: ETA-driven emergency plans for created and finishing-cleanup WOs) | 0.7.0 |
+| B-11 | Provider declines (low rate) and reschedules (higher rate). A reschedule is the Provider moving the scheduled date later than the original date set by the issue list (Done on branch v0.7: sliders default 0; spike in api-notes) | 0.7.0 |
+| B-20 | Reassign WOs between providers, for example after a decline or a no-show (Built on branch v0.7 for the decline path: slider default 0; spike in api-notes. Live-tested on SB2: decline path, no-show path (setting Provider no-shows %), and the API accepts a reassign after check-in. Not built: a plan setting that reassigns mid-job on purpose) | 0.7.0 |
 | B-48 | Spike: two-tech visits on Prod. A second check-in on an occupied WO works; the first tech out must use PartsOnOrder so the WO stays open for the second (fixed in 0.6.1) | 0.6.1 |
 | B-47 | Capabilities on users replace the Roles page: Can do checkboxes on Connections, random pick among users of the WO's provider, same tech checks in and out of a visit, optional two-tech visits (Behavior slider, default 5%). Second-tech check-in on an occupied WO is not yet verified on SB2 (see B-48) | 0.6.0 |
 | B-03 | Database backups: Back up now, last 10 kept, backup before each clean-up run, CLI restore. Machine move = copy the data folder (no separate settings export) | 0.6.0 |

@@ -5,8 +5,20 @@ from sc_activity_agent.engine import add_plan
 from sc_activity_agent.store import Store
 
 
+def test_inspect_commands_do_not_create_an_instance(tmp_path):
+    """A mistyped --data-dir once made an empty instance, and `plan` then said the WO did not exist."""
+    import pytest
+    missing = tmp_path / "typo"
+    for cmd in (["status"], ["get"], ["plan", "1"], ["pause"], ["backup"]):
+        with pytest.raises(SystemExit) as e:
+            main(["--data-dir", str(missing)] + cmd)
+        assert "no agent instance" in str(e.value)
+    assert not missing.exists()
+
+
 def test_set_get_plan_and_step(tmp_path, capsys):
     d = str(tmp_path)
+    Store(tmp_path)
     main(["--data-dir", d, "set", "behavior.proposal_rate", "25"])
     main(["--data-dir", d, "get", "behavior.proposal_rate"])
     assert "25" in capsys.readouterr().out

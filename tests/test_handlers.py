@@ -462,3 +462,16 @@ def test_reassign_retries_on_a_server_error_instead_of_cancelling(tmp_path):
     with pytest.raises(ScError):
         make_handlers(rt)["reassign"](None, wo, {"id": 1, "seq": 0, "kind": "reassign", "payload": '{"reason":3}'})
     assert [r[0] for r in s.db.execute("SELECT kind FROM steps ORDER BY seq")] == ["reassign"]
+
+
+def test_reassign_skips_the_old_plans_pending_steps_and_a_no_show_cancels_with_its_own_note(tmp_path):
+    for contract in (True, False):
+        (tmp_path / str(contract)).mkdir()
+        s, rt, wo, seen = _reassign_setup(tmp_path / str(contract), contract=contract)
+        s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,payload) VALUES(1,1,'check_out',99,'{}')")
+        s.db.commit()
+        make_handlers(rt)["reassign"](None, wo, {"id": 1, "seq": 0, "kind": "reassign", "payload": '{"reason":3,"cancel":"noshow_cancel"}'})
+        old = s.db.execute("SELECT state FROM steps WHERE kind='check_out' AND due_at=99").fetchone()[0]
+        assert old == "skipped"
+        cancels = [json.loads(r[0]) for r in s.db.execute("SELECT payload FROM steps WHERE kind='cancel'")]
+        assert cancels == ([] if contract else [{"situation": "noshow_cancel"}])

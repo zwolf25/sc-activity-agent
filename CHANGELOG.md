@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- New: Behavior setting "Provider no-shows %" (default 0). The provider accepts, then never arrives. A few hours after the visit time the Subscriber adds a note about the missed visit, then moves the WO to another provider connection that holds a contract for the trade (the same step as "Reassign after a decline %"), and that provider's work is planned as normal. With no such provider the WO is cancelled with a no-show note.
+- Fixed: when a WO moves to another provider, the old plan's pending steps (for example a check-out) are skipped, so they no longer run as the new provider.
+- Fixed: with more than one Provider connection, a WO could be created without its provider recorded when the Rank 1 cache was older than the provider list, so its steps ran as a random provider's user and failed with "WorkOrder not found". An older cache entry is now re-read, and adding or removing a connection clears the cache.
 - Changed: tables page in the browser. Locations 10, Add locations 20, Trades we can create 10 (with Location and Trade filters), Skipped trades 10, Audit log 20, both Errors tables 20, both Cleanup tables 10, Backups 10. The Add locations list now holds up to 1000 matches (was 50), and ticks survive paging.
 - Changed: Connections shows one row per user, with a Can do dropdown of checkboxes instead of a second row of boxes. Audit log Call text wraps instead of being cut off. Errors has a "Failed steps" header.
 - Changed: Cleanup settings sit inline, and the daily-choice dropdown is no longer full width.

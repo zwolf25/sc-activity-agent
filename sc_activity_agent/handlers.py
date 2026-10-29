@@ -110,7 +110,7 @@ def make_handlers(rt):
         call(wo, step, "PUT", f"/workorders/{wo['sc_id']}/decline", body={"DeclineReasonId": json.loads(step["payload"])["reason"]})
 
     def reassign(engine, wo, step):
-        """B-20: after a decline, move the WO to another provider connection that holds a contract for its trade at the location
+        """B-20: after a decline or a no-show, move the WO to another provider connection that holds a contract for its trade at the location
         (the API refuses the move otherwise), then plan the new provider's work. With no such provider, cancel as a plain decline does."""
         p = json.loads(step["payload"])
         loc, ctx = rt.location(wo["location"]), ctx_of(wo)
@@ -143,11 +143,13 @@ def make_handlers(rt):
                     raise
                 new = None   # refused (for example the contract changed): fall back to the cancel
         now = time.time()
+        # the rest of the old plan belonged to the old provider (a no-show or a mid-job move leaves steps such as check-out pending)
+        rt.store.db.execute("UPDATE steps SET state='skipped' WHERE wo_id=? AND seq>? AND state='pending'", (wo["id"], step["seq"]))
         if new is None:
-            insert_steps(rt.store, wo["id"], step["seq"], [("cancel", now + rt.rng.randint(1, 3) * 86400, {"situation": "declined"})])
+            insert_steps(rt.store, wo["id"], step["seq"], [("cancel", now + rt.rng.randint(1, 3) * 86400, {"situation": p.get("cancel", "declined")})])
             return
         rt.save_ctx(wo, provider_id=new, techs={})
-        cfg = {**planner.DEFAULTS, **rt.store.get("behavior", {}), "decline": 0, "reschedule": 0, "reassign": 0}
+        cfg = {**planner.DEFAULTS, **rt.store.get("behavior", {}), "decline": 0, "reschedule": 0, "reassign": 0, "no_show": 0}
         plan = planner.build_plan(rt.rng, now, cfg, loc["tz"] or "America/New_York")
         insert_steps(rt.store, wo["id"], step["seq"], [(s["kind"], s["due_at"], s["payload"]) for s in plan])
 

@@ -345,7 +345,11 @@ def main(argv=None):
     cmd_fn = {"init": cmd_init, "status": cmd_status, "tick": cmd_tick, "run": cmd_run,
               "pause": cmd_pause, "resume": cmd_resume, "login": cmd_login, "update": cmd_update, "open": cmd_open, "install-app": cmd_install_app,
               "get": cmd_get, "set": cmd_set, "plan": cmd_plan, "step": cmd_step, "cleanup": cmd_cleanup, "backup": cmd_backup}[args.cmd]
-    cmd_fn(args, Store(data_dir(args)))
+    d = data_dir(args)
+    if args.cmd not in ("init", "run", "open", "install-app") and not (d / "agent.db").exists():
+        # Store() would create the folder, key and an empty database at any mistyped path.
+        sys.exit(f"no agent instance at {d} (check --data-dir, or run `agent init` first)")
+    cmd_fn(args, Store(d))
 
 
 if __name__ == "__main__":

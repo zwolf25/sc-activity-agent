@@ -290,3 +290,13 @@ def test_declined_plan_can_end_in_a_reassign_instead_of_a_cancel():
         p = planner.build_plan(random.Random(seed), NOW, {"decline": 100, "reassign": 100})
         assert [s["kind"] for s in p] == ["decline", "reassign"]
         assert planner.build_plan(random.Random(seed), NOW, {"decline": 100, "reassign": 0})[-1]["kind"] == "cancel"
+
+
+def test_no_show_plan_accepts_then_never_checks_in_and_ends_in_a_reassign():
+    for seed in range(20):
+        p = planner.build_plan(random.Random(seed), NOW, {"no_show": 100, "proposal_rate": 0})
+        kinds = [s["kind"] for s in p]
+        assert "check_in" not in kinds and kinds[0] == "accept" and kinds[-2:] == ["sub_note", "reassign"]
+        assert p[-2]["payload"]["situation"] == "noshow" and p[-1]["payload"]["cancel"] == "noshow_cancel"
+        assert p[-1]["due_at"] > p[-2]["due_at"] > max(s["due_at"] for s in p[:-2])
+    assert "no_show" in planner.DEFAULTS and planner.build_plan(random.Random(1), NOW, {})[-1]["kind"] != "reassign"

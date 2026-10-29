@@ -41,7 +41,7 @@ def by_stage(db):
 
 
 NOTE = {"ack": "acknowledge", "eta": "ETA update", "onsite": "on site", "return": "return visit", "parts": "parts needed",
-        "access": "access", "followup": "follow-up", "created": "WO created", "reschedule": "reschedule"}
+        "access": "access", "followup": "follow-up", "created": "WO created", "reschedule": "reschedule", "noshow": "no-show"}
 
 
 def detail(kind, p):
@@ -64,7 +64,7 @@ def detail(kind, p):
     if kind == "reschedule":
         return "Moves the scheduled date later"
     if kind == "cancel":
-        return "Cancels after the decline"
+        return "Cancels after a decline or no-show"
     if kind == "invoice_submit":
         return "Resubmission after reject" if p.get("situation") == "invoice_fix" else ""
     return ""

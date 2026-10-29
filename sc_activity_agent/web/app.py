@@ -49,6 +49,7 @@ SLIDERS = [("wo_per_month", "Work orders per month", "Per enabled location, week
            ("emergency_hours", "Treat as emergency up to (hours)", "A WO whose original ETA is at most this many hours after its call date gets the fast emergency plan; 0 = never", 0, 72, 1),
            ("decline", "Provider declines %", "The provider declines instead of accepting; the WO is cancelled 1 to 3 days later. Turn off auto-reassign for the trade (SC admin) or the WO moves to another provider", 0, 100, 1),
            ("reassign", "Reassign after a decline %", "Of the declines, the share the Subscriber moves to another provider with a contract for the trade at the location; the rest, and any with no such provider, are cancelled", 0, 100, 1),
+           ("no_show", "Provider no-shows %", "The provider accepts but never arrives. The Subscriber notes it and moves the WO to another provider with a contract for the trade, or cancels it if none can take it", 0, 100, 1),
            ("reschedule", "Reschedules %", "The provider moves the scheduled date 1 to 3 business days later than the original date", 0, 100, 1),
            ("first_time_fix", "First-time fix %", "Rest need 2 or 3 visits", 0, 100, 1),
            ("hours_start", "Activity starts (hour)", "Local time at the location", 0, 23, 1),
@@ -199,6 +200,7 @@ def create_app(store, engine=None, rt=None):
         db.execute("INSERT INTO connections(side,name,client_id,client_secret,provider_id) VALUES(?,?,?,?,?)",
                    (side, name, client_id.strip(), store.enc(client_secret.strip()), int(provider_id) if provider_id.strip() else None))
         db.commit()
+        store.put("rank1", {})   # a new provider can be Rank 1 somewhere; re-read at the next creation pass
         return RedirectResponse("/connections", 303)
 
     @app.post("/connections/{cid}/users")
@@ -234,6 +236,7 @@ def create_app(store, engine=None, rt=None):
     def del_connection(cid: int):
         db.execute("DELETE FROM connections WHERE id=?", (cid,))
         db.commit()
+        store.put("rank1", {})
         return RedirectResponse("/connections", 303)
 
     @app.post("/users/{uid}/test")
