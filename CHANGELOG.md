@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- New: Settings > "Attach a before photo to new work orders" and "Attach an after photo to the provider's closing note" (both off by default). The photos match the WO's trade and come from the same scene. The closing note is an extra provider note posted after the final check-out. Verified against the SB2 API; not run on Production. Restart the agent after updating; no migration.
+
 ## v0.10.0 - 2026-10-30
 
 - New: a library of 52 before and after photo sets (HVAC, Electrical, Plumbing, Doors, General Maintenance, Janitorial), each with a before, an after and a side-by-side image. Shipped inside the app.

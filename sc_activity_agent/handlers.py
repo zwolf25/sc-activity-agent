@@ -246,6 +246,26 @@ def make_handlers(rt):
                  "PrimaryStatus": "Completed" if p["final"] and not partial else "PartsOnOrder",   # Completed closes the WO and blocks the second tech's check-out (921)
                   "ActionStatus": "Complete",
                  "Resolution": text, "TechsCount": 1}, wo, step)
+        if p["final"] and not partial and not p.get("tech", 0):
+            attach_after(wo, step)
+
+    def attach_after(wo, step):
+        """B-53: the provider's closing note carries the after photo (Settings toggle, off by default). The check-out already went through,
+        so any refusal, even a pause, is skipped; a retry would only fail the check-out."""
+        if not rt.store.get("attachments", {}).get("after"):
+            return
+        c = ctx_of(wo)
+        pic = photos.pick(wo["trade"], "after", rt.rng, c.get("photo_set"))
+        if not pic:
+            return
+        try:
+            n = call(wo, step, "POST", f"/workorders/{wo['sc_id']}/notes",
+                     body={"Note": content.note("provider", "complete", c, rt.rng), "NotifyFollowers": False, "DoNotSendEmail": True}) or {}
+            if n.get("id"):
+                call(wo, step, "POST", f"/workorders/{wo['sc_id']}/notes/{n['id']}/attachments", parts=photos.attach_parts(pic, "Photo after the work", as_list=True))
+                rt.save_ctx(wo, photo_set=pic[0])
+        except ScError:
+            pass
 
     def review(engine, wo, step):
         """Subscriber verifies the work: COMPLETED/CONFIRMED with the review text as the status note (verified on SB2)."""

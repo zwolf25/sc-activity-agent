@@ -5,7 +5,7 @@ import json
 import time
 from zoneinfo import ZoneInfo
 
-from . import generator, planner
+from . import generator, photos, planner
 from .client import ScError
 from .engine import add_plan
 
@@ -159,5 +159,19 @@ class Creator:
         pid = self.store.get("rank1", {}).get(loc["store_id"], {}).get("owners", {}).get(issue["trade"])
         if pid:
             ctx["provider_id"] = pid
+        if self.store.get("attachments", {}).get("before"):
+            self._attach_before(app, user, r["id"], issue["trade"], ctx)
         add_plan(self.store, loc["store_id"], issue["trade"], r["id"], plan, ctx, now)
         return r["id"]
+
+    def _attach_before(self, app, user, wo_id, trade, ctx):
+        """B-52: a before photo on the new WO. The WO already exists, so any refusal (even a pause) is skipped rather than lose its plan."""
+        pic = photos.pick(trade, "before", self.rng)
+        if not pic:
+            return
+        try:
+            app.call(user, "POST", f"/workorders/{wo_id}/attachments", action="attach_before", wo=wo_id, write=True,
+                     parts=photos.attach_parts(pic, "Photo of the issue", as_list=False))
+            ctx["photo_set"] = pic[0]
+        except ScError:
+            pass

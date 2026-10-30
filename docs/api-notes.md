@@ -205,3 +205,12 @@ Provider app and user (SydeTech, Production app does not exist on SB2; a separat
 - Checklists with `DisplayForEachAsset` (such as 2380 Asset Transfer) are per asset and need B-23/B-24 first.
 - Built into `check_out` (2026-10-30) and run live on SB2 on a new Doors WO (accept, check-in, then check-out): `GET /checklists/detail` 200 (the Subscriber id comes from our location row), five answers 201 (acknowledgement, selector, text, numeric, text with a JPEG), then `universalCheckOut` 200. The read-back showed all five with `TechnicianId` 1, and the picture answer carried a `Pictures` entry. The answers went in while the WO was IN PROGRESS, before the check-out. A WO already COMPLETED is not tested for submits.
 - Not tested: completing a WO with unanswered required questions (whether check-out is blocked), a Subscriber submitting, Prod.
+
+## Attachments spike (2026-10-30, SB2, B-52 and B-53)
+
+- WO attachment: `POST /workorders/{id}/attachments`, multipart. Part `AddAttachmentsRequest` (JSON `{"Attachments": [{"Name", "Description", "Type": 1, "MediaType": "image/jpeg"}]}`, `Type` 1 = File) plus part `file`. Verified as the Subscriber on WO 367650747 (already COMPLETED): 200 with `{"Attachments": [{"Id", "Name", "Path", "Url"}]}`. The API also creates a note for the attachment (the read-back shows a `NoteId`). Read back with `GET /odata/workorders({id})/attachments`.
+- Note attachment: `POST /workorders/{id}/notes/{noteId}/attachments`, multipart. The `AddAttachmentsRequest` part is a JSON array here (not an object), plus part `file`. Verified as the Provider: 200 `{"ids": [393741395], "warning": "Failed to upload attachment(s): ''"}`. The warning is empty text and the attachment is present, so treat the `ids` list as success. Read back with `GET /odata/workorders({id})/notes({noteId})/attachments`.
+- `POST /workorders/{id}/notes` returns `{"id": <noteId>, "documentId": ...}`. The key is lowercase `id`.
+- WO create (`CreateWoRequest`) has an `Attachments` field, not exercised. The simpler route for B-52 is create the WO, then post the attachment to its new id.
+- Not tested: the Provider posting to `/workorders/{id}/attachments`, Production, and whether attachments are refused on a CLOSED or cancelled WO.
+

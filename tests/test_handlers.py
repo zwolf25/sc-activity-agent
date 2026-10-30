@@ -625,9 +625,10 @@ CHECKLIST = {"CheckListDetails": [{"Id": 7, "Questions": [
     {"Id": 6, "QuestionType": 0, "PictureFlag": 0, "DisplayForEachAsset": True, "CheckListQuestionOptions": []}]}]}
 
 
-def _checkout(tmp_path, on=True, defs=CHECKLIST, **ctx):
+def _checkout(tmp_path, on=True, defs=CHECKLIST, after=False, **ctx):
     s = setup(tmp_path)
     s.put("checklists", {"on": on})
+    s.put("attachments", {"after": after})
     s.db.execute("UPDATE locations SET subscriber_id=5 WHERE store_id='HQ-NYC'")
     wo = _wo(s, provider_id=2000078685, techs={"1.0": 2}, **ctx)
     s.db.execute("UPDATE work_orders SET trade='HVAC' WHERE id=?", (wo["id"],))
@@ -640,6 +641,8 @@ def _checkout(tmp_path, on=True, defs=CHECKLIST, **ctx):
             sent.append((method, path, params, kw.get("parts")))
         if path == "/workorders/9":
             return {"Status": {"Primary": "IN PROGRESS"}, "Provider": {"Id": 2000078685}}
+        if path == "/workorders/9/notes":
+            return {"id": 77}
         return defs if path == "/checklists/detail" else {}
     rt = Runtime(s, {1: FakeApp("sub", []), 2: FakeApp("prov", [])}, random.Random(1))
     rt.apps[2].call = call
@@ -666,3 +669,11 @@ def test_checklists_are_not_answered_when_off_or_already_done_or_absent(tmp_path
     assert [x[1] for x in _checkout(tmp_path / "b", checklists=[1])[2]] == ["/workorders/9/universalCheckOut"]
     none = _checkout(tmp_path / "c", defs={"CheckListDetails": []})[2]
     assert [x[1] for x in none] == ["/checklists/detail", "/workorders/9/universalCheckOut"]
+
+
+def test_after_photo_goes_on_a_closing_note_after_the_final_check_out(tmp_path):
+    s, wo, sent = _checkout(tmp_path / "a", on=False, after=True, photo_set="hvac-condensate-pan")
+    assert [x[1] for x in sent] == ["/workorders/9/universalCheckOut", "/workorders/9/notes", "/workorders/9/notes/77/attachments"]
+    parts = sent[2][3]
+    assert json.loads(parts[0][3])[0]["Description"] == "Photo after the work" and parts[1][1] == "hvac-condensate-pan_after.jpg"
+    assert [x[1] for x in _checkout(tmp_path / "b", on=False)[2]] == ["/workorders/9/universalCheckOut"]

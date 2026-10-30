@@ -19,6 +19,14 @@ def trade_slug(name):
     return next((v for k, v in SLUG.items() if k in n), None)
 
 
+def attach_parts(pic, description, as_list):
+    """Multipart parts that attach a picked photo. The WO endpoint wants {"Attachments": [...]}; the note endpoint wants the bare list."""
+    _, name, img = pic
+    meta = {"Name": name, "Description": description, "Type": 1, "MediaType": "image/jpeg"}
+    return [("AddAttachmentsRequest", None, "application/json", json.dumps([meta] if as_list else {"Attachments": [meta]}).encode()),
+            ("file", name, "image/jpeg", img)]
+
+
 def pick(trade, kind, rng, set_id=None):
     """(set id, file name, jpeg bytes) of one `kind` image, or None when no set fits the trade. With set_id, that set is used whatever the trade."""
     s = sets().get(set_id) if set_id else None

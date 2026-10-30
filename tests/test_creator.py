@@ -100,3 +100,29 @@ def test_resync_rereads_rank_one_and_records_skipped_trades(tmp_path):
     assert c.resync(loc) == {"DOORS"}
     hit = s.get("rank1")["HQ"]
     assert hit["trades"] == ["DOORS"] and hit["skipped"] == ["ELECTRICAL"]
+
+
+def test_before_photo_is_attached_to_the_new_wo_only_when_on(tmp_path):
+    import json
+    s, app, c = setup(tmp_path / "off")
+    c.tick()
+    assert not [1 for m, p, b in app.calls if p.endswith("/attachments")]
+    s, app, c = setup(tmp_path / "on")
+    s.put("attachments", {"before": True})
+    c.tick()
+    assert [p for m, p, b in app.calls if p.endswith("/attachments")] == ["/workorders/9001/attachments"]
+    assert json.loads(s.db.execute("SELECT ctx FROM work_orders").fetchone()[0])["photo_set"]
+
+
+def test_a_refused_before_photo_does_not_lose_the_wo_plan(tmp_path):
+    s, app, c = setup(tmp_path)
+    s.put("attachments", {"before": True})
+    orig = app.call
+
+    def call(user, method, path, *a, **kw):
+        if path.endswith("/attachments"):
+            raise ScError(0, "paused", path)
+        return orig(user, method, path, *a, **kw)
+    app.call = call
+    assert c.tick() == [("HQ", 9001)]
+    assert s.db.execute("SELECT COUNT(*) FROM steps").fetchone()[0] > 5
