@@ -6,6 +6,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 
 import certifi
 
@@ -30,6 +31,16 @@ class ScError(Exception):
     def __init__(self, status, body, path=""):
         super().__init__(f"{status} {path}: {str(body)[:300]}")
         self.status, self.body = status, body
+
+
+def multipart(parts):
+    """Returns (body bytes, Content-Type header) for a multipart/form-data request."""
+    boundary = uuid.uuid4().hex
+    out = b""
+    for name, filename, ctype, content in parts:
+        disp = f'form-data; name="{name}"' + (f'; filename="{filename}"' if filename else "")
+        out += f"--{boundary}\r\nContent-Disposition: {disp}\r\nContent-Type: {ctype}\r\n\r\n".encode() + content + b"\r\n"
+    return out + f"--{boundary}--\r\n".encode(), "multipart/form-data; boundary=" + boundary
 
 
 class RateLimiter:
@@ -91,18 +102,22 @@ class ScApp:
         self.tokens[username] = (j["access_token"], time.time() + j.get("expires_in", 600) - 30)
         return j["access_token"]
 
-    def call(self, user, method, path, params=None, body=None, *, action="", wo=None, write=None):
-        """user = (username, password). Returns parsed JSON (or None). Raises ScError on non-2xx."""
+    def call(self, user, method, path, params=None, body=None, *, action="", wo=None, write=None, parts=None):
+        """user = (username, password). Returns parsed JSON (or None). Raises ScError on non-2xx.
+        parts = [(name, file name or None, content type, bytes)] sends multipart/form-data instead of a JSON body."""
         write = method != "GET" if write is None else write
         if write and self.paused():
             raise ScError(0, "paused", path)
         url = self.base + path + ("?" + urllib.parse.urlencode(params) if params else "")
         data = json.dumps(body).encode() if body is not None else None
+        ctype = "application/json"
+        if parts:
+            data, ctype = multipart(parts)
         for attempt in range(3):
             self.limiter.wait()
             t0 = time.time()
             headers = {"Authorization": "Bearer " + self.token(*user), "Accept": "application/json",
-                       "Content-Type": "application/json"}
+                       "Content-Type": ctype}
             status, text = self.transport(method, url, headers, data)
             if status == 401:
                 self.tokens.pop(user[0], None)

@@ -1,0 +1,543 @@
+[
+ {
+  "id": "door-storefront-closer",
+  "trades": [
+   "doors"
+  ],
+  "scene": "Glass storefront door with a bent closer arm and loose panic bar, then repaired",
+  "before": "door-storefront-closer_before.jpg",
+  "after": "door-storefront-closer_after.jpg",
+  "both": "door-storefront-closer_both.jpg"
+ },
+ {
+  "id": "door-steel-lockset",
+  "trades": [
+   "doors",
+   "general-maintenance"
+  ],
+  "scene": "Scarred steel back door with a worn lockset and latch, then a new lockset",
+  "before": "door-steel-lockset_before.jpg",
+  "after": "door-steel-lockset_after.jpg",
+  "both": "door-steel-lockset_both.jpg"
+ },
+ {
+  "id": "door-jamb-splintered",
+  "trades": [
+   "doors",
+   "general-maintenance"
+  ],
+  "scene": "Splintered wood jamb at the strike plate, then repaired",
+  "before": "door-jamb-splintered_before.jpg",
+  "after": "door-jamb-splintered_after.jpg",
+  "both": "door-jamb-splintered_both.jpg"
+ },
+ {
+  "id": "door-jamb-strike-plate",
+  "trades": [
+   "doors",
+   "general-maintenance"
+  ],
+  "scene": "Chewed door jamb around the strike plate, then repaired and painted",
+  "before": "door-jamb-strike-plate_before.jpg",
+  "after": "door-jamb-strike-plate_after.jpg",
+  "both": "door-jamb-strike-plate_both.jpg"
+ },
+ {
+  "id": "door-storefront-panic-bar",
+  "trades": [
+   "doors"
+  ],
+  "scene": "Storefront door hanging with a broken panic bar, then repaired",
+  "before": "door-storefront-panic-bar_before.jpg",
+  "after": "door-storefront-panic-bar_after.jpg",
+  "both": "door-storefront-panic-bar_both.jpg"
+ },
+ {
+  "id": "wall-drywall-hole",
+  "trades": [
+   "general-maintenance"
+  ],
+  "scene": "Hole in drywall above the baseboard, then patched and painted",
+  "before": "wall-drywall-hole_before.jpg",
+  "after": "wall-drywall-hole_after.jpg",
+  "both": "wall-drywall-hole_both.jpg"
+ },
+ {
+  "id": "wall-peeling-paint",
+  "trades": [
+   "general-maintenance"
+  ],
+  "scene": "Peeling, scuffed wall paint, then repainted",
+  "before": "wall-peeling-paint_before.jpg",
+  "after": "wall-peeling-paint_after.jpg",
+  "both": "wall-peeling-paint_both.jpg"
+ },
+ {
+  "id": "wall-shelf-bracket",
+  "trades": [
+   "general-maintenance"
+  ],
+  "scene": "Collapsed shelf and bent standards on a damaged wall, then a new shelf",
+  "before": "wall-shelf-bracket_before.jpg",
+  "after": "wall-shelf-bracket_after.jpg",
+  "both": "wall-shelf-bracket_both.jpg"
+ },
+ {
+  "id": "hvac-rooftop-filter",
+  "trades": [
+   "hvac"
+  ],
+  "scene": "Rooftop unit with a clogged filter, then a new filter",
+  "before": "hvac-rooftop-filter_before.jpg",
+  "after": "hvac-rooftop-filter_after.jpg",
+  "both": "hvac-rooftop-filter_both.jpg"
+ },
+ {
+  "id": "hvac-condenser-coil",
+  "trades": [
+   "hvac"
+  ],
+  "scene": "Condenser coil packed with dust and fluff, then cleaned",
+  "before": "hvac-condenser-coil_before.jpg",
+  "after": "hvac-condenser-coil_after.jpg",
+  "both": "hvac-condenser-coil_both.jpg"
+ },
+ {
+  "id": "hvac-ceiling-diffuser",
+  "trades": [
+   "hvac",
+   "janitorial"
+  ],
+  "scene": "Ceiling diffuser with black dust streaks, then cleaned",
+  "before": "hvac-ceiling-diffuser_before.jpg",
+  "after": "hvac-ceiling-diffuser_after.jpg",
+  "both": "hvac-ceiling-diffuser_both.jpg"
+ },
+ {
+  "id": "thermostat-replace",
+  "trades": [
+   "hvac",
+   "electrical"
+  ],
+  "scene": "Cracked thermostat with a loose wire, then a new thermostat",
+  "before": "thermostat-replace_before.jpg",
+  "after": "thermostat-replace_after.jpg",
+  "both": "thermostat-replace_both.jpg"
+ },
+ {
+  "id": "outlet-burnt",
+  "trades": [
+   "electrical"
+  ],
+  "scene": "Scorched, cracked wall outlet, then a new outlet and cover",
+  "before": "outlet-burnt_before.jpg",
+  "after": "outlet-burnt_after.jpg",
+  "both": "outlet-burnt_both.jpg"
+ },
+ {
+  "id": "electrical-panel",
+  "trades": [
+   "electrical"
+  ],
+  "scene": "Open panel with loose wiring, then a closed, labeled panel",
+  "before": "electrical-panel_before.jpg",
+  "after": "electrical-panel_after.jpg",
+  "both": "electrical-panel_both.jpg"
+ },
+ {
+  "id": "light-fixture-ceiling",
+  "trades": [
+   "electrical",
+   "general-maintenance"
+  ],
+  "scene": "Fallen ceiling light fixture with exposed wires, then a new LED fixture",
+  "before": "light-fixture-ceiling_before.jpg",
+  "after": "light-fixture-ceiling_after.jpg",
+  "both": "light-fixture-ceiling_both.jpg"
+ },
+ {
+  "id": "junction-box",
+  "trades": [
+   "electrical"
+  ],
+  "scene": "Open junction box with loose connectors, then a covered box with conduit",
+  "before": "junction-box_before.jpg",
+  "after": "junction-box_after.jpg",
+  "both": "junction-box_both.jpg"
+ },
+ {
+  "id": "floor-tile-grout",
+  "trades": [
+   "janitorial"
+  ],
+  "scene": "Scuffed, stained tile floor, then clean and glossy",
+  "before": "floor-tile-grout_before.jpg",
+  "after": "floor-tile-grout_after.jpg",
+  "both": "floor-tile-grout_both.jpg"
+ },
+ {
+  "id": "restroom-sinks",
+  "trades": [
+   "janitorial",
+   "plumbing"
+  ],
+  "scene": "Dirty restroom sinks and mirror, then clean",
+  "before": "restroom-sinks_before.jpg",
+  "after": "restroom-sinks_after.jpg",
+  "both": "restroom-sinks_both.jpg"
+ },
+ {
+  "id": "hallway-carpet",
+  "trades": [
+   "janitorial"
+  ],
+  "scene": "Stained hallway carpet, then cleaned",
+  "before": "hallway-carpet_before.jpg",
+  "after": "hallway-carpet_after.jpg",
+  "both": "hallway-carpet_both.jpg"
+ },
+ {
+  "id": "glass-door-entry",
+  "trades": [
+   "janitorial"
+  ],
+  "scene": "Smudged glass entry door with debris on the sill, then clean",
+  "before": "glass-door-entry_before.jpg",
+  "after": "glass-door-entry_after.jpg",
+  "both": "glass-door-entry_both.jpg"
+ },
+ {
+  "id": "sink-trap-leak",
+  "trades": [
+   "plumbing"
+  ],
+  "scene": "Leaking sink trap with a bucket and puddle, then a new trap",
+  "before": "sink-trap-leak_before.jpg",
+  "after": "sink-trap-leak_after.jpg",
+  "both": "sink-trap-leak_both.jpg"
+ },
+ {
+  "id": "floor-drain-clogged",
+  "trades": [
+   "plumbing",
+   "janitorial"
+  ],
+  "scene": "Clogged floor drain with standing water and debris, then clear",
+  "before": "floor-drain-clogged_before.jpg",
+  "after": "floor-drain-clogged_after.jpg",
+  "both": "floor-drain-clogged_both.jpg"
+ },
+ {
+  "id": "toilet-tank-leak-a",
+  "trades": [
+   "plumbing"
+  ],
+  "scene": "Cracked toilet tank dripping into a bucket, then repaired",
+  "before": "toilet-tank-leak-a_before.jpg",
+  "after": "toilet-tank-leak-a_after.jpg",
+  "both": "toilet-tank-leak-a_both.jpg"
+ },
+ {
+  "id": "toilet-tank-leak-b",
+  "trades": [
+   "plumbing"
+  ],
+  "scene": "Cracked toilet tank and wet floor, then repaired",
+  "before": "toilet-tank-leak-b_before.jpg",
+  "after": "toilet-tank-leak-b_after.jpg",
+  "both": "toilet-tank-leak-b_both.jpg"
+ },
+ {
+  "id": "ceiling-tile-water-stain",
+  "trades": [
+   "general-maintenance",
+   "plumbing"
+  ],
+  "scene": "Water-stained sagging ceiling tile above a sales floor, then a clean tile",
+  "before": "ceiling-tile-water-stain_before.jpg",
+  "after": "ceiling-tile-water-stain_after.jpg",
+  "both": "ceiling-tile-water-stain_both.jpg"
+ },
+ {
+  "id": "faucet-drip-dirty",
+  "trades": [
+   "plumbing",
+   "janitorial"
+  ],
+  "scene": "Dirty, dripping faucet and basin, then a clean faucet",
+  "before": "faucet-drip-dirty_before.jpg",
+  "after": "faucet-drip-dirty_after.jpg",
+  "both": "faucet-drip-dirty_both.jpg"
+ },
+ {
+  "id": "hvac-rooftop-panel",
+  "trades": [
+   "hvac",
+   "electrical"
+  ],
+  "scene": "Rooftop unit with the access panel off and loose wiring, then the panel back on",
+  "before": "hvac-rooftop-panel_before.jpg",
+  "after": "hvac-rooftop-panel_after.jpg",
+  "both": "hvac-rooftop-panel_both.jpg"
+ },
+ {
+  "id": "thermostat-blank-display",
+  "trades": [
+   "hvac",
+   "electrical"
+  ],
+  "scene": "Thermostat with a dead display and loose wires, then a new working thermostat",
+  "before": "thermostat-blank-display_before.jpg",
+  "after": "thermostat-blank-display_after.jpg",
+  "both": "thermostat-blank-display_both.jpg"
+ },
+ {
+  "id": "hvac-evaporator-coil-frozen",
+  "trades": [
+   "hvac"
+  ],
+  "scene": "Evaporator coil iced over in an air handler, then clean and dry",
+  "before": "hvac-evaporator-coil-frozen_before.jpg",
+  "after": "hvac-evaporator-coil-frozen_after.jpg",
+  "both": "hvac-evaporator-coil-frozen_both.jpg"
+ },
+ {
+  "id": "hvac-condensate-pan",
+  "trades": [
+   "hvac",
+   "plumbing"
+  ],
+  "scene": "Condensate pan full of algae and standing water, then clean with a new drain",
+  "before": "hvac-condensate-pan_before.jpg",
+  "after": "hvac-condensate-pan_after.jpg",
+  "both": "hvac-condensate-pan_both.jpg"
+ },
+ {
+  "id": "hvac-flex-duct-torn",
+  "trades": [
+   "hvac"
+  ],
+  "scene": "Torn, sagging insulated duct with loose insulation, then a new duct strapped up",
+  "before": "hvac-flex-duct-torn_before.jpg",
+  "after": "hvac-flex-duct-torn_after.jpg",
+  "both": "hvac-flex-duct-torn_both.jpg"
+ },
+ {
+  "id": "hvac-return-grille-dusty",
+  "trades": [
+   "hvac",
+   "janitorial"
+  ],
+  "scene": "Return-air grille caked with dust, then a new clean grille",
+  "before": "hvac-return-grille-dusty_before.jpg",
+  "after": "hvac-return-grille-dusty_after.jpg",
+  "both": "hvac-return-grille-dusty_both.jpg"
+ },
+ {
+  "id": "hvac-fan-guard-rusted",
+  "trades": [
+   "hvac"
+  ],
+  "scene": "Rusted exhaust fan and guard, then a new fan guard",
+  "before": "hvac-fan-guard-rusted_before.jpg",
+  "after": "hvac-fan-guard-rusted_after.jpg",
+  "both": "hvac-fan-guard-rusted_both.jpg"
+ },
+ {
+  "id": "hvac-refrigerant-line-insulation",
+  "trades": [
+   "hvac"
+  ],
+  "scene": "Frayed refrigerant line insulation at the wall, then new foam insulation",
+  "before": "hvac-refrigerant-line-insulation_before.jpg",
+  "after": "hvac-refrigerant-line-insulation_after.jpg",
+  "both": "hvac-refrigerant-line-insulation_both.jpg"
+ },
+ {
+  "id": "hvac-blower-belt",
+  "trades": [
+   "hvac"
+  ],
+  "scene": "Dirty blower wheel and worn belt, then a clean wheel and new belt",
+  "before": "hvac-blower-belt_before.jpg",
+  "after": "hvac-blower-belt_after.jpg",
+  "both": "hvac-blower-belt_both.jpg"
+ },
+ {
+  "id": "door-automatic-sensor",
+  "trades": [
+   "doors",
+   "electrical"
+  ],
+  "scene": "Automatic door header with the sensor cover hanging off, then a new cover in place",
+  "before": "door-automatic-sensor_before.jpg",
+  "after": "door-automatic-sensor_after.jpg",
+  "both": "door-automatic-sensor_both.jpg"
+ },
+ {
+  "id": "door-kick-plate",
+  "trades": [
+   "doors",
+   "general-maintenance"
+  ],
+  "scene": "Dented bottom of an interior door, then a new stainless kick plate",
+  "before": "door-kick-plate_before.jpg",
+  "after": "door-kick-plate_after.jpg",
+  "both": "door-kick-plate_both.jpg"
+ },
+ {
+  "id": "door-sweep-worn",
+  "trades": [
+   "doors",
+   "general-maintenance"
+  ],
+  "scene": "Torn door sweep with a gap at the bottom, then a new sweep",
+  "before": "door-sweep-worn_before.jpg",
+  "after": "door-sweep-worn_after.jpg",
+  "both": "door-sweep-worn_both.jpg"
+ },
+ {
+  "id": "door-glass-cracked",
+  "trades": [
+   "doors",
+   "general-maintenance"
+  ],
+  "scene": "Cracked door glass held with tape, then new glass",
+  "before": "door-glass-cracked_before.jpg",
+  "after": "door-glass-cracked_after.jpg",
+  "both": "door-glass-cracked_both.jpg"
+ },
+ {
+  "id": "electrical-exit-sign",
+  "trades": [
+   "electrical"
+  ],
+  "scene": "Exit sign with dead lights, then a lit exit sign",
+  "before": "electrical-exit-sign_before.jpg",
+  "after": "electrical-exit-sign_after.jpg",
+  "both": "electrical-exit-sign_both.jpg"
+ },
+ {
+  "id": "electrical-switch-plate",
+  "trades": [
+   "electrical"
+  ],
+  "scene": "Wall switch with a missing cover and exposed wires, then a new switch and plate",
+  "before": "electrical-switch-plate_before.jpg",
+  "after": "electrical-switch-plate_after.jpg",
+  "both": "electrical-switch-plate_both.jpg"
+ },
+ {
+  "id": "electrical-emergency-light",
+  "trades": [
+   "electrical"
+  ],
+  "scene": "Emergency light unit with the cover off and loose wires, then a working unit",
+  "before": "electrical-emergency-light_before.jpg",
+  "after": "electrical-emergency-light_after.jpg",
+  "both": "electrical-emergency-light_both.jpg"
+ },
+ {
+  "id": "electrical-pole-base",
+  "trades": [
+   "electrical"
+  ],
+  "scene": "Light pole base with the handhole open and loose wires, then a closed cover",
+  "before": "electrical-pole-base_before.jpg",
+  "after": "electrical-pole-base_after.jpg",
+  "both": "electrical-pole-base_both.jpg"
+ },
+ {
+  "id": "wall-corner-guard",
+  "trades": [
+   "general-maintenance",
+   "janitorial"
+  ],
+  "scene": "Cracked, scuffed wall corner, then a new stainless corner guard",
+  "before": "wall-corner-guard_before.jpg",
+  "after": "wall-corner-guard_after.jpg",
+  "both": "wall-corner-guard_both.jpg"
+ },
+ {
+  "id": "wall-baseboard-corner",
+  "trades": [
+   "general-maintenance"
+  ],
+  "scene": "Splintered baseboard and damaged corner, then a new baseboard",
+  "before": "wall-baseboard-corner_before.jpg",
+  "after": "wall-baseboard-corner_after.jpg",
+  "both": "wall-baseboard-corner_both.jpg"
+ },
+ {
+  "id": "ceiling-grid-water-damage",
+  "trades": [
+   "general-maintenance",
+   "plumbing"
+  ],
+  "scene": "Water-stained, sagging ceiling tiles and a bent grid, then new tiles",
+  "before": "ceiling-grid-water-damage_before.jpg",
+  "after": "ceiling-grid-water-damage_after.jpg",
+  "both": "ceiling-grid-water-damage_both.jpg"
+ },
+ {
+  "id": "plumbing-water-heater-valve",
+  "trades": [
+   "plumbing"
+  ],
+  "scene": "Water heater relief valve dripping with a rust trail, then a new valve and dry floor",
+  "before": "plumbing-water-heater-valve_before.jpg",
+  "after": "plumbing-water-heater-valve_after.jpg",
+  "both": "plumbing-water-heater-valve_both.jpg"
+ },
+ {
+  "id": "plumbing-hose-bib",
+  "trades": [
+   "plumbing"
+  ],
+  "scene": "Corroded exterior hose bib, then a new hose bib",
+  "before": "plumbing-hose-bib_before.jpg",
+  "after": "plumbing-hose-bib_after.jpg",
+  "both": "plumbing-hose-bib_both.jpg"
+ },
+ {
+  "id": "plumbing-toilet-cracked-base",
+  "trades": [
+   "plumbing"
+  ],
+  "scene": "Cracked toilet bowl with water on the floor, then a new toilet and dry floor",
+  "before": "plumbing-toilet-cracked-base_before.jpg",
+  "after": "plumbing-toilet-cracked-base_after.jpg",
+  "both": "plumbing-toilet-cracked-base_both.jpg"
+ },
+ {
+  "id": "floor-mat-wet-debris",
+  "trades": [
+   "janitorial"
+  ],
+  "scene": "Soaked, filthy floor mat with debris, then a clean floor",
+  "before": "floor-mat-wet-debris_before.jpg",
+  "after": "floor-mat-wet-debris_after.jpg",
+  "both": "floor-mat-wet-debris_both.jpg"
+ },
+ {
+  "id": "restroom-partition-grimy",
+  "trades": [
+   "janitorial",
+   "general-maintenance"
+  ],
+  "scene": "Grimy partition door with tape and handprints, then a clean door",
+  "before": "restroom-partition-grimy_before.jpg",
+  "after": "restroom-partition-grimy_after.jpg",
+  "both": "restroom-partition-grimy_both.jpg"
+ },
+ {
+  "id": "entry-mat-stained",
+  "trades": [
+   "janitorial"
+  ],
+  "scene": "Stained, worn entry mat on a dirty floor, then a clean entry with a new mat",
+  "before": "entry-mat-stained_before.jpg",
+  "after": "entry-mat-stained_after.jpg",
+  "both": "entry-mat-stained_both.jpg"
+ }
+]

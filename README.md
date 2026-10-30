@@ -39,6 +39,8 @@ It creates a launcher named SC Activity Agent (in `~/Applications` on macOS, the
 5. On Connections, tick **Can do** for each user. The first user on a connection starts with every action; later users start empty. Each action needs at least one user, and every Provider needs a user who can check in. Add several Provider users to look like a real crew: the agent picks randomly among the users who can do an action and belong to the WO's provider, and a check-out is done by the tech who checked in.
 6. Review the **Behavior** settings.
 
+**Checklists.** If your Subscriber has checklists set up in ServiceChannel for a trade and location, Settings > "Answer checklists at check-out" makes the provider answer them when it checks out, with a before-and-after photo where a picture is asked for. It is off by default, and it does nothing where no checklist exists. The agent cannot create checklists; set them up in ServiceChannel.
+
 Work order creation only runs while the agent runs. If the machine sleeps, the agent notices the gap and moves the remaining steps forward. Settings chooses how. In the desktop app, Start at login is in the tray menu. In the source install it is on the Settings page. Neither can wake a sleeping machine.
 
 ## Production and test

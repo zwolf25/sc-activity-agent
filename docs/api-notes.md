@@ -190,3 +190,18 @@ Provider app and user (SydeTech, Production app does not exist on SB2; a separat
 - **COMPLETED/NO CHARGE (SB2, 2026-10-29, WO 359213720):** Subscriber `PUT /workorders/{id}/status {Status:{Primary:COMPLETED, Extended:"NO CHARGE"}, Note}` returns 200 ("changed from COMPLETED/CONFIRMED to COMPLETED/NO CHARGE") on a WO with Nte 0. Such a WO shows `Status.CanCreateInvoice: false`, and an invoice POST returns 1104 "Invoice Total > NTE 0.0000".
 
 - **Hand-made WO pickup (SB2, 2026-10-29, B-51):** `GET /odata/locations({dbId})/workorders?$filter=CreatedDate gt <utc> and (Status/Primary eq 'OPEN' or ...)&$expand=Provider($select=Id)&$select=Id,Trade` works and returns the provider id. `GET /workorders/{id}` has no `CreatedDate` (it has `CallDate`). A fresh WO is `OPEN` with `Extended` empty; after the Provider accepts it is `IN PROGRESS` / `DISPATCH CONFIRMED`. So the plan adds an accept step only for `OPEN`.
+
+## Checklists spike (B-22, SB2, 2026-10-29, verified)
+
+- Definitions: `GET /checklists/detail` with `tradeName` or `tradeid`, optional `categoryName`, `storeId` or `locationId`. A Provider must add `subscriberId` (2014917582 on SB2). A checklist is tied to a trade (and optionally a category): with no checklist for the WO's trade at the location, every submit fails with 503 "active checklist ... is not found". Zac created checklist 2457 "Test" for Doors at HQ-NYC, which made submits work. No create endpoint exists, so a checklist is set up in the ServiceChannel UI.
+- Read: `GET /workorders/{id}/checklists-responses` returns `{"Responses": [...]}` (each with question, selected option, answer, pictures).
+- Submit: `POST /checklists/CheckListResponse`, multipart/form-data. Part `CheckListResponseRequest` (JSON, content type application/json) holds `CheckListQuestionID`, `ProviderID`, `TechnicianID`, `EntityID` (WO id), `Attempt`, and `Answer`. A Selector sends `CheckListQuestionOptionID` and no `Answer`. A picture is a second part named `file`. `ScApp.call` is JSON only, so a build needs a multipart path.
+- Verified on WO 367625663 (Doors, IN PROGRESS, as the Provider): selector 201, text 201, numeric 201, acknowledgement 201 with `"on"`, picture question 201 with a PNG in `file` (without it: 503 "The picture is required!").
+- Acknowledgement accepts `on`; `"yes"` returned the misleading 503 "checklist ... not found", so send `on`.
+- A question can be answered once per `Attempt` (503 "already been answered for this attempt number"). `Attempt` is the visit number.
+- `TechnicianID` 0 gives 503 "Whether TechnicianId or AuthUserId must be specified"; any nonzero value is accepted (1 worked), and our users have no stored `sc_user_id`.
+- Text answers come back lowercased on the first letter ("Door closer" became "door closer").
+- Question types: 0 acknowledgement (maybe with a URL), 1 selector, 2 text, 4 numeric. `PictureFlag` 2 means a picture is required. `AnswerRequired`, `CheckListTimingType` 1 or 2.
+- Checklists with `DisplayForEachAsset` (such as 2380 Asset Transfer) are per asset and need B-23/B-24 first.
+- Built into `check_out` (2026-10-30) and run live on SB2 on a new Doors WO (accept, check-in, then check-out): `GET /checklists/detail` 200 (the Subscriber id comes from our location row), five answers 201 (acknowledgement, selector, text, numeric, text with a JPEG), then `universalCheckOut` 200. The read-back showed all five with `TechnicianId` 1, and the picture answer carried a `Pictures` entry. The answers went in while the WO was IN PROGRESS, before the check-out. A WO already COMPLETED is not tested for submits.
+- Not tested: completing a WO with unanswered required questions (whether check-out is blocked), a Subscriber submitting, Prod.

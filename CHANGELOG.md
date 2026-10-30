@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- New: a library of 52 before and after photo sets (HVAC, Electrical, Plumbing, Doors, General Maintenance, Janitorial), each with a before, an after and a side-by-side image. Shipped inside the app.
+- New: Settings > "Answer checklists at check-out" (off by default). When the provider checks out, the agent answers the checklists your Subscriber set up for that trade and location, with a photo where a picture is asked for. It does nothing where no checklist exists. Verified on SB2; not run on Production. Restart the agent after updating; no migration.
+
 ## v0.9.0 - 2026-10-29
 
 - New: the agent can plan work orders that people create by hand at your locations. On by default; turn it off in Settings ("Plan work orders people create by hand"). Once an hour it finds WOs from the last 7 days that are held by one of your providers, in a trade where your provider is Rank 1, and that do not carry the protect label. Each gets a short plan (accept if still open, a visit, review, invoice, decision). WOs held by other providers are left alone. It acts as the Provider and Subscriber on those WOs. After you update, it starts within an hour; switch it off first in Settings if you do not want that. Restart the agent after updating; no migration.

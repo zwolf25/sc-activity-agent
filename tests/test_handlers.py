@@ -614,3 +614,55 @@ def test_a_wo_with_a_zero_nte_closes_as_no_charge_instead_of_invoicing(tmp_path)
     assert bodies == [] and puts[-1]["Status"] == {"Primary": "COMPLETED", "Extended": "NO CHARGE"}
     assert s.db.execute("SELECT state FROM work_orders WHERE id=?", (wo["id"],)).fetchone()[0] == "closed"
     assert s.db.execute("SELECT count(*) FROM steps WHERE wo_id=? AND state='pending'", (wo["id"],)).fetchone()[0] == 0
+
+
+CHECKLIST = {"CheckListDetails": [{"Id": 7, "Questions": [
+    {"Id": 1, "QuestionType": 0, "PictureFlag": 0, "CheckListQuestionOptions": []},
+    {"Id": 2, "QuestionType": 1, "PictureFlag": 0, "CheckListQuestionOptions": [{"Id": 21, "IsConditionalFollowUp": True}, {"Id": 22, "IsConditionalFollowUp": False}]},
+    {"Id": 3, "QuestionType": 2, "PictureFlag": 0, "CheckListQuestionOptions": []},
+    {"Id": 4, "QuestionType": 4, "PictureFlag": 0, "CheckListQuestionOptions": []},
+    {"Id": 5, "QuestionType": 2, "PictureFlag": 2, "CheckListQuestionOptions": []},
+    {"Id": 6, "QuestionType": 0, "PictureFlag": 0, "DisplayForEachAsset": True, "CheckListQuestionOptions": []}]}]}
+
+
+def _checkout(tmp_path, on=True, defs=CHECKLIST, **ctx):
+    s = setup(tmp_path)
+    s.put("checklists", {"on": on})
+    s.db.execute("UPDATE locations SET subscriber_id=5 WHERE store_id='HQ-NYC'")
+    wo = _wo(s, provider_id=2000078685, techs={"1.0": 2}, **ctx)
+    s.db.execute("UPDATE work_orders SET trade='HVAC' WHERE id=?", (wo["id"],))
+    s.db.commit()
+    wo = s.db.execute("SELECT * FROM work_orders WHERE id=?", (wo["id"],)).fetchone()
+    sent = []
+
+    def call(user, method, path, params=None, body=None, **kw):
+        if path != "/workorders/9":   # the live read before each write is not under test
+            sent.append((method, path, params, kw.get("parts")))
+        if path == "/workorders/9":
+            return {"Status": {"Primary": "IN PROGRESS"}, "Provider": {"Id": 2000078685}}
+        return defs if path == "/checklists/detail" else {}
+    rt = Runtime(s, {1: FakeApp("sub", []), 2: FakeApp("prov", [])}, random.Random(1))
+    rt.apps[2].call = call
+    make_handlers(rt)["check_out"](None, wo, {"kind": "check_out", "due_at": NOW, "payload": json.dumps({"visit": 1, "final": True, "situation": "complete"})})
+    return s, wo, sent
+
+
+def test_checklist_questions_are_answered_once_per_visit_before_check_out(tmp_path):
+    s, wo, sent = _checkout(tmp_path)
+    assert sent[0][1] == "/checklists/detail" and sent[0][2] == {"tradeName": "HVAC", "storeId": "HQ-NYC", "subscriberId": 5}
+    assert sent[-1][1].endswith("/universalCheckOut")
+    posts = [x for x in sent if x[1] == "/checklists/CheckListResponse"]
+    reqs = [json.loads(x[3][0][3]) for x in posts]
+    assert [r["CheckListQuestionID"] for r in reqs] == [1, 2, 3, 4, 5]   # the per-asset question is skipped
+    assert reqs[0]["Answer"] == "on" and reqs[1]["CheckListQuestionOptionID"] == 22 and "Answer" not in reqs[1]   # never a follow-up option
+    assert all(r["Attempt"] == 1 and r["EntityID"] == 9 and r["ProviderID"] == 2000078685 for r in reqs)
+    assert [len(x[3]) for x in posts] == [1, 1, 1, 1, 2] and posts[4][3][1][2] == "image/jpeg"   # only the picture question carries a file
+    ctx = json.loads(s.db.execute("SELECT ctx FROM work_orders WHERE id=?", (wo["id"],)).fetchone()[0])
+    assert ctx["checklists"] == [1] and ctx["photo_set"]
+
+
+def test_checklists_are_not_answered_when_off_or_already_done_or_absent(tmp_path):
+    assert [x[1] for x in _checkout(tmp_path / "a", on=False)[2]] == ["/workorders/9/universalCheckOut"]
+    assert [x[1] for x in _checkout(tmp_path / "b", checklists=[1])[2]] == ["/workorders/9/universalCheckOut"]
+    none = _checkout(tmp_path / "c", defs={"CheckListDetails": []})[2]
+    assert [x[1] for x in none] == ["/checklists/detail", "/workorders/9/universalCheckOut"]

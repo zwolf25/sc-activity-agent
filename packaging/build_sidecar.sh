@@ -10,6 +10,7 @@ pyinstaller --noconfirm --clean --onefile --name agent-core \
   --paths . \
   --add-data "$ROOT/sc_activity_agent/web/templates${SEP}sc_activity_agent/web/templates" \
   --add-data "$ROOT/sc_activity_agent/web/static${SEP}sc_activity_agent/web/static" \
+  --add-data "$ROOT/sc_activity_agent/photos${SEP}sc_activity_agent/photos" \
   --collect-submodules uvicorn --collect-data tzdata --collect-data certifi \
   --distpath packaging/dist --workpath packaging/build --specpath packaging/build \
   packaging/sidecar.py

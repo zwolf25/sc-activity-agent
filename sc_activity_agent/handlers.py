@@ -6,7 +6,7 @@ import json
 import time
 from zoneinfo import ZoneInfo
 
-from . import content, planner
+from . import content, photos, planner
 from .client import Later, Park, ScError
 
 ACTION = {"accept": "accept", "prov_note": "provider_note", "sub_note": "subscriber_note", "review": "review",
@@ -181,8 +181,62 @@ def make_handlers(rt):
         checkio(f"/workorders/{wo['sc_id']}/universalCheckIn",
                 {"Latitude": loc["lat"], "Longitude": loc["lon"], "TechsCount": 1, "CheckInTime": _iso(step["due_at"])}, wo, step)
 
+    def answer_checklists(wo, step):
+        """B-22: before the primary tech checks out, answer every checklist the location has for the WO's trade (Settings toggle, off by
+        default). One answer per question per visit (Attempt = visit). A picture question gets the WO's photo set, side by side. Fail-soft:
+        any API refusal is audited and skipped, so the check-out still goes through. Questions per asset (B-23/B-24) are skipped."""
+        c, p = ctx_of(wo), json.loads(step["payload"])
+        visit = p.get("visit", 1)
+        if not rt.store.get("checklists", {}).get("on") or p.get("tech", 0) or visit in c.get("checklists", []) or not c.get("provider_id"):
+            return
+        loc = rt.location(wo["location"])
+        try:
+            app, user = rt.user_for(wo["location"], "check_out", wo, step)
+            found = app.call(user, "GET", "/checklists/detail", action="checklist_read", wo=wo["sc_id"], write=False,
+                             params={"tradeName": wo["trade"], "storeId": loc["store_id"], "subscriberId": loc["subscriber_id"]}) or {}
+            for lst in found.get("CheckListDetails", []):
+                for q in lst.get("Questions", []):
+                    answer_question(app, user, wo, c, visit, q)
+        except ScError as e:
+            if e.status == 0:
+                raise   # paused: leave the visit unmarked so the step answers once it resumes
+        rt.save_ctx(wo, checklists=[*c.get("checklists", []), visit])
+
+    def answer_question(app, user, wo, c, visit, q):
+        if q.get("DisplayForEachAsset"):
+            return
+        # shortcut: TechnicianID 1 (any nonzero id is accepted on SB2; our users store no ServiceChannel user id), numbers are a small random count
+        req = {"CheckListQuestionID": q["Id"], "ProviderID": c["provider_id"], "TechnicianID": 1, "EntityID": wo["sc_id"], "Attempt": visit}
+        kind = q["QuestionType"]
+        if kind == 0:
+            req["Answer"] = "on"   # "yes" returns a misleading "checklist not found"
+        elif kind == 1:
+            opts = [o for o in q["CheckListQuestionOptions"] if not o.get("IsConditionalFollowUp")]
+            if not opts:
+                return
+            req["CheckListQuestionOptionID"] = rt.rng.choice(opts)["Id"]
+        elif kind == 2:
+            req["Answer"] = content.note("provider", "complete", c, rt.rng)
+        elif kind == 4:
+            req["Answer"] = str(rt.rng.randint(1, 4))
+        else:
+            return
+        parts = [("CheckListResponseRequest", None, "application/json", json.dumps(req).encode())]
+        if q.get("PictureFlag"):
+            pic = photos.pick(wo["trade"], "both", rt.rng, c.get("photo_set"))
+            if pic:
+                c["photo_set"] = pic[0]
+                rt.save_ctx(wo, photo_set=pic[0])
+                parts.append(("file", pic[1], "image/jpeg", pic[2]))
+        try:
+            app.call(user, "POST", "/checklists/CheckListResponse", action="checklist_answer", wo=wo["sc_id"], write=True, parts=parts)
+        except ScError as e:
+            if e.status == 0:
+                raise   # paused: stop answering
+
     def check_out(engine, wo, step):
         p = json.loads(step["payload"])
+        answer_checklists(wo, step)
         loc = rt.location(wo["location"])
         text = content.note("provider", p["situation"], ctx_of(wo), rt.rng)
         # the first tech out of a crew visit must not complete the WO, but only if the second tech really checked in

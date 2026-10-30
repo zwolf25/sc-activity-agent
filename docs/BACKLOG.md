@@ -14,27 +14,29 @@ Ordered list of enhancements after v1. The order is the priority: rank 1 is next
 
 | Rank | ID | Enhancement | Size | Why | Source |
 |------|----|-------------|------|-----|--------|
-| 1 | B-22 | Complete checklists on WOs | M, spike | Checklists are part of real completion | Zac |
+| 1 | B-22 | Complete checklists on WOs. Built and verified on SB2 (unreleased, Settings toggle, off by default). Left: check Production, find out whether unanswered required questions block check-out, real technician ids, per-asset questions (needs B-23/B-24) | S | Checklists are part of real completion | Zac |
 | 2 | B-23 | Create WOs with assets attached | M, spike | Asset-linked work is the normal case in many accounts | Zac |
 | 3 | B-24 | Providers attach assets to WOs when onsite | M, spike | Pairs with B-23 | Zac |
-| 4 | B-14 | Photos on WOs: relevant to the trade and issue only, with variety (several images per issue type) | M, spike | Real WOs carry photos. Needs a curated image set per issue type, with licensing checked | Zac |
-| 5 | B-25 | Star ratings on WOs. A low rating moves the WO to Unsatisfactory and the provider returns onsite to finish | L, spike | Adds a rework loop | Zac |
-| 6 | B-15 | Provider-side PM WOs: find PM WOs and move them through the process. Subscribers cannot create PMs through the API, so the agent only picks up existing ones | L, spike | PM is a large share of real volume | Zac |
-| 7 | B-26 | PM compliance flows: pass and fail documentation, and the related follow-up | L, spike | Builds on B-15 | Zac |
-| 8 | B-27 | Linked WOs (parent and child) | M, spike | Common for multi-visit and multi-trade jobs | Zac |
-| 9 | B-28 | Recall WOs | M, spike | Rework against a closed WO. Pairs with B-25 | Zac |
-| 10 | B-29 | Avoided WOs: Guided Troubleshooting resolves the issue, and duplicate WOs are detected and avoided | L, spike | Tests the "WO never gets created" paths | Zac |
-| 11 | B-30 | Site audits that result in WOs created | L, spike | A second source of WOs besides the issue list | Zac |
-| 12 | B-31 | Snow and landscaping WOs done by providers with CIWO | L, spike | CIWO has its own check-in model | Zac |
-| 13 | B-32 | Quarterly RFP: a Subscriber runs an RFP with several bidding providers, then issues WOs to the winners | XL, spike | Needs several provider connections and contract changes | Zac |
-| 14 | B-33 | FTM techs and FTM WOs through the process | L, spike | Needs the FTM product model first | Zac |
-| 15 | B-05 | Per-location behavior overrides | M | Locations should differ in volume and trade mix | Claude |
-| 16 | B-07 | Seasonal and holiday weighting (HVAC in summer, quiet holidays) | M | Flat weekday activity is an easy tell | Claude |
-| 17 | B-04 | Deep link from the console to the WO in the ServiceChannel Subscriber view, in place of a WO detail page | S, spike | Finds the WO URL pattern. Keeps the console small | Zac |
-| 18 | B-09 | Scenario presets (quiet week, busy week, storm surge) | S | One click to change load | Claude |
-| 19 | B-16 | Clock speed-up mode for demos on SB2 | M | A full lifecycle in minutes | Claude |
-| 20 | B-13 | Repeat issues on the same asset | M | Needs B-23. Feeds repeat-repair reports | Claude |
-| 21 | B-34 | RT workflows | XL, spike | Very hard. Last on purpose | Zac |
+| 4 | B-14 | Photos on WOs: relevant to the trade and issue only, with variety (several images per issue type). The library (52 sets, `photos.py`) is built and used for checklist pictures. Left: note attachments (B-53), WO create (B-52), a set per issue type, and replacing the cabled backgrounds | S | Real WOs carry photos. Needs a curated image set per issue type, with licensing checked | Zac |
+| 5 | B-52 | Before photos attached when a WO is created, picked from the photo library by the WO's trade (a `before` image, or the issue's set). The photo is remembered per WO so later steps reuse the same set | M, spike | Real WOs often start with a photo of the problem. Needs the attachment API for new WOs (not yet probed). Library: `sc_activity_agent/photos/` | Zac |
+| 6 | B-53 | After photos attached to the provider's note before invoicing, using the matching `after` image from the same set as the WO's before photo (or `both`). Falls back to a random set for the trade when the WO has none | M, spike | Work-complete notes with proof photos look real. Needs the note-attachment API (not yet probed) | Zac |
+| 7 | B-25 | Star ratings on WOs. A low rating moves the WO to Unsatisfactory and the provider returns onsite to finish | L, spike | Adds a rework loop | Zac |
+| 8 | B-15 | Provider-side PM WOs: find PM WOs and move them through the process. Subscribers cannot create PMs through the API, so the agent only picks up existing ones | L, spike | PM is a large share of real volume | Zac |
+| 9 | B-26 | PM compliance flows: pass and fail documentation, and the related follow-up | L, spike | Builds on B-15 | Zac |
+| 10 | B-27 | Linked WOs (parent and child) | M, spike | Common for multi-visit and multi-trade jobs | Zac |
+| 11 | B-28 | Recall WOs | M, spike | Rework against a closed WO. Pairs with B-25 | Zac |
+| 12 | B-29 | Avoided WOs: Guided Troubleshooting resolves the issue, and duplicate WOs are detected and avoided | L, spike | Tests the "WO never gets created" paths | Zac |
+| 13 | B-30 | Site audits that result in WOs created | L, spike | A second source of WOs besides the issue list | Zac |
+| 14 | B-31 | Snow and landscaping WOs done by providers with CIWO | L, spike | CIWO has its own check-in model | Zac |
+| 15 | B-32 | Quarterly RFP: a Subscriber runs an RFP with several bidding providers, then issues WOs to the winners | XL, spike | Needs several provider connections and contract changes | Zac |
+| 16 | B-33 | FTM techs and FTM WOs through the process | L, spike | Needs the FTM product model first | Zac |
+| 17 | B-05 | Per-location behavior overrides | M | Locations should differ in volume and trade mix | Claude |
+| 18 | B-07 | Seasonal and holiday weighting (HVAC in summer, quiet holidays) | M | Flat weekday activity is an easy tell | Claude |
+| 19 | B-04 | Deep link from the console to the WO in the ServiceChannel Subscriber view, in place of a WO detail page | S, spike | Finds the WO URL pattern. Keeps the console small | Zac |
+| 20 | B-09 | Scenario presets (quiet week, busy week, storm surge) | S | One click to change load | Claude |
+| 21 | B-16 | Clock speed-up mode for demos on SB2 | M | A full lifecycle in minutes | Claude |
+| 22 | B-13 | Repeat issues on the same asset | M | Needs B-23. Feeds repeat-repair reports | Claude |
+| 23 | B-34 | RT workflows | XL, spike | Very hard. Last on purpose | Zac |
 
 ## On hold
 Paused by Zac on 2026-10-29. Not ranked; return them to the backlog when he says so.
