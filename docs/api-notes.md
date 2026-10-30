@@ -214,3 +214,4 @@ Provider app and user (SydeTech, Production app does not exist on SB2; a separat
 - WO create (`CreateWoRequest`) has an `Attachments` field, not exercised. The simpler route for B-52 is create the WO, then post the attachment to its new id.
 - Not tested: the Provider posting to `/workorders/{id}/attachments`, Production, and whether attachments are refused on a CLOSED or cancelled WO.
 
+- Built and run live on SB2 (2026-10-30, WO 367651266, Doors): `Creator.create` posted the before photo (201), then accept, check-in and check-out ran through the handlers, and the closing note (201) took its after photo (201). The read-back showed both attachments, `door-storefront-panic-bar_before.jpg` and `_after.jpg`, from one set, on two different notes.

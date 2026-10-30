@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- New: Settings > "Attach a before photo to new work orders" and "Attach an after photo to the provider's closing note" (both off by default). The photos match the WO's trade and come from the same scene. The closing note is an extra provider note posted after the final check-out. Verified against the SB2 API; not run on Production. Restart the agent after updating; no migration.
+- New: Settings > "Attach a before photo to new work orders" and "Attach an after photo to the provider's closing note" (both off by default). The photos match the WO's trade and come from the same scene. The closing note is an extra provider note posted after the final check-out. Verified on SB2 (a full create-to-check-out run); not run on Production. Restart the agent after updating; no migration.
 
 ## v0.10.0 - 2026-10-30
 
