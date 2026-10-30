@@ -2,8 +2,11 @@
 
 ## Unreleased
 
+## v0.10.0 - 2026-10-30
+
 - New: a library of 52 before and after photo sets (HVAC, Electrical, Plumbing, Doors, General Maintenance, Janitorial), each with a before, an after and a side-by-side image. Shipped inside the app.
 - New: Settings > "Answer checklists at check-out" (off by default). When the provider checks out, the agent answers the checklists your Subscriber set up for that trade and location, with a photo where a picture is asked for. It does nothing where no checklist exists. Verified on SB2; not run on Production. Restart the agent after updating; no migration.
+- Fix: the packaged desktop app now bundles the photo library, so check-out does not fail on a missing image.
 
 ## v0.9.0 - 2026-10-29
 
