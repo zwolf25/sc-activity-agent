@@ -50,11 +50,12 @@ def payload(issue, loc, header_id, area_id, scheduled, now, test=False):
     }
 
 
-def daily_count(rng, per_month, day):
-    """WOs to create on this date: weekdays only, mean per_month/21, with Poisson-like variation."""
-    if day.weekday() >= 5:
+def daily_count(rng, per_month, day, days=(0, 1, 2, 3, 4)):
+    """WOs to create on this date: only on an activity day, mean per_month spread over the activity days of a month (4.2 weeks), with Poisson-like variation."""
+    if day.weekday() not in days:
         return 0
-    lam, n, p, L = per_month / 21, 0, 1.0, 2.718281828 ** -(per_month / 21)
+    mean = per_month / (4.2 * len(days))
+    lam, n, p, L = mean, 0, 1.0, 2.718281828 ** -mean
     while True:
         p *= rng.random()
         if p <= L:

@@ -157,6 +157,17 @@ def test_check_out_never_before_check_in_with_rejected_proposal():
         assert all(v["check_in"] < v["check_out"] for v in by.values()), seed
 
 
+def test_plan_follows_the_chosen_activity_days():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    tz = ZoneInfo("America/New_York")
+    now = datetime(2026, 10, 26, 19, 44, tzinfo=tz).timestamp()
+    for days in ([5, 6], [0, 1, 2, 3, 4, 5, 6], [2]):
+        for seed in range(60):
+            plan = planner.build_plan(random.Random(seed), now, {"proposal_rate": 40, "first_time_fix": 50, "days": days})
+            assert all(datetime.fromtimestamp(s["due_at"], tz).weekday() in days for s in plan if s["kind"] != "create_wo"), (days, seed)
+
+
 def test_every_step_falls_in_activity_hours_on_a_weekday():
     from datetime import datetime
     from zoneinfo import ZoneInfo

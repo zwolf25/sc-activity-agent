@@ -41,7 +41,7 @@ It creates a launcher named SC Activity Agent (in `~/Applications` on macOS, the
 
 **Checklists.** If your Subscriber has checklists set up in ServiceChannel for a trade and location, Settings > "Answer checklists at check-out" makes the provider answer them when it checks out, with a before-and-after photo where a picture is asked for. It is off by default, and it does nothing where no checklist exists. The agent cannot create checklists; set them up in ServiceChannel.
 
-**Photos.** Two more Settings, both off by default: "Attach a before photo to new work orders" and "Attach an after photo to the provider's closing note". The photos come from a library that ships with the app, matched to the WO's trade, and a WO's before and after photos come from the same scene.
+**Photos.** Two Behavior sliders, both 0 by default: "Before photo on new WOs %" and "After photo on closing note %". The photos come from a library that ships with the app, matched to the WO's trade, and a WO's before and after photos come from the same scene.
 
 Work order creation only runs while the agent runs. If the machine sleeps, the agent notices the gap and moves the remaining steps forward. Settings chooses how. In the desktop app, Start at login is in the tray menu. In the source install it is on the Settings page. Neither can wake a sleeping machine.
 

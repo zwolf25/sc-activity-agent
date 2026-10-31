@@ -250,9 +250,9 @@ def make_handlers(rt):
             attach_after(wo, step)
 
     def attach_after(wo, step):
-        """B-53: the provider's closing note carries the after photo (Settings toggle, off by default). The check-out already went through,
-        so any refusal, even a pause, is skipped; a retry would only fail the check-out."""
-        if not rt.store.get("attachments", {}).get("after"):
+        """B-53: the provider's closing note carries the after photo, at the Behavior "after photo" rate (0 by default). The check-out already
+        went through, so any refusal, even a pause, is skipped; a retry would only fail the check-out."""
+        if rt.rng.random() * 100 >= {**planner.DEFAULTS, **rt.store.get("behavior", {})}["photo_after"]:
             return
         c = ctx_of(wo)
         pic = photos.pick(wo["trade"], "after", rt.rng, c.get("photo_set"))

@@ -49,3 +49,11 @@ def test_rank_one_trades_uses_location_membership():
     data = {"/GetPrimaryRankedProviderTrades/5/9": [{"Trade": "HVAC", "TradeId": 1}, {"Trade": "ELECTRICAL", "TradeId": 2}],
             "/GetPrimaryRankedProviderLocations/5/9/1": [10, 11], "/GetPrimaryRankedProviderLocations/5/9/2": [12]}
     assert g.rank_one_trades(data.__getitem__, 5, 9, 10) == {"HVAC"}
+
+
+def test_daily_count_follows_the_activity_days():
+    r = random.Random(3)
+    sat, mon = dt.date(2026, 10, 24), dt.date(2026, 10, 26)
+    assert g.daily_count(r, 120, mon, (5, 6)) == 0
+    avg = sum(g.daily_count(r, 120, sat, (5, 6)) for _ in range(2000)) / 2000
+    assert 12 < avg < 15   # 120 a month over 2 days a week, 4.2 weeks

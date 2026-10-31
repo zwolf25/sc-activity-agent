@@ -2,7 +2,10 @@
 <form method="post" class="card">
 {% for k, label, hint, lo, hi, step in sliders if not k.startswith('hours_') %}<div class="sl"><div>{{ label }}<small>{{ hint }}</small></div>
 <input type="range" name="{{ k }}" min="{{ lo }}" max="{{ hi }}" step="{{ step }}" value="{{ cur[k] }}" oninput="this.nextElementSibling.value=this.value"><output>{{ cur[k] }}</output></div>{% endfor %}
-<div class="sl"><div>Activity hours<small>Local time at the location, weekdays only</small></div>
-<div class="hours"><select name="hours_start" aria-label="Activity starts">{% for h in range(0, 24) %}<option value="{{ h }}" {{ 'selected' if h == cur.hours_start|int }}>{{ '%02d:00' % h }}</option>{% endfor %}</select>
-<span>to</span><select name="hours_end" aria-label="Activity ends">{% for h in range(1, 25) %}<option value="{{ h }}" {{ 'selected' if h == cur.hours_end|int }}>{{ '%02d:00' % h }}</option>{% endfor %}</select></div><span></span></div>
+{% macro hr(h) %}{{ h % 12 or 12 }}:00 {{ 'AM' if h % 24 < 12 else 'PM' }}{% endmacro %}
+<div class="sl"><div>Activity days<small>The days the agent creates and works on work orders</small></div>
+<div class="days">{% for d, name in [(0, 'Mon'), (1, 'Tue'), (2, 'Wed'), (3, 'Thu'), (4, 'Fri'), (5, 'Sat'), (6, 'Sun')] %}<label><input type="checkbox" name="days" value="{{ d }}" {{ 'checked' if d in cur.days }}> {{ name }}</label>{% endfor %}</div><span></span></div>
+<div class="sl"><div>Activity hours<small>Local time at the location, on the activity days</small></div>
+<div class="hours"><select name="hours_start" aria-label="Activity starts">{% for h in range(0, 24) %}<option value="{{ h }}" {{ 'selected' if h == cur.hours_start|int }}>{{ hr(h) }}</option>{% endfor %}</select>
+<span>to</span><select name="hours_end" aria-label="Activity ends">{% for h in range(1, 25) %}<option value="{{ h }}" {{ 'selected' if h == cur.hours_end|int }}>{{ hr(h) }}</option>{% endfor %}</select></div><span></span></div>
 <div class="row"><span></span><button class="primary">Save</button></div></form>{% endblock %}

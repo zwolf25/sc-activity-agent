@@ -8,16 +8,17 @@ DEFAULTS = {
     "sub_notes": 2.0, "prov_notes": 3.0,
     "late_checkin": 15, "late_days": 2,
     "time_on_site_hrs": 2.0, "pay_days": 30, "multi_tech": 5, "emergency_hours": 8, "decline": 0, "reassign": 0, "invoice_rate_flaw": 0, "invoice_hours_flaw": 0, "no_show": 0, "reschedule": 0, "first_time_fix": 80,
-    "hours_start": 8, "hours_end": 17,
+    "hours_start": 8, "hours_end": 17, "days": [0, 1, 2, 3, 4],   # activity days, Monday = 0
+    "photo_before": 0, "photo_after": 0,   # % of new WOs that get a before photo, and of finished WOs that get an after photo on the closing note
     "resume_policy": "catch_up",
 }
 
 
-def _biz_day(d, n):
-    """The date n business days after d."""
+def _biz_day(d, n, days):
+    """The date n activity days after d. `days` must not be empty."""
     while n > 0:
         d += timedelta(days=1)
-        if d.weekday() < 5:
+        if d.weekday() in days:
             n -= 1
     return d
 
@@ -34,8 +35,8 @@ def _fit(ts, prev, c, tz, rng):
     d = datetime.fromtimestamp(ts, z)
     h0, h1 = c["hours_start"], c["hours_end"]
     new = ts
-    if not (d.weekday() < 5 and _at(d.date(), h0, tz) <= ts <= _at(d.date(), h1, tz)):
-        day = d.date() if d.weekday() < 5 and ts < _at(d.date(), h0, tz) else _biz_day(d.date(), 1)
+    if not (d.weekday() in c["days"] and _at(d.date(), h0, tz) <= ts <= _at(d.date(), h1, tz)):
+        day = d.date() if d.weekday() in c["days"] and ts < _at(d.date(), h0, tz) else _biz_day(d.date(), 1, c["days"])
         new = _at(day, h0, tz)
     if new <= prev:
         new = prev + rng.randint(60, 600)
@@ -58,7 +59,7 @@ def build_plan(rng, now, cfg, tz="America/New_York", eta=None):
 
     emergency = eta is not None and 0 < c["emergency_hours"] and eta - now <= c["emergency_hours"] * 3600
     created = datetime.fromtimestamp(now, ZoneInfo(tz))
-    sched_day = _biz_day(created.date(), rng.randint(1, 5))
+    sched_day = _biz_day(created.date(), rng.randint(1, 5), c["days"])
     if c["decline"] and rng.random() * 100 < c["decline"]:   # B-11: the provider declines; the WO ends cancelled a few days later
         d_at = now + rng.randint(1800, 4 * 3600)
         add("decline", d_at, reason=rng.choice([1, 2, 3, 6]))
@@ -78,7 +79,7 @@ def build_plan(rng, now, cfg, tz="America/New_York", eta=None):
     # first-time-fix decides how many visits; each visit is a check-in/out pair on its own business day
     visits = 1 if rng.random() * 100 < c["first_time_fix"] else rng.choice([2, 2, 3])
     late = rng.random() * 100 < c["late_checkin"] and not emergency
-    day = _biz_day(sched_day, rng.randint(1, max(1, int(c["late_days"]) * 2 - 1))) if late else sched_day
+    day = _biz_day(sched_day, rng.randint(1, max(1, int(c["late_days"]) * 2 - 1)), c["days"]) if late else sched_day
     span = c["hours_end"] - c["hours_start"]
     has_proposal = rng.random() * 100 < c["proposal_rate"] and not emergency
     t = _at(day, c["hours_start"] + rng.random() * span * 0.4, tz)
@@ -90,7 +91,7 @@ def build_plan(rng, now, cfg, tz="America/New_York", eta=None):
         # B-11: the provider moves the scheduled date later than the original; the visits follow the new date
         r_at = now + rng.randint(3600, 6 * 3600)
         if r_at < t - 3600:
-            day2 = _biz_day(day, rng.randint(1, 3))
+            day2 = _biz_day(day, rng.randint(1, 3), c["days"])
             t2 = _at(day2, c["hours_start"] + rng.random() * span * 0.4, tz)
             add("reschedule", r_at, to=t2, from_ts=t, reason=rng.choice([8, 10, 11, 12, 13]))
             add("prov_note", r_at + rng.randint(120, 600), situation="reschedule")
@@ -108,8 +109,8 @@ def build_plan(rng, now, cfg, tz="America/New_York", eta=None):
             add("proposal_decide", p_at + 86400 + rng.randint(1800, 4 * 3600), approve=True)
         t = max(t, steps[-1]["due_at"] + 3600)
         day = datetime.fromtimestamp(t, ZoneInfo(tz)).date()
-        if day.weekday() >= 5:
-            day = _biz_day(day, 1)
+        if day.weekday() not in c["days"]:
+            day = _biz_day(day, 1, c["days"])
             t = _at(day, c["hours_start"] + rng.random() * span * 0.4, tz)
 
     if c["no_show"] and not (emergency or has_proposal) and rng.random() * 100 < c["no_show"]:
@@ -121,10 +122,10 @@ def build_plan(rng, now, cfg, tz="America/New_York", eta=None):
 
     for v in range(visits):
         if v:
-            day = _biz_day(day, 1)
+            day = _biz_day(day, 1, c["days"])
             t = _at(day, c["hours_start"] + rng.random() * span * 0.4, tz)
         if t > _at(day, c["hours_end"] - 1, tz):   # a late proposal decision can leave no room today: start the next business day
-            day = _biz_day(day, 1)
+            day = _biz_day(day, 1, c["days"])
             t = _at(day, c["hours_start"] + rng.random() * span * 0.4, tz)
         hours = max(0.5, rng.gauss(c["time_on_site_hrs"], c["time_on_site_hrs"] * 0.35))
         end_cap = _at(day, c["hours_end"], tz)

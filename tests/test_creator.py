@@ -108,7 +108,7 @@ def test_before_photo_is_attached_to_the_new_wo_only_when_on(tmp_path):
     c.tick()
     assert not [1 for m, p, b in app.calls if p.endswith("/attachments")]
     s, app, c = setup(tmp_path / "on")
-    s.put("attachments", {"before": True})
+    s.put("behavior", {"wo_per_month": 2000, "photo_before": 100})
     c.tick()
     assert [p for m, p, b in app.calls if p.endswith("/attachments")] == ["/workorders/9001/attachments"]
     assert json.loads(s.db.execute("SELECT ctx FROM work_orders").fetchone()[0])["photo_set"]
@@ -116,7 +116,7 @@ def test_before_photo_is_attached_to_the_new_wo_only_when_on(tmp_path):
 
 def test_a_refused_before_photo_does_not_lose_the_wo_plan(tmp_path):
     s, app, c = setup(tmp_path)
-    s.put("attachments", {"before": True})
+    s.put("behavior", {"wo_per_month": 2000, "photo_before": 100})
     orig = app.call
 
     def call(user, method, path, *a, **kw):

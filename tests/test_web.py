@@ -164,6 +164,17 @@ def test_activity_hours_are_one_row_of_selects_and_end_follows_start(tmp_path):
     assert s.get("hours_start") == 10 and s.get("hours_end") == 11
 
 
+def test_activity_days_and_12_hour_labels(tmp_path):
+    s, c = client(tmp_path)
+    page = c.get("/behavior").text
+    assert "8:00 AM" in page and "5:00 PM" in page and "12:00 PM" in page and "08:00" not in page
+    assert page.count('name="days"') == 7 and page.count('name="days" value="') == 7
+    c.post("/behavior", data={"days": ["5", "6"], "photo_before": "30"})
+    assert s.get("days") == [5, 6] and s.get("behavior")["days"] == [5, 6] and s.get("behavior")["photo_before"] == 30
+    c.post("/behavior", data={"hours_start": "9"})   # no day ticked: fall back to Monday to Friday, never an empty week
+    assert s.get("days") == [0, 1, 2, 3, 4]
+
+
 def test_users_carry_their_capabilities(tmp_path):
     s, c = client(tmp_path)
     c.post("/connections/add", data={"side": "provider", "name": "p", "client_id": "a", "client_secret": "b", "provider_id": "7"})

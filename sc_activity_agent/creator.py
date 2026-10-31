@@ -93,7 +93,7 @@ class Creator:
         if slots["day"].get(loc["store_id"]) == today.isoformat():
             return slots
         slots["day"][loc["store_id"]] = today.isoformat()
-        n = generator.daily_count(self.rng, b["wo_per_month"], today)
+        n = generator.daily_count(self.rng, b["wo_per_month"], today, b["days"])
         lo = dt.datetime.combine(today, dt.time(int(b["hours_start"])), tz).timestamp()
         hi = dt.datetime.combine(today, dt.time(min(int(b["hours_end"]), 23)), tz).timestamp() - 1800
         slots["due"] += [{"loc": loc["store_id"], "at": self.rng.uniform(lo, max(lo, hi))} for _ in range(n)]
@@ -159,7 +159,7 @@ class Creator:
         pid = self.store.get("rank1", {}).get(loc["store_id"], {}).get("owners", {}).get(issue["trade"])
         if pid:
             ctx["provider_id"] = pid
-        if self.store.get("attachments", {}).get("before"):
+        if self.rng.random() * 100 < b["photo_before"]:
             self._attach_before(app, user, r["id"], issue["trade"], ctx)
         add_plan(self.store, loc["store_id"], issue["trade"], r["id"], plan, ctx, now)
         return r["id"]

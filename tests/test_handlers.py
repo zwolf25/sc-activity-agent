@@ -628,7 +628,7 @@ CHECKLIST = {"CheckListDetails": [{"Id": 7, "Questions": [
 def _checkout(tmp_path, on=True, defs=CHECKLIST, after=False, **ctx):
     s = setup(tmp_path)
     s.put("checklists", {"on": on})
-    s.put("attachments", {"after": after})
+    s.put("behavior", {"photo_after": 100 if after else 0})
     s.db.execute("UPDATE locations SET subscriber_id=5 WHERE store_id='HQ-NYC'")
     wo = _wo(s, provider_id=2000078685, techs={"1.0": 2}, **ctx)
     s.db.execute("UPDATE work_orders SET trade='HVAC' WHERE id=?", (wo["id"],))

@@ -51,17 +51,18 @@ class Engine:
                ORDER BY s.due_at LIMIT ?""", (now, self.per_tick)).fetchall()
 
     def snap(self, ts):
-        """Move ts to the next moment inside activity hours on a weekday (unchanged if already inside)."""
+        """Move ts to the next moment inside activity hours on an activity day (unchanged if already inside)."""
         tz = ZoneInfo(self.store.get("tz", "America/New_York"))
         h0, h1 = self.store.get("hours_start", 8), self.store.get("hours_end", 17)
+        days = self.store.get("days", [0, 1, 2, 3, 4])
         d = dt.datetime.fromtimestamp(ts, tz)
         start = d.replace(hour=h0, minute=0, second=0, microsecond=0)
-        if d.weekday() < 5 and start <= d < d.replace(hour=h1, minute=0, second=0, microsecond=0):
+        if d.weekday() in days and start <= d < d.replace(hour=h1, minute=0, second=0, microsecond=0):
             return ts
-        if d.weekday() < 5 and d < start:
+        if d.weekday() in days and d < start:
             return start.timestamp()
         d = start + dt.timedelta(days=1)
-        while d.weekday() >= 5:
+        while d.weekday() not in days:
             d += dt.timedelta(days=1)
         return d.timestamp()
 

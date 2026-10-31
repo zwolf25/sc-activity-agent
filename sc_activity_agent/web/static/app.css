@@ -115,3 +115,5 @@ details.ms summary{cursor:pointer;list-style:none;border:1px solid var(--line);b
 details.ms summary::-webkit-details-marker{display:none}
 details.ms summary::after{content:"\25BE";color:var(--muted)}
 details.ms .pop{position:absolute;z-index:5;top:100%;left:0;margin-top:4px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:230px;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+.days{display:flex;flex-wrap:wrap;gap:6px 14px}
+.days label{display:flex;align-items:center;gap:4px}
