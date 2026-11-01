@@ -8,7 +8,7 @@ import sys
 import threading
 import time
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
@@ -143,14 +143,22 @@ def create_app(store, engine=None, rt=None):
         return page(request, "setup", pairs=pair_status())
 
     @app.get("/dashboard")
-    def dashboard(request: Request, page_no: int = Query(1, alias="page"), hide_done: str = "", hide_skipped: str = "", f: str = ""):
+    def dashboard(request: Request, page_no: int = Query(1, alias="page"), hide_done: str = "", hide_skipped: str = "", f: str = "", w: str = ""):
         hide_done = hide_done or ("" if f else "1")  # f marks a submitted filter form, so unchecked means off
         hide_skipped = hide_skipped or ("" if f else "1")  # f marks a submitted filter form, so unchecked means off
         tz = store.get("tz", "America/New_York")
-        rows, total, pages, cur = status.week(db, tz, hide_done=bool(hide_done), hide_skipped=bool(hide_skipped), page=page_no)
+        # the choice is remembered, but only for the week it was made in: a new week starts on "this week" again
+        mon = status.week_start(tz)
+        saved = store.get("dashboard_week") or {}
+        if w in ("this", "next"):
+            store.put("dashboard_week", {"w": w, "monday": mon.date().isoformat()})
+        else:
+            w = saved.get("w", "this") if saved.get("monday") == mon.date().isoformat() else "this"
+        shown = mon + timedelta(days=7 if w == "next" else 0)
+        rows, total, pages, cur = status.week(db, tz, hide_done=bool(hide_done), hide_skipped=bool(hide_skipped), page=page_no, weeks_ahead=int(w == "next"))
         z = ZoneInfo(tz)
         week = [dict(r, when=datetime.fromtimestamp(r["due_at"], z).strftime("%a %b %d, %H:%M"), detail=status.detail(r["kind"], json.loads(r["payload"]))) for r in rows]
-        return page(request, "dashboard", stages=status.by_stage(db), week=week, total=total, pages=pages, cur=cur, hide_done=bool(hide_done), hide_skipped=bool(hide_skipped),
+        return page(request, "dashboard", stages=status.by_stage(db), week=week, total=total, pages=pages, cur=cur, w=w, span=f"{shown:%b %d} to {shown + timedelta(days=6):%b %d}", hide_done=bool(hide_done), hide_skipped=bool(hide_skipped),
                     gaps=[dict(g, i=i, text=gap_text(g, z)) for i, g in enumerate(store.get("gaps", [])) if not g["acked"]],
                     blocked=[p["name"] for p in pair_status() if p["state"] == "blocked"])
 

@@ -70,11 +70,16 @@ def detail(kind, p):
     return ""
 
 
-def week(db, tz="America/New_York", now=None, hide_done=False, hide_skipped=True, page=1, size=10):
-    """Steps planned for the local calendar week (Monday to Sunday), oldest first; skipped steps (their WO was cancelled or ended) can be hidden: (rows, total, pages, page)."""
+def week_start(tz="America/New_York", now=None):
+    """Monday 00:00 of the local calendar week."""
     z = ZoneInfo(tz)
     d = dt.datetime.fromtimestamp(now, z) if now else dt.datetime.now(z)
-    mon = (d - dt.timedelta(days=d.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+    return (d - dt.timedelta(days=d.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def week(db, tz="America/New_York", now=None, hide_done=False, hide_skipped=True, page=1, size=10, weeks_ahead=0):
+    """Steps planned for the local calendar week (Monday to Sunday), `weeks_ahead` weeks from now, oldest first; skipped steps (their WO was cancelled or ended) can be hidden: (rows, total, pages, page)."""
+    mon = week_start(tz, now) + dt.timedelta(days=7 * weeks_ahead)
     lo, hi = mon.timestamp(), (mon + dt.timedelta(days=7)).timestamp()
     where = "s.due_at>=? AND s.due_at<?" + (" AND s.state!='skipped'" if hide_skipped else "") + (" AND s.state!='done'" if hide_done else "")
     total = db.execute(f"SELECT COUNT(*) FROM steps s WHERE {where}", (lo, hi)).fetchone()[0]

@@ -351,3 +351,23 @@ def test_update_button_starts_one_installer_and_shows_progress(tmp_path, monkeyp
     assert c.post("/update", follow_redirects=False).headers["location"] == "/updating" and len(started) == 2   # a failed run can be retried
     s.put("update_status", {**s.get("update_status"), "at": 0})
     assert update.in_progress(s) is None   # a run older than 15 minutes is dead
+
+
+def test_dashboard_switches_to_next_week_remembers_it_and_resets_with_the_new_week(tmp_path):
+    import datetime as dt
+    from sc_activity_agent import status
+    s, c = client(tmp_path)
+    s.db.execute("INSERT INTO work_orders(id,sc_id,location,trade,state,created_at) VALUES(1,999,'HQ','HVAC','active',0)")
+    mon = status.week_start(s.get("tz", "America/New_York"))
+    this_wk, next_wk = mon.timestamp() + 2 * 86400 + 43200, mon.timestamp() + 9 * 86400 + 43200
+    s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,state) VALUES(1,1,'accept',?,'pending')", (this_wk,))
+    s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,state) VALUES(1,2,'check_in',?,'pending')", (next_wk,))
+    s.db.commit()
+    assert "<td>accept</td>" in c.get("/dashboard").text and "<td>check in</td>" not in c.get("/dashboard").text
+    nxt = c.get("/dashboard?w=next").text
+    assert "Next week" in nxt and "<td>check in</td>" in nxt and "<td>accept</td>" not in nxt
+    assert "<td>check in</td>" in c.get("/dashboard").text   # remembered with no parameter
+    assert "<td>accept</td>" in c.get("/dashboard?w=this").text and "<td>accept</td>" in c.get("/dashboard").text
+    c.get("/dashboard?w=next")
+    s.put("dashboard_week", {**s.get("dashboard_week"), "monday": "2000-01-03"})   # chosen in an earlier week
+    assert "<td>accept</td>" in c.get("/dashboard").text   # a new week starts on this week
