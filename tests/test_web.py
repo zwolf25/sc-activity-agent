@@ -331,3 +331,23 @@ def test_new_user_is_saved_only_if_login_works(tmp_path, monkeypatch):
     monkeypatch.setattr(ScApp, "token", lambda self, user, pw: "tok")
     c.post("/connections/1/users", data={"username": "tech1", "password": "x", "label": "Maria"}, follow_redirects=False)
     assert s.db.execute("SELECT username FROM users").fetchone()[0] == "tech1"
+
+
+def test_update_button_starts_one_installer_and_shows_progress(tmp_path, monkeypatch):
+    from sc_activity_agent import __version__, update
+    from sc_activity_agent.web import app as webapp
+    s, c = client(tmp_path)
+    started = []
+    monkeypatch.setattr(update, "check", lambda store, force=False: {"tag": "v99.0.0", "notes": ""})
+    monkeypatch.setattr(webapp.subprocess, "Popen", lambda *a, **k: started.append(a))
+    for _ in range(3):   # a second and third click must not start more installers
+        r = c.post("/update", follow_redirects=False)
+        assert r.status_code == 303 and r.headers["location"] == "/updating"
+    assert len(started) == 1
+    page = c.get("/updating").text
+    assert "Updating to v99.0.0" in page and "/api/update-status" in page
+    assert c.get("/api/update-status").json()["state"] == "installing" and c.get("/api/update-status").json()["version"] == __version__
+    s.put("update_status", {**s.get("update_status"), "state": "failed", "msg": "Install failed"})
+    assert c.post("/update", follow_redirects=False).headers["location"] == "/updating" and len(started) == 2   # a failed run can be retried
+    s.put("update_status", {**s.get("update_status"), "at": 0})
+    assert update.in_progress(s) is None   # a run older than 15 minutes is dead

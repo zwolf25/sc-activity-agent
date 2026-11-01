@@ -129,7 +129,23 @@ def _stop(store):
         return False
 
 
-def apply(store, tag, run=subprocess.run, pip=_pip, restart=_restart, stop=_stop):
+def in_progress(store):
+    """The update that is still running on this version, or None. A status older than 15 minutes is a dead run, so a retry is allowed."""
+    st = store.get("update_status") or {}
+    if st.get("state") in ("installing", "restarting") and st.get("from") == __version__ and time.time() - st.get("at", 0) < 900:
+        return st
+    return None
+
+
+def apply(store, tag, **kw):
+    """Runs _apply and leaves its progress in store key update_status, which the console's progress page polls."""
+    store.put("update_status", {"state": "installing", "tag": tag, "from": __version__, "at": time.time()})
+    ok, msg = _apply(store, tag, **kw)
+    store.put("update_status", {"state": "restarting" if ok else "failed", "tag": tag, "from": __version__, "at": time.time(), "msg": msg})
+    return ok, msg
+
+
+def _apply(store, tag, run=subprocess.run, pip=_pip, restart=_restart, stop=_stop):
     """Pause, back up, install the tag, let the new code migrate the DB and resume. If the new version does not start, put the
     old code and the old database back. Returns (ok, message)."""
     r = repo(store)

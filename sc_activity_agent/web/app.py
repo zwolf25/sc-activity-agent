@@ -323,11 +323,23 @@ def create_app(store, engine=None, rt=None):
 
     @app.post("/update")
     def run_update():
+        if update.in_progress(store):   # a second click must not start a second installer
+            return RedirectResponse("/updating", 303)
         found = update.check(store, force=True)
-        if found:
-            subprocess.Popen([sys.executable, "-m", "sc_activity_agent.cli", "--data-dir", str(store.dir), "update", "--yes"],
-                             start_new_session=True)
-        return RedirectResponse("/dashboard", 303)
+        if not found:
+            return RedirectResponse("/dashboard", 303)
+        store.put("update_status", {"state": "installing", "tag": found["tag"], "from": __version__, "at": time.time()})
+        subprocess.Popen([sys.executable, "-m", "sc_activity_agent.cli", "--data-dir", str(store.dir), "update", "--yes"],
+                         start_new_session=True)
+        return RedirectResponse("/updating", 303)
+
+    @app.get("/updating")
+    def updating(request: Request):
+        return page(request, "updating", st=store.get("update_status") or {})
+
+    @app.get("/api/update-status")
+    def update_status():
+        return {"version": __version__, **(store.get("update_status") or {})}
 
     @app.post("/test-instance")
     def test_instance():

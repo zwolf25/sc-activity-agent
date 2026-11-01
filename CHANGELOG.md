@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix: Update now (source installs) no longer needs several clicks and a manual refresh. One click starts the update, a progress page waits while the agent restarts, and the dashboard opens on the new version. Extra clicks while an update runs do nothing. Restart the agent after updating; no migration.
+
 ## v0.11.1 - 2026-10-30
 
 - Changed: the photo options moved from Settings checkboxes to Behavior sliders ("Before photo on new WOs %", "After photo on closing note %"), both 0 by default. If you ticked either checkbox in v0.11.0, set the slider instead; the old checkbox is ignored.

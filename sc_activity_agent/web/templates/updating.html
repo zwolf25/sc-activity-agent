@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% block body %}
+<div class="card" id="upd-card"><h2 id="upd-h">Updating to {{ st.tag or 'the new version' }}</h2>
+<p id="upd-p">The agent pauses, installs the new version and restarts. This page waits for it and then opens the dashboard. Do not press Update again.</p></div>
+<script>
+(function(){const from="{{ st.get('from') or version }}",t0=Date.now();
+const h=document.getElementById('upd-h'),p=document.getElementById('upd-p');
+async function poll(){let s=null;try{const r=await fetch('/api/update-status',{cache:'no-store'});if(r.ok)s=await r.json()}catch(e){}
+if(s&&s.version!==from){location.href='/dashboard';return}
+if(s&&s.state==='failed'){h.textContent='Update failed';p.innerHTML='';p.append(document.createTextNode((s.msg||'')+' '));const a=document.createElement('a');a.href='/dashboard';a.textContent='Back to the dashboard';p.append(a);return}
+if(!s)p.textContent='The agent is restarting. This page reloads on its own when it is back.';
+if(Date.now()-t0>300000){h.textContent='The update is taking longer than expected';p.textContent='Wait a little, then open this page again. If the agent does not come back, run: agent open';return}
+setTimeout(poll,2000)}
+poll()})();
+</script>{% endblock %}
