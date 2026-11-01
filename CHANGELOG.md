@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.11.2 - 2026-10-31
+
 - New: the Dashboard's week table switches between This week and Next week, with the dates shown. The choice is remembered, and when a new week starts the table goes back to This week on its own.
 
 - Fix: Update now (source installs) no longer needs several clicks and a manual refresh. One click starts the update, a progress page waits while the agent restarts, and the dashboard opens on the new version. Extra clicks while an update runs do nothing. Restart the agent after updating; no migration.
