@@ -243,6 +243,25 @@ def test_approved_invoice_is_paid_once_and_paid_or_rejected_is_left_alone(tmp_pa
         assert sum(c[3] == "/invoices/777/Payment" for c in calls) == expect
 
 
+def test_payment_is_never_dated_before_the_invoice_date(tmp_path):
+    from types import SimpleNamespace
+    s = setup(tmp_path)
+    seen = []
+
+    class App(FakeApp):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            if path == "/invoices/777" and method == "GET":
+                return {"Status": "APPROVED", "InvoiceTotal": 50.0, "InvoiceDate": "2026-11-02T00:00:00-05:00"}   # posted 8 PM ET, dated the next UTC day
+            if path == "/invoices/777/Payment":
+                seen.append(body)
+            return super().call(user, method, path, params, body, **kw)
+    rt = Runtime(s, {1: App("sub", []), 2: App("prov", [])}, random.Random(1))
+    wo = _wo(s, invoice_id=777)
+    due = dt.datetime(2026, 11, 2, 1, 0, tzinfo=dt.UTC).timestamp()   # 9 PM ET on 2026-11-01
+    make_handlers(rt)["invoice_pay"](SimpleNamespace(clock=lambda: due), wo, {"kind": "invoice_pay", "due_at": due, "payload": "{}"})
+    assert seen[0]["PaymentDate"] == "2026-11-02T05:00:00Z"
+
+
 def _wo(s, **ctx):
     s.db.execute("INSERT INTO work_orders(sc_id,location,state,created_at,ctx) VALUES(9,'HQ-NYC','active',0,?)", (json.dumps({**CTX, **ctx}),))
     s.db.commit()

@@ -1,5 +1,5 @@
 """B-56: live check on an SB2 instance. Creates one work order and runs its whole plan to the end with every step due now,
-then prints each step's outcome and the audit calls. Run it before 7 PM US Eastern (see docs/api-notes.md, error 1178). Exit 0 only when no step failed and every step finished or was skipped.
+then prints each step's outcome and the audit calls. Exit 0 only when no step failed and every step finished or was skipped.
 Refuses to run against Production. Usage: python scripts/live_sb2.py [--data-dir DIR] [--store HQ-NYC] [--trade DOOR] [--photos] [--checklists]
 --photos sets both photo sliders to 100 and --checklists turns checklist answering on, for this run only (the settings are restored)."""
 import argparse

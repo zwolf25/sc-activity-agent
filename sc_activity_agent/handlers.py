@@ -401,7 +401,11 @@ def make_handlers(rt):
         inv = call(wo, step, "GET", f"/invoices/{c['invoice_id']}") or {}
         if inv.get("Status") != "APPROVED":
             return   # already paid, or the user rejected it: nothing to pay
-        body = {"PaymentDate": _iso(max(step["due_at"], engine.clock())), "PaymentNumber": f"PAY-{wo['sc_id']}",
+        paid_at = max(step["due_at"], engine.clock())
+        if inv.get("InvoiceDate"):
+            # An invoice posted late in the US evening is dated the next UTC day, and ServiceChannel refuses a payment dated before it (error 1178).
+            paid_at = max(paid_at, dt.datetime.fromisoformat(inv["InvoiceDate"]).timestamp())
+        body = {"PaymentDate": _iso(paid_at), "PaymentNumber": f"PAY-{wo['sc_id']}",
                 "PaymentAmount": inv.get("InvoiceTotal")}
         try:
             call(wo, step, "POST", f"/invoices/{c['invoice_id']}/Payment", body=body)
