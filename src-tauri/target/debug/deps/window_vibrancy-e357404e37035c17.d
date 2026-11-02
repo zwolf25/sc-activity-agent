@@ -1,0 +1,13 @@
+/Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/debug/deps/window_vibrancy-e357404e37035c17.d: /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/lib.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/macos/mod.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/macos/vibrancy.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/macos/ns_visual_effect_view_tagged.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/macos/liquid_glass.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/macos/ns_glass_effect_view_tagged.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/windows.rs
+
+/Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/debug/deps/libwindow_vibrancy-e357404e37035c17.rmeta: /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/lib.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/macos/mod.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/macos/vibrancy.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/macos/ns_visual_effect_view_tagged.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/macos/liquid_glass.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/macos/ns_glass_effect_view_tagged.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/windows.rs
+
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/lib.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/macos/mod.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/macos/vibrancy.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/macos/ns_visual_effect_view_tagged.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/macos/liquid_glass.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/macos/ns_glass_effect_view_tagged.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/window-vibrancy-0.8.1/src/windows.rs:
+
+# env-dep:CARGO_PKG_VERSION=0.8.1

@@ -10,7 +10,7 @@ import time
 import zlib
 from pathlib import Path
 
-from . import PACKAGED, autostart
+from . import autostart
 
 
 def name(env):
@@ -22,15 +22,13 @@ def open_cmd(data_dir):
 
 
 def twin_dir(data_dir):
-    """Where the SB2 copy lives: inside the desktop app's data folder, or beside the data folder in a source install."""
+    """Where the SB2 copy lives: beside the data folder."""
     d = Path(data_dir)
-    return d / "sb2" if PACKAGED else d.with_name(d.name + "-sb2")
+    return d.with_name(d.name + "-sb2")
 
 
 def run_cmd(data_dir):
-    """The frozen desktop program is the agent itself; a source install runs the module."""
-    if PACKAGED:
-        return [sys.executable, "--data-dir", str(Path(data_dir).resolve()), "run"]
+    """Run the agent module with the same Python."""
     return [sys.executable, "-m", "sc_activity_agent.cli", "--data-dir", str(Path(data_dir).resolve()), "run"]
 
 

@@ -1,5 +1,5 @@
 """Keep the Mac awake while a source-install agent runs. Plans only run while the machine is awake and every sleep shifts the
-remaining steps later. The desktop app has its own switch in the tray menu. `caffeinate -w` ends with the agent."""
+remaining steps later. `caffeinate -w` ends with the agent."""
 import os
 import subprocess
 import sys

@@ -1,0 +1,10 @@
+/Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/debug/deps/tauri_runtime-2538465df46b46b5.d: /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-runtime-2.12.2/src/lib.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-runtime-2.12.2/src/dpi.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-runtime-2.12.2/src/monitor.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-runtime-2.12.2/src/webview.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-runtime-2.12.2/src/webview_permissions.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-runtime-2.12.2/src/window.rs
+
+/Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/debug/deps/libtauri_runtime-2538465df46b46b5.rmeta: /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-runtime-2.12.2/src/lib.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-runtime-2.12.2/src/dpi.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-runtime-2.12.2/src/monitor.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-runtime-2.12.2/src/webview.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-runtime-2.12.2/src/webview_permissions.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-runtime-2.12.2/src/window.rs
+
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-runtime-2.12.2/src/lib.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-runtime-2.12.2/src/dpi.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-runtime-2.12.2/src/monitor.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-runtime-2.12.2/src/webview.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-runtime-2.12.2/src/webview_permissions.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tauri-runtime-2.12.2/src/window.rs:

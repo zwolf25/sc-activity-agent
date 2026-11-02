@@ -1,0 +1,9 @@
+/Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/debug/deps/hyper_rustls-6f565fa6f3dc71b1.d: /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-0.27.10/src/lib.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-0.27.10/src/config.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-0.27.10/src/connector.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-0.27.10/src/connector/builder.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-0.27.10/src/stream.rs
+
+/Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/debug/deps/libhyper_rustls-6f565fa6f3dc71b1.rmeta: /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-0.27.10/src/lib.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-0.27.10/src/config.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-0.27.10/src/connector.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-0.27.10/src/connector/builder.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-0.27.10/src/stream.rs
+
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-0.27.10/src/lib.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-0.27.10/src/config.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-0.27.10/src/connector.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-0.27.10/src/connector/builder.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hyper-rustls-0.27.10/src/stream.rs:

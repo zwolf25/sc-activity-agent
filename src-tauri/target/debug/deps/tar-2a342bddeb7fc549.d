@@ -1,0 +1,12 @@
+/Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/debug/deps/tar-2a342bddeb7fc549.d: /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/lib.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/archive.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/builder.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/entry.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/entry_type.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/error.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/header.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/pax.rs
+
+/Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/debug/deps/libtar-2a342bddeb7fc549.rmeta: /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/lib.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/archive.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/builder.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/entry.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/entry_type.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/error.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/header.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/pax.rs
+
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/lib.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/archive.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/builder.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/entry.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/entry_type.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/error.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/header.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tar-0.4.46/src/pax.rs:

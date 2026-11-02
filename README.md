@@ -14,14 +14,7 @@ A ServiceChannel support team member sets up the check-in/out permission, so ask
 
 ## Quick start
 
-**Desktop app (recommended).** Download the app for your system from the [latest release](https://github.com/zwolf25/sc-activity-agent/releases/latest): the `.dmg` for macOS (Apple silicon) or the `-setup.exe` for Windows. Open it. There is no Python and no terminal.
-
-- macOS: drag the app to Applications. The app is not notarized by Apple, so the first launch needs right-click, then Open (or `xattr -cr "/Applications/SC Activity Agent.app"` once).
-- Windows: run the installer. SmartScreen may warn because the installer is not signed: choose More info, then Run anyway.
-
-On first launch the app asks whether it works in **Production** or **SB2** (the choice is locked for that copy), turns on Start at login, and opens the setup checklist. It keeps running from the tray (menu bar on macOS) when you close the window. **Quit** in the tray menu stops the agent. When a new version is out, a banner offers Update now: the app pauses, installs and restarts, and your data is untouched.
-
-**Install with Python (no desktop app).** You need Python 3.11 or newer; the installer checks and tells you how to get it if it is missing.
+**Install with Python.** You need Python 3.11 or newer; the installer checks and tells you how to get it if it is missing.
 
 - macOS or Linux: `curl -fsSL https://raw.githubusercontent.com/zwolf25/sc-activity-agent/main/install.sh | sh` (add `-s sb2` after `sh` for an SB2 instance; the default is Production)
 - Windows (PowerShell): `irm https://raw.githubusercontent.com/zwolf25/sc-activity-agent/main/install.ps1 | iex`
@@ -43,17 +36,12 @@ It creates a launcher named SC Activity Agent (in `~/Applications` on macOS, the
 
 **Photos.** Two Behavior sliders, both 0 by default: "Before photo on new WOs %" and "After photo on closing note %". The photos come from a library that ships with the app, matched to the WO's trade, and a WO's before and after photos come from the same scene.
 
-Work order creation only runs while the agent runs. If the machine sleeps, the agent notices the gap and moves the remaining steps forward. Settings chooses how. In the desktop app, Start at login is in the tray menu. In the source install it is on the Settings page. Neither can wake a sleeping machine.
+Work order creation only runs while the agent runs. If the machine sleeps, the agent notices the gap and moves the remaining steps forward. Settings chooses how. Start at login is on the Settings page and cannot wake a sleeping machine.
 
 ## Production and test
 
-Production and SB2 are two separate instances with their own data, keys and ports (8080 and 8081). Nothing switches between them. On a Production instance, Connections has an **Open SB2 test instance** button that starts the SB2 copy. In the desktop app the SB2 copy lives in an `sb2` folder inside the app's data folder, starts only when you ask, and is switched with the tray menu (Production console, SB2 console). One install, one update and one Quit cover both. Integration apps are registered per environment, so the SB2 copy needs SB2 apps.
+Production and SB2 are two separate instances with their own data, keys and ports (8080 and 8081). Nothing switches between them. On a Production instance, Connections has an **Open SB2 test instance** button that starts the SB2 copy. The SB2 copy lives in a folder beside the Production data folder, with `-sb2` added to its name. Integration apps are registered per environment, so the SB2 copy needs SB2 apps.
 
-### Moving a command-line instance into the desktop app
-
-1. Pause the instance and stop it (and remove its login item, so only one agent acts on the plans).
-2. Install the app, quit it before the welcome page, and copy `agent.db` and `secret.key` from the old data folder into the app's data folder (macOS: `~/Library/Application Support/com.zackwolf.sc-activity-agent`, Windows: `%APPDATA%\com.zackwolf.sc-activity-agent`). Copy both files; the key decrypts the saved credentials.
-3. Start the app. It skips the welcome page, keeps the saved environment and port, and resumes from the saved plans.
 
 ## Telegram alerts (optional)
 

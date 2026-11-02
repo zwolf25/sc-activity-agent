@@ -106,11 +106,11 @@ def _pip(spec):
 
 
 def _restart(store, wait=10):
-    """Source install: start the agent again once the old one has let go of its port. The desktop app and a Start at login unit
-    restart it themselves, and a second copy would run every step twice."""
-    from . import PACKAGED, autostart, launcher
+    """Source install: start the agent again once the old one has let go of its port. A Start at login unit
+    restarts it itself, and a second copy would run every step twice."""
+    from . import autostart, launcher
     port = store.get("port")
-    if PACKAGED or not port or autostart.enabled(store.dir, store.get("env")):
+    if not port or autostart.enabled(store.dir, store.get("env")):
         return
     for _ in range(wait * 4):
         if not launcher.port_open(port):

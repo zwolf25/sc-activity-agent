@@ -1,0 +1,14 @@
+/Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/release/deps/serde-cba3ecf47cd32d40.d: /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/lib.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/integer128.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/mod.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/de.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/ser.rs /Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/release/build/serde-2392dc71c01dd448/out/private.rs
+
+/Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/release/deps/libserde-cba3ecf47cd32d40.rlib: /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/lib.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/integer128.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/mod.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/de.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/ser.rs /Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/release/build/serde-2392dc71c01dd448/out/private.rs
+
+/Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/release/deps/libserde-cba3ecf47cd32d40.rmeta: /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/lib.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/integer128.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/mod.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/de.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/ser.rs /Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/release/build/serde-2392dc71c01dd448/out/private.rs
+
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/lib.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/integer128.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/mod.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/de.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.229/src/private/ser.rs:
+/Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/release/build/serde-2392dc71c01dd448/out/private.rs:
+
+# env-dep:OUT_DIR=/Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/release/build/serde-2392dc71c01dd448/out

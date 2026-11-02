@@ -6,7 +6,7 @@ import threading
 import time
 from pathlib import Path
 
-from . import PACKAGED, __version__, awake
+from . import __version__, awake
 from .store import Store
 
 DEFAULT_PORT = {"prod": 8080, "sb2": 8081}
@@ -126,14 +126,6 @@ def cmd_run(args, store):
     lock = lock_data_dir(store.dir)   # kept open for the life of the process
     if lock is None:   # the launcher and Start at login can both start an agent; two would run every step twice
         sys.exit(f"Another agent already runs on {store.dir}. Exiting.")
-    if PACKAGED and not args.no_ui:
-        # the desktop shell reads this file to learn where the console is; a busy port moves to the next free one
-        port = store.get("port") or free_port(DEFAULT_PORT["prod"])
-        store.put("port", port)
-        (store.dir / "port").write_text(str(port))
-        if not store.get("env"):
-            from .welcome import wait_for_env
-            wait_for_env(store, port)
     from .handlers import watch
     engine, rt = build_engine(store, with_rt=True)
     if not args.no_ui:
@@ -153,23 +145,11 @@ def cmd_run(args, store):
     from .alerts import Alerts
     threading.Thread(target=Alerts(store).poll_forever, args=(engine, rt), daemon=True).start()   # Telegram button taps
     (store.dir / "agent.pid").write_text(str(os.getpid()))
-    if store.get("resume_after_update"):   # the desktop app paused the agent for an update; carry on on the new version
-        store.put("resume_after_update", False)
-        engine.paused_at = store.get("paused_at")
-        engine.resume(store.get("resume_policy", "catch_up"))
-    if PACKAGED and store.get("env") == "prod":
-        from .launcher import ensure_running, twin_dir
-        d = twin_dir(store.dir)
-        if (d / "agent.db").exists():   # an update stopped the SB2 copy too; bring it back if it was running
-            twin = Store(d)
-            if twin.get("resume_after_update"):
-                threading.Thread(target=ensure_running, args=(d, twin.get("port")), daemon=True).start()
     print(f"agent {__version__} running ({store.get('env')}). Ctrl+C to stop.")
     caffeinate = None
     try:
         while True:
-            if not PACKAGED:
-                caffeinate = awake.sync(store, caffeinate)
+            caffeinate = awake.sync(store, caffeinate)
             engine.paused_at = store.get("paused_at")
             # one failing piece must not stop the others, or the whole agent
             for name, fn in (("step", engine.tick), ("update", lambda: (update.check(store), [])[1]),

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Removed: the desktop app. Install with Python (`install.sh` or `install.ps1`); updates and the Update now button work as before. Releases no longer carry the installers or `latest.json`.
+
+- Fix: an invoice posted after 7 PM US Eastern is now paid. ServiceChannel dates such an invoice the next day and refused a payment dated earlier (error 1178), so the payment date is now never before the invoice date.
+
 ## v0.11.3 - 2026-11-01
 
 - Fix: the daily Cleanup sweep now follows the Activity days from Behavior. It used to skip Saturday and Sunday whatever days you picked.

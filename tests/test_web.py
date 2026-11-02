@@ -212,38 +212,6 @@ def test_step_context_text():
     assert detail("check_out", {"visit": 1, "final": False}).endswith("return visit") and detail("review", {}) == ""
 
 
-def test_packaged_update_prepare_pauses_and_backs_up(tmp_path, monkeypatch):
-    import sc_activity_agent.web.app as app_mod
-    s, c = client(tmp_path)
-    assert c.post("/update/prepare").status_code == 404 and "Start at login" in c.get("/settings").text
-    monkeypatch.setattr(app_mod, "PACKAGED", True)
-    assert c.post("/update/prepare").json() == {"ok": True}
-    assert s.get("paused_at") and s.get("resume_after_update") is True and list((tmp_path / "backups").glob("agent-*.db"))
-    assert "Start at login" not in c.get("/settings").text
-
-
-def test_welcome_page_sets_environment_once(tmp_path):
-    import threading
-    import time
-    import urllib.parse
-    import urllib.request
-
-    from sc_activity_agent.welcome import wait_for_env
-    s = Store(tmp_path)
-    port = 18999
-    t = threading.Thread(target=wait_for_env, args=(s, port), daemon=True)
-    t.start()
-    for _ in range(40):
-        try:
-            assert b"Production" in urllib.request.urlopen(f"http://127.0.0.1:{port}/").read()
-            break
-        except OSError:
-            time.sleep(0.25)
-    urllib.request.urlopen(f"http://127.0.0.1:{port}/choose", urllib.parse.urlencode({"env": "sb2"}).encode())
-    t.join(15)
-    assert s.get("env") == "sb2" and s.get("port") == port
-
-
 def test_setup_shows_checkin_permission_request_and_status(tmp_path):
     s, c = client(tmp_path)
     s.put("subscriber_id", 2014917582)
@@ -265,29 +233,6 @@ def test_offline_notice_is_readable_and_can_be_dismissed(tmp_path):
     assert "1793068087" not in text and "16 min" in text and "No scheduled steps were affected" in text
     c.post("/gap/0/dismiss", follow_redirects=False)
     assert "was not running" not in c.get("/dashboard").text
-
-
-def test_packaged_sb2_twin_lives_inside_the_data_folder_and_follows_updates(tmp_path, monkeypatch):
-    from sc_activity_agent import launcher
-    from sc_activity_agent.web import app as webapp
-    monkeypatch.setattr(launcher, "PACKAGED", True)
-    monkeypatch.setattr(webapp, "PACKAGED", True)
-    monkeypatch.setattr(launcher, "ensure_running", lambda d, p: True)
-    s = Store(tmp_path / "data")
-    s.put("env", "prod")
-    s.put("port", 8080)
-    c = TestClient(create_app(s))
-    c.post("/test-instance", follow_redirects=False)
-    twin = Store(tmp_path / "data" / "sb2")
-    assert twin.get("env") == "sb2" and twin.get("twin_port") == 8080
-    (tmp_path / "data" / "sb2" / "port").write_text(str(twin.get("port")))
-    calls = []
-    monkeypatch.setattr(launcher, "port_open", lambda p: True)
-    monkeypatch.setattr(webapp.urllib.request, "urlopen", lambda req, timeout=0: calls.append(req.full_url) or type("R", (), {"read": lambda s: b""})())
-    assert c.post("/update/prepare").json() == {"ok": True}
-    assert calls == [f"http://127.0.0.1:{twin.get('port')}/update/prepare?cascade=0"]
-    c.post("/update/prepare?cascade=0")
-    assert len(calls) == 1   # a cascaded call does not bounce back
 
 
 def test_add_many_locations_from_ticks_and_pasted_ids(tmp_path):

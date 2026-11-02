@@ -10,7 +10,7 @@ import uuid
 
 import certifi
 
-# the packaged desktop app has no system CA bundle, so verify against certifi's
+# verify against certifi's bundle, not the system store
 SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 
 ENVS = {

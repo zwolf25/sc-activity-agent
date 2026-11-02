@@ -1,0 +1,12 @@
+/Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/debug/deps/ico-10d222501ab2d653.d: /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/lib.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/macros.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/bmpdepth.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/icondir.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/image.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/restype.rs
+
+/Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/debug/deps/libico-10d222501ab2d653.rlib: /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/lib.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/macros.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/bmpdepth.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/icondir.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/image.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/restype.rs
+
+/Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/debug/deps/libico-10d222501ab2d653.rmeta: /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/lib.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/macros.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/bmpdepth.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/icondir.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/image.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/restype.rs
+
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/lib.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/macros.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/bmpdepth.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/icondir.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/image.rs:
+/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/ico-0.6.0/src/restype.rs:

@@ -18,32 +18,24 @@ Ordered list of enhancements after v1. The order is the priority: rank 1 is next
 | 2 | B-22 | Complete checklists on WOs. Built (v0.10.0, Settings toggle) and verified on SB2. Now sends the answering user's `AuthUserID` (read from the profile) and traces required questions it cannot answer. Verified on SB2 (2026-11-01): the profile gives `AuthUserId` and the answers are recorded. Required question left open on SB2 (2026-11-01): check-out still succeeds, nothing recorded. Left: per-asset questions (needs B-23/B-24) | S | Required questions block submitting the checklist (engineering), so unanswerable ones are the open gap | Zac |
 | 3 | B-23 | Create WOs with assets attached | M, spike | Asset-linked work is the normal case in many accounts | Zac |
 | 4 | B-24 | Providers attach assets to WOs when onsite | M, spike | Pairs with B-23 | Zac |
-| 5 | B-58 | Decide the desktop app's future. CI still builds it on every push and release (`desktop-check.yml`, `release.yml`) and four version files carry it, but Zac runs the source install and B-49 and B-50 are on hold. Options: keep, build only on tagged releases, or retire it and remove the Tauri files | S | Every release pays for a build nobody runs, and the extra version files add bump risk | Claude |
-| 6 | B-14 | Photos on WOs: relevant to the trade and issue only, with variety (several images per issue type). The library (52 sets, `photos.py`) is built and used for checklist pictures, WO create (B-52) and closing notes (B-53). Left: a set per issue type and replacing the cabled backgrounds | S | Real WOs carry photos. Needs a curated image set per issue type, with licensing checked | Zac |
-| 7 | B-25 | Star ratings on WOs. A low rating moves the WO to Unsatisfactory and the provider returns onsite to finish | L, spike | Adds a rework loop | Zac |
-| 8 | B-15 | Provider-side PM WOs: find PM WOs and move them through the process. Subscribers cannot create PMs through the API, so the agent only picks up existing ones | L, spike | PM is a large share of real volume | Zac |
-| 9 | B-26 | PM compliance flows: pass and fail documentation, and the related follow-up | L, spike | Builds on B-15 | Zac |
-| 10 | B-27 | Linked WOs (parent and child) | M, spike | Common for multi-visit and multi-trade jobs | Zac |
-| 11 | B-28 | Recall WOs | M, spike | Rework against a closed WO. Pairs with B-25 | Zac |
-| 12 | B-29 | Avoided WOs: Guided Troubleshooting resolves the issue, and duplicate WOs are detected and avoided | L, spike | Tests the "WO never gets created" paths | Zac |
-| 13 | B-30 | Site audits that result in WOs created | L, spike | A second source of WOs besides the issue list | Zac |
-| 14 | B-31 | Snow and landscaping WOs done by providers with CIWO | L, spike | CIWO has its own check-in model | Zac |
-| 15 | B-32 | Quarterly RFP: a Subscriber runs an RFP with several bidding providers, then issues WOs to the winners | XL, spike | Needs several provider connections and contract changes | Zac |
-| 16 | B-33 | FTM techs and FTM WOs through the process | L, spike | Needs the FTM product model first | Zac |
-| 17 | B-05 | Per-location behavior overrides | M | Locations should differ in volume and trade mix | Claude |
-| 18 | B-07 | Seasonal and holiday weighting (HVAC in summer, quiet holidays) | M | Flat weekday activity is an easy tell | Claude |
-| 19 | B-04 | Deep link from the console to the WO in the ServiceChannel Subscriber view, in place of a WO detail page | S, spike | Finds the WO URL pattern. Keeps the console small | Zac |
-| 20 | B-09 | Scenario presets (quiet week, busy week, storm surge) | S | One click to change load | Claude |
-| 21 | B-16 | Clock speed-up mode for demos on SB2 | M | A full lifecycle in minutes | Claude |
-| 22 | B-13 | Repeat issues on the same asset | M | Needs B-23. Feeds repeat-repair reports | Claude |
-| 23 | B-34 | RT workflows | XL, spike | Very hard. Last on purpose | Zac |
-
-## On hold
-Paused by Zac on 2026-10-29. Not ranked; return them to the backlog when he says so.
-| ID | Item | Size | Why | Source |
-|----|------|------|-----|--------|
-| B-49 | Partly answered 2026-10-28: a Python source install survives the same launch paths (launchd, Finder-style open), so the Python install path (install.sh) is the workaround, and the cause is the ad-hoc signed bundle (B-50). Still ask IT whether Falcon/Rapid7 blocked it. Original question: find why macOS kills the agent child about 2 s after the console opens when the app is launched from Finder or `open` (works from a terminal and from a launchd job; started 2026-10-28 08:52; ad-hoc signed app, security software on the machine). First read the new `[shell ...]` exit line in agent.log (signal 9 vs a code). If it is a system kill, try a LaunchAgent that runs `agent-core run` directly | M, spike | The app cannot be opened normally on Zac's machine | Zac |
-| B-50 | Apple Developer ID signing and notarization of the desktop app (US$99 a year) so it opens from Finder and Gatekeeper without a workaround; B-49 shows the ad-hoc signed app is killed on Zac's machine | M | Wider rollout of the desktop app | Zac |
+| 5 | B-14 | Photos on WOs: relevant to the trade and issue only, with variety (several images per issue type). The library (52 sets, `photos.py`) is built and used for checklist pictures, WO create (B-52) and closing notes (B-53). Left: a set per issue type and replacing the cabled backgrounds | S | Real WOs carry photos. Needs a curated image set per issue type, with licensing checked | Zac |
+| 6 | B-25 | Star ratings on WOs. A low rating moves the WO to Unsatisfactory and the provider returns onsite to finish | L, spike | Adds a rework loop | Zac |
+| 7 | B-15 | Provider-side PM WOs: find PM WOs and move them through the process. Subscribers cannot create PMs through the API, so the agent only picks up existing ones | L, spike | PM is a large share of real volume | Zac |
+| 8 | B-26 | PM compliance flows: pass and fail documentation, and the related follow-up | L, spike | Builds on B-15 | Zac |
+| 9 | B-27 | Linked WOs (parent and child) | M, spike | Common for multi-visit and multi-trade jobs | Zac |
+| 10 | B-28 | Recall WOs | M, spike | Rework against a closed WO. Pairs with B-25 | Zac |
+| 11 | B-29 | Avoided WOs: Guided Troubleshooting resolves the issue, and duplicate WOs are detected and avoided | L, spike | Tests the "WO never gets created" paths | Zac |
+| 12 | B-30 | Site audits that result in WOs created | L, spike | A second source of WOs besides the issue list | Zac |
+| 13 | B-31 | Snow and landscaping WOs done by providers with CIWO | L, spike | CIWO has its own check-in model | Zac |
+| 14 | B-32 | Quarterly RFP: a Subscriber runs an RFP with several bidding providers, then issues WOs to the winners | XL, spike | Needs several provider connections and contract changes | Zac |
+| 15 | B-33 | FTM techs and FTM WOs through the process | L, spike | Needs the FTM product model first | Zac |
+| 16 | B-05 | Per-location behavior overrides | M | Locations should differ in volume and trade mix | Claude |
+| 17 | B-07 | Seasonal and holiday weighting (HVAC in summer, quiet holidays) | M | Flat weekday activity is an easy tell | Claude |
+| 18 | B-04 | Deep link from the console to the WO in the ServiceChannel Subscriber view, in place of a WO detail page | S, spike | Finds the WO URL pattern. Keeps the console small | Zac |
+| 19 | B-09 | Scenario presets (quiet week, busy week, storm surge) | S | One click to change load | Claude |
+| 20 | B-16 | Clock speed-up mode for demos on SB2 | M | A full lifecycle in minutes | Claude |
+| 21 | B-13 | Repeat issues on the same asset | M | Needs B-23. Feeds repeat-repair reports | Claude |
+| 22 | B-34 | RT workflows | XL, spike | Very hard. Last on purpose | Zac |
 
 ## Ideas waiting for a spec
 None yet. Zac's new ideas go here first, then get sized and ranked.
@@ -55,6 +47,7 @@ None yet. Zac's new ideas go here first, then get sized and ranked.
 | B-55 | `scripts/bump_version.py` sets all version files together; the sync test now also checks `Cargo.lock` and `package-lock.json` | 0.11.3 |
 | B-56 | `scripts/live_sb2.py`: one full work order run on SB2 as a release check (refuses Production) | 0.11.3 |
 | B-59 | Dashboard remembers Hide done and Hide skipped (`dashboard_hide`) | 0.11.3 |
+| B-58 | Retired the desktop app (Tauri shell, packaging, installers, welcome page, desktop CI and the Python code only it used). The source install is the supported path; rebuild later if there is a reason to pivot (git history keeps it, last shipped in 0.11.3) | unreleased |
 | B-52 | Before photos attached when a WO is created, picked by trade from the photo library, as the Behavior slider `photo_before` (default 0). Verified on SB2. Prod check is in B-57 | 0.11.0, slider in 0.11.1 |
 | B-53 | After photos on the provider's closing note, from the same set as the before photo, as the Behavior slider `photo_after` (default 0). Verified on SB2. Prod check is in B-57 | 0.11.0, slider in 0.11.1 |
 | B-51 | Pick up WOs people create by hand at our locations and give them a plan (hourly, Settings toggle, on by default). Guards: held by our provider, trade where Rank 1 is ours, created in the last 7 days, no protect label; foreign-provider WOs ignored. Ran on SB2 (planned 10 WOs, accept for OPEN ones). Not run on Prod; the IN PROGRESS path was only unit-tested | 0.9.0 |
@@ -82,6 +75,7 @@ None yet. Zac's new ideas go here first, then get sized and ranked.
 ## Dropped
 | ID | Item | Reason |
 |----|------|--------|
+| B-49, B-50 | Mac killing the ad-hoc signed desktop app, and Developer ID signing and notarization | Desktop app retired (B-58); the source install is not affected |
 | B-06 | Realism report | Zac: not wanted |
 | B-01 | Locations lookup by store ID, plus CSV bulk add | Lookup is covered by the loaded locations list with search (v0.2.x); the bulk part became B-46 |
 | B-10 | Daily digest to Slack or email | Zac: not wanted |

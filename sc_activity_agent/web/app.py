@@ -1,26 +1,24 @@
 """FastAPI console. Server-rendered Jinja pages and plain forms (post/redirect/get), localhost only."""
 import json
 import re
-import os
 import platform
 import subprocess
 import sys
 import threading
 import time
-import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, Form, Query, Request
-from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .. import cleanup as cleanup_mod
 from .. import pickup as pickup_mod
-from .. import PACKAGED, __version__, autostart, awake, planner, status, update
+from .. import __version__, autostart, awake, planner, status, update
 from .. import locations as locations_mod
 from ..alerts import EVENTS, Alerts, AlertError
 from ..client import ScApp, ScError
@@ -82,7 +80,7 @@ def create_app(store, engine=None, rt=None):
 
     def page(request, name, **ctx):
         failed = db.execute("SELECT COUNT(*) FROM steps WHERE state='failed'").fetchone()[0]
-        base = dict(request=request, nav=NAV, here=name, env=store.get("env"), version=__version__, packaged=PACKAGED,
+        base = dict(request=request, nav=NAV, here=name, env=store.get("env"), version=__version__,
                     paused=store.get("paused_at") is not None, failed=failed,
                     port=store.get("port"), twin_port=store.get("twin_port"), setup=setup_checks(), update=update.pending(store))
         return tpl.TemplateResponse(request, f"{name}.html", {**base, **ctx})
@@ -295,44 +293,6 @@ def create_app(store, engine=None, rt=None):
         db.commit()
         return RedirectResponse("/errors", 303)
 
-    def to_peer(path):
-        """Desktop app: one app update or quit covers both instances, so pass the call on to the other one if it is running."""
-        from ..launcher import port_open, twin_dir
-        peer = twin_dir(store.dir) if store.get("env") != "sb2" else store.dir.parent
-        try:
-            port = int((peer / "port").read_text())
-        except (OSError, ValueError):
-            return
-        if port_open(port):
-            try:
-                urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:{port}{path}?cascade=0", method="POST"), timeout=10).read()
-            except OSError:
-                pass   # a peer that does not answer must not hold up this one
-
-    @app.post("/update/prepare")
-    def prepare_update(cascade: str = "1"):
-        """Desktop app only: pause and back up the database right before the shell installs a new version."""
-        if not PACKAGED:
-            return JSONResponse({"ok": False}, 404)
-        if cascade != "0":
-            to_peer("/update/prepare")
-        was_paused = store.get("paused_at") is not None
-        store.put("resume_after_update", not was_paused)
-        if not was_paused:
-            store.put("paused_at", time.time())
-        update.backup(store)
-        return {"ok": True}
-
-    @app.post("/shutdown")
-    def shutdown(cascade: str = "1"):
-        """Desktop app only: the shell asks the agent to stop when the app quits or restarts for an update."""
-        if not PACKAGED:
-            return JSONResponse({"ok": False}, 404)
-        if cascade != "0":
-            to_peer("/shutdown")
-        threading.Timer(0.3, os._exit, args=(0,)).start()
-        return {"ok": True}
-
     @app.post("/update")
     def run_update():
         if update.in_progress(store):   # a second click must not start a second installer
@@ -363,7 +323,7 @@ def create_app(store, engine=None, rt=None):
         twin = Store(d)
         if not twin.get("env"):
             twin.put("env", "sb2")
-            twin.put("port", free_port(8081) if PACKAGED else 8081)
+            twin.put("port", 8081)
             twin.put("twin_port", store.get("port"))
         if not ensure_running(d, twin.get("port")):
             return RedirectResponse("/connections?msg=The SB2 instance did not start. See agent.log in its data folder.", 303)
@@ -536,7 +496,7 @@ def create_app(store, engine=None, rt=None):
     def settings(request: Request, msg: str = ""):
         al = Alerts(store)
         return page(request, "settings", login=autostart.enabled(store.dir, store.get("env")),
-                    awake_ui=awake.supported() and not PACKAGED, awake_on=store.get("keep_awake", True), check_on=store.get("status_check", True), pickup_on=pickup_mod.settings(store)["on"], checklist_on=store.get("checklists", {}).get("on", False),
+                    awake_ui=awake.supported(), awake_on=store.get("keep_awake", True), check_on=store.get("status_check", True), pickup_on=pickup_mod.settings(store)["on"], checklist_on=store.get("checklists", {}).get("on", False),
                     policy=store.get("resume_policy", "catch_up"), msg=msg, al=al.cfg, token_set=bool(store.get("alerts_token")),
                     backups=[(n, s // 1024, datetime.fromtimestamp(t).strftime("%b %d %H:%M")) for n, s, t in update.backups(store)],
                     events=EVENTS, alert_error=store.get("alert_error"), other_env="SB2" if store.get("env") == "prod" else "Production")
@@ -551,7 +511,7 @@ def create_app(store, engine=None, rt=None):
         """What to paste into a support message: versions, state and the end of the log (no credentials are ever logged)."""
         log = store.dir / "agent.log"
         tail = "\n".join(log.read_text(errors="replace").splitlines()[-60:]) if log.exists() else "(no agent.log)"
-        return (f"agent {__version__}  env={store.get('env')}  packaged={PACKAGED}  paused={store.get('paused_at') is not None}\n"
+        return (f"agent {__version__}  env={store.get('env')}  paused={store.get('paused_at') is not None}\n"
                 f"python {sys.version.split()[0]}  {platform.platform()}  port={store.get('port')}\n--- agent.log (last 60 lines)\n{tail}")
 
     @app.post("/backup")
@@ -616,7 +576,7 @@ def create_app(store, engine=None, rt=None):
         store.put("checklists", {"on": checklist_on == "on"})
         store.put("pickup", {**pickup_mod.settings(store), "on": pickup_on == "on"})
         store.put("status_check", check_on == "on")
-        if awake.supported() and not PACKAGED:
+        if awake.supported():
             store.put("keep_awake", awake_on == "on")
         env = store.get("env")
         if login == "on" and not autostart.enabled(store.dir, env):

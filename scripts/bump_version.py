@@ -4,14 +4,9 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).parent.parent
-# (file, pattern with the version in group 2, occurrences to change). Cargo.lock: only the desktop package's entry.
+# (file, pattern with the version in group 2, occurrences to change).
 FILES = [
     ("sc_activity_agent/__init__.py", r'(__version__ = ")([^"]+)(")', 1),
-    ("package.json", r'("version": ")([^"]+)(")', 1),
-    ("package-lock.json", r'("name": "sc-activity-agent-desktop",\s+"version": ")([^"]+)(")', 2),
-    ("src-tauri/tauri.conf.json", r'("version": ")([^"]+)(")', 1),
-    ("src-tauri/Cargo.toml", r'(^version = ")([^"]+)(")', 1),
-    ("src-tauri/Cargo.lock", r'(name = "sc-activity-agent-desktop"\nversion = ")([^"]+)(")', 1),
 ]
 
 
