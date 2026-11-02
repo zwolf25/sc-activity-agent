@@ -294,16 +294,15 @@ def make_handlers(rt):
             pass
 
     def review(engine, wo, step):
-        """Subscriber verifies the work. Plain: COMPLETED/CONFIRMED with the review text as the status note. With the Behavior sliders (B-25) the
-        review is a rating instead (POST /feedbacks): 3 to 5 stars confirm the WO; 1 or 2 stars mark it Unsatisfactory (IN PROGRESS) and the
-        provider returns for another visit. Feedback is only accepted while the WO is COMPLETED / PENDING CONFIRMATION (verified on SB2)."""
+        """Subscriber verifies the work. Plain: COMPLETED/CONFIRMED with the review text as the status note. With the Behavior sliders (B-25) a share of
+        reviews (star_rating) is a rating instead (POST /feedbacks). Of those, rework % get 1 or 2 stars and mark the WO Unsatisfactory (IN PROGRESS)
+        so the provider returns for another visit; the rest get 3 to 5 stars and confirm it. Feedback is only accepted while the WO is COMPLETED / PENDING CONFIRMATION (verified on SB2)."""
         b = {**planner.DEFAULTS, **rt.store.get("behavior", {})}
-        roll = rt.rng.random() * 100
-        bad = roll < b["rework"] and (json.loads(step["payload"]).get("round", 1) < 2)   # one rework round at most, so a WO always finishes
-        if not bad and roll >= b["rework"] + b["star_rating"]:
+        if rt.rng.random() * 100 >= b["star_rating"]:
             text = content.note("subscriber", "review", ctx_of(wo), rt.rng)
             return call(wo, step, "PUT", f"/workorders/{wo['sc_id']}/status",
                         body={"Status": {"Primary": "COMPLETED", "Extended": "CONFIRMED"}, "Note": text})
+        bad = rt.rng.random() * 100 < b["rework"] and json.loads(step["payload"]).get("round", 1) < 2   # one rework round at most, so a WO always finishes
         loc = rt.location(wo["location"])
         stars = rt.rng.choice([1, 2]) if bad else rt.rng.choice([3, 4, 4, 5, 5])
         fb = {"Answer": "unsatisfactory" if bad else "satisfactory", "StarScore": stars, "LocationId": loc["db_id"], "SubscriberId": loc["subscriber_id"]}

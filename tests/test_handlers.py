@@ -733,7 +733,7 @@ def _review(tmp_path, behavior):
 
 
 def test_unsatisfactory_review_posts_feedback_and_plans_a_return(tmp_path):
-    s, wo, seen = _review(tmp_path, {"rework": 100})
+    s, wo, seen = _review(tmp_path, {"star_rating": 100, "rework": 100})
     m, path, body = seen[-1]
     assert (m, path) == ("POST", "/feedbacks/workorders/9")
     assert body["Answer"] == "unsatisfactory" and body["StarScore"] in (1, 2) and body["Comment"] and (body["LocationId"], body["SubscriberId"]) == (11, 22)
@@ -744,5 +744,7 @@ def test_unsatisfactory_review_posts_feedback_and_plans_a_return(tmp_path):
 def test_rated_review_confirms_with_stars_and_defaults_stay_plain(tmp_path):
     _, _, seen = _review(tmp_path, {"star_rating": 100})
     assert seen[-1][1] == "/feedbacks/workorders/9" and seen[-1][2]["Answer"] == "satisfactory" and seen[-1][2]["StarScore"] >= 3
+    _, _, seen = _review(tmp_path / "c", {"rework": 100})   # rework only splits rated reviews
+    assert seen[-1][:2] == ("PUT", "/workorders/9/status")
     _, _, seen = _review(tmp_path / "b", {})
     assert seen[-1][:2] == ("PUT", "/workorders/9/status")
