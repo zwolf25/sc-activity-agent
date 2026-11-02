@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.11.3 - 2026-11-01
+
+- Fix: the daily Cleanup sweep now follows the Activity days from Behavior. It used to skip Saturday and Sunday whatever days you picked.
+- Change: the Dashboard remembers Hide done and Hide skipped. Both start hidden, and your last choice stays until you change it.
+- Change: checklist answers are now sent under the answering user's own ServiceChannel id instead of a fixed technician 1. If the id cannot be read the agent still sends technician 1. A required question the agent cannot answer is written to the audit log so an open checklist is visible.
+- Developer: `scripts/bump_version.py` sets the version in every file, and `scripts/live_sb2.py` runs one full work order on an SB2 instance as a release check.
+
 ## v0.11.2 - 2026-10-31
 
 - New: the Dashboard's week table switches between This week and Next week, with the dates shown. The choice is remembered, and when a new week starts the table goes back to This week on its own.

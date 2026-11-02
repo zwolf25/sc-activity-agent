@@ -105,6 +105,14 @@ def test_sweep_runs_once_a_day_on_weekdays_only_when_on(tmp_path):
     assert cleanup.sweep(s, rt, clock=lambda: NOW + 3600) == []               # already ran today
 
 
+def test_sweep_follows_the_activity_days(tmp_path):
+    s, app, rt = setup(tmp_path, [wo(1)])
+    s.put("cleanup", {"sweep": "cancel"})
+    s.put("days", [5, 6])                                                     # weekends only
+    assert cleanup.sweep(s, rt, clock=lambda: NOW) == []                      # Monday is not an activity day
+    assert "cancelled 1" in cleanup.sweep(s, rt, clock=lambda: NOW + 5 * 86400)[0][1]   # Saturday is
+
+
 def test_now_selects_every_idle_wo_without_review(tmp_path):
     s, app, rt = setup(tmp_path, [wo(1), wo(2), wo(3, upd=NEW)])
     st = cleanup.now(s, rt, clock=lambda: NOW)

@@ -149,14 +149,14 @@ def now(store, rt, clock=time.time):
 
 
 def sweep(store, rt, clock=time.time):
-    """B-40: once a day on a weekday, when the setting is on, preview and run without a click. Cancels, or (finish) gives WOs held
+    """B-40: once a day on an Activity day, when the setting is on, preview and run without a click. Cancels, or (finish) gives WOs held
     by our providers a short plan. Returns engine-style [(key, outcome)]."""
     mode = settings(store)["sweep"]
     if mode == "finish" and store.get("env") == "prod":
         mode = "off"   # finishing plans act as the Provider on real work orders: never automatic on Prod
     now = clock()
     day = dt.datetime.fromtimestamp(now, ZoneInfo(store.get("tz", "America/New_York")))
-    if mode == "off" or store.get("paused_at") is not None or day.weekday() >= 5 or now - store.get("last_sweep", 0) < 20 * 3600 \
+    if mode == "off" or store.get("paused_at") is not None or day.weekday() not in store.get("days", [0, 1, 2, 3, 4]) or now - store.get("last_sweep", 0) < 20 * 3600 \
             or (store.get("cleanup_run") or {}).get("running"):
         return []
     store.put("last_sweep", now)

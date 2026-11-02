@@ -144,8 +144,12 @@ def create_app(store, engine=None, rt=None):
 
     @app.get("/dashboard")
     def dashboard(request: Request, page_no: int = Query(1, alias="page"), hide_done: str = "", hide_skipped: str = "", f: str = "", w: str = ""):
-        hide_done = hide_done or ("" if f else "1")  # f marks a submitted filter form, so unchecked means off
-        hide_skipped = hide_skipped or ("" if f else "1")  # f marks a submitted filter form, so unchecked means off
+        # f marks a submitted filter form, so unchecked means off; a plain visit uses the last choice (both hidden at first)
+        if f:
+            store.put("dashboard_hide", {"done": bool(hide_done), "skipped": bool(hide_skipped)})
+        else:
+            saved_hide = store.get("dashboard_hide") or {}
+            hide_done, hide_skipped = saved_hide.get("done", True), saved_hide.get("skipped", True)
         tz = store.get("tz", "America/New_York")
         # the choice is remembered, but only for the week it was made in: a new week starts on "this week" again
         mon = status.week_start(tz)

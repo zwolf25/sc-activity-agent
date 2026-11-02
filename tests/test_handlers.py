@@ -622,10 +622,10 @@ CHECKLIST = {"CheckListDetails": [{"Id": 7, "Questions": [
     {"Id": 3, "QuestionType": 2, "PictureFlag": 0, "CheckListQuestionOptions": []},
     {"Id": 4, "QuestionType": 4, "PictureFlag": 0, "CheckListQuestionOptions": []},
     {"Id": 5, "QuestionType": 2, "PictureFlag": 2, "CheckListQuestionOptions": []},
-    {"Id": 6, "QuestionType": 0, "PictureFlag": 0, "DisplayForEachAsset": True, "CheckListQuestionOptions": []}]}]}
+    {"Id": 6, "QuestionType": 0, "PictureFlag": 0, "DisplayForEachAsset": True, "AnswerRequired": True, "CheckListQuestionOptions": []}]}]}
 
 
-def _checkout(tmp_path, on=True, defs=CHECKLIST, after=False, **ctx):
+def _checkout(tmp_path, on=True, defs=CHECKLIST, after=False, profile=None, **ctx):
     s = setup(tmp_path)
     s.put("checklists", {"on": on})
     s.put("behavior", {"photo_after": 100 if after else 0})
@@ -643,6 +643,8 @@ def _checkout(tmp_path, on=True, defs=CHECKLIST, after=False, **ctx):
             return {"Status": {"Primary": "IN PROGRESS"}, "Provider": {"Id": 2000078685}}
         if path == "/workorders/9/notes":
             return {"id": 77}
+        if path == "/users/current/profile":
+            return {"UserProfile": {"UserId": 1, "AuthUserId": 4242}} if profile is None else profile
         return defs if path == "/checklists/detail" else {}
     rt = Runtime(s, {1: FakeApp("sub", []), 2: FakeApp("prov", [])}, random.Random(1))
     rt.apps[2].call = call
@@ -659,9 +661,20 @@ def test_checklist_questions_are_answered_once_per_visit_before_check_out(tmp_pa
     assert [r["CheckListQuestionID"] for r in reqs] == [1, 2, 3, 4, 5]   # the per-asset question is skipped
     assert reqs[0]["Answer"] == "on" and reqs[1]["CheckListQuestionOptionID"] == 22 and "Answer" not in reqs[1]   # never a follow-up option
     assert all(r["Attempt"] == 1 and r["EntityID"] == 9 and r["ProviderID"] == 2000078685 for r in reqs)
+    assert all(r["AuthUserID"] == 4242 and "TechnicianID" not in r for r in reqs)   # the answering user's own id, read from the profile
+    assert [x[1] for x in sent].count("/users/current/profile") == 1
+    assert s.db.execute("SELECT sc_user_id FROM users WHERE username='prov_user'").fetchone()[0] == 4242   # kept, so the profile is read once
+    log = s.db.execute("SELECT detail FROM api_log WHERE action='checklist_required_open'").fetchone()
+    assert log and "[6]" in log["detail"]   # the required per-asset question the agent cannot answer is traced
     assert [len(x[3]) for x in posts] == [1, 1, 1, 1, 2] and posts[4][3][1][2] == "image/jpeg"   # only the picture question carries a file
     ctx = json.loads(s.db.execute("SELECT ctx FROM work_orders WHERE id=?", (wo["id"],)).fetchone()[0])
     assert ctx["checklists"] == [1] and ctx["photo_set"]
+
+
+def test_answers_fall_back_to_technician_one_when_the_profile_has_no_user_id(tmp_path):
+    s, wo, sent = _checkout(tmp_path, profile={"Name": "x"})
+    reqs = [json.loads(x[3][0][3]) for x in sent if x[1] == "/checklists/CheckListResponse"]
+    assert reqs and all(r["TechnicianID"] == 1 and "AuthUserID" not in r for r in reqs)
 
 
 def test_checklists_are_not_answered_when_off_or_already_done_or_absent(tmp_path):

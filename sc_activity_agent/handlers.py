@@ -194,33 +194,58 @@ def make_handlers(rt):
             app, user = rt.user_for(wo["location"], "check_out", wo, step)
             found = app.call(user, "GET", "/checklists/detail", action="checklist_read", wo=wo["sc_id"], write=False,
                              params={"tradeName": wo["trade"], "storeId": loc["store_id"], "subscriberId": loc["subscriber_id"]}) or {}
-            for lst in found.get("CheckListDetails", []):
-                for q in lst.get("Questions", []):
-                    answer_question(app, user, wo, c, visit, q)
+            qs = [q for lst in found.get("CheckListDetails", []) for q in lst.get("Questions", [])]
+            uid = sc_user_id(app, user, wo) if qs else None
+            left = [q["Id"] for q in qs if not answer_question(app, user, wo, c, visit, q, uid) and q.get("AnswerRequired")]
+            if left:   # ServiceChannel will not submit the checklist while a required question is open: leave a trace instead of a silent gap
+                rt.store.log(role="provider", user=user[0], sc_wo=wo["sc_id"], action="checklist_required_open", method=None, path="/checklists",
+                             http=0, ms=0, detail=f"required questions not answered: {left}")
         except ScError as e:
             if e.status == 0:
                 raise   # paused: leave the visit unmarked so the step answers once it resumes
         rt.save_ctx(wo, checklists=[*c.get("checklists", []), visit])
 
-    def answer_question(app, user, wo, c, visit, q):
+    def sc_user_id(app, user, wo):
+        """The ServiceChannel id of the user answering (AuthUserId on the response), read once from /users/current/profile and kept in
+        users.sc_user_id. None when the profile has no `AuthUserId`: the answers then fall back to TechnicianID 1."""
+        row = rt.store.db.execute("SELECT id, sc_user_id FROM users WHERE username=?", (user[0],)).fetchone()
+        if row and row["sc_user_id"]:
+            return row["sc_user_id"]
+        try:
+            prof = app.call(user, "GET", "/users/current/profile", action="user_lookup", wo=wo["sc_id"], write=False)
+        except ScError as e:
+            if e.status == 0:
+                raise
+            return None
+        prof = prof.get("UserProfile") if isinstance(prof, dict) else None   # verified on SB2: {"UserProfile": {"UserId", "AuthUserId", ...}}
+        uid = prof.get("AuthUserId") if isinstance(prof, dict) else None
+        uid = uid if isinstance(uid, int) and uid > 0 else None
+        if uid and row:
+            rt.store.db.execute("UPDATE users SET sc_user_id=? WHERE id=?", (uid, row["id"]))
+            rt.store.db.commit()
+        return uid
+
+    def answer_question(app, user, wo, c, visit, q, uid=None):
+        """True when an answer was sent (or refused by the API, which the audit log shows); False when the agent cannot answer this question."""
         if q.get("DisplayForEachAsset"):
-            return
-        # shortcut: TechnicianID 1 (any nonzero id is accepted on SB2; our users store no ServiceChannel user id), numbers are a small random count
-        req = {"CheckListQuestionID": q["Id"], "ProviderID": c["provider_id"], "TechnicianID": 1, "EntityID": wo["sc_id"], "Attempt": visit}
+            return False
+        # shortcut: without a known user id send TechnicianID 1 (any nonzero id is accepted on SB2); numbers are a small random count
+        req = {"CheckListQuestionID": q["Id"], "ProviderID": c["provider_id"], "EntityID": wo["sc_id"], "Attempt": visit,
+               **({"AuthUserID": uid} if uid else {"TechnicianID": 1})}
         kind = q["QuestionType"]
         if kind == 0:
             req["Answer"] = "on"   # "yes" returns a misleading "checklist not found"
         elif kind == 1:
             opts = [o for o in q["CheckListQuestionOptions"] if not o.get("IsConditionalFollowUp")]
             if not opts:
-                return
+                return False
             req["CheckListQuestionOptionID"] = rt.rng.choice(opts)["Id"]
         elif kind == 2:
             req["Answer"] = content.note("provider", "complete", c, rt.rng)
         elif kind == 4:
             req["Answer"] = str(rt.rng.randint(1, 4))
         else:
-            return
+            return False
         parts = [("CheckListResponseRequest", None, "application/json", json.dumps(req).encode())]
         if q.get("PictureFlag"):
             pic = photos.pick(wo["trade"], "both", rt.rng, c.get("photo_set"))
@@ -233,6 +258,7 @@ def make_handlers(rt):
         except ScError as e:
             if e.status == 0:
                 raise   # paused: stop answering
+        return True
 
     def check_out(engine, wo, step):
         p = json.loads(step["payload"])

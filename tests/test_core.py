@@ -197,6 +197,28 @@ def test_desktop_app_versions_match_python_version():
     assert json.loads((root / "src-tauri/tauri.conf.json").read_text())["version"] == __version__
     assert json.loads((root / "package.json").read_text())["version"] == __version__
     assert f'version = "{__version__}"' in (root / "src-tauri/Cargo.toml").read_text()
+    assert f'name = "sc-activity-agent-desktop"\nversion = "{__version__}"' in (root / "src-tauri/Cargo.lock").read_text()
+    assert (root / "package-lock.json").read_text().count(f'"version": "{__version__}"') == 2
+
+
+def test_bump_script_sets_every_version_file(tmp_path):
+    import importlib.util
+    import shutil
+    from pathlib import Path
+
+    from sc_activity_agent import __version__
+    root = Path(__file__).parent.parent
+    for name in ("sc_activity_agent/__init__.py", "package.json", "package-lock.json", "src-tauri/tauri.conf.json", "src-tauri/Cargo.toml", "src-tauri/Cargo.lock"):
+        (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(root / name, tmp_path / name)
+    spec = importlib.util.spec_from_file_location("bump_version", root / "scripts/bump_version.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    mod.bump("9.8.7", tmp_path)
+    assert 'version = "9.8.7"' in (tmp_path / "src-tauri/Cargo.toml").read_text()
+    assert (tmp_path / "package-lock.json").read_text().count('"version": "9.8.7"') == 2
+    assert '__version__ = "9.8.7"' in (tmp_path / "sc_activity_agent/__init__.py").read_text()
+    assert f'"{__version__}"' not in (tmp_path / "src-tauri/Cargo.lock").read_text().split("sc-activity-agent-desktop")[1][:40]
 
 
 def test_update_banner_clears_once_the_running_version_catches_up(tmp_path):
