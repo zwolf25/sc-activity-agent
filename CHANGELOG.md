@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.12.1 - 2026-11-01
+
 - Fix: a work order rated unsatisfactory now shows as Unsatisfactory on the Dashboard (a new stage tile) until the provider returns, instead of Invoice due.
 
 ## v0.12.0 - 2026-11-01
