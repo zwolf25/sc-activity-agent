@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Change: the sliders on the Behavior page now follow the life of a work order, from creation through payment, with the activity hours last.
+
 ## v0.12.1 - 2026-11-01
 
 - Fix: a work order rated unsatisfactory now shows as Unsatisfactory on the Dashboard (a new stage tile) until the provider returns, instead of Invoice due.
