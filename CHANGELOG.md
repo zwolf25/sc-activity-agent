@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.12.0 - 2026-11-01
+
 - New: star ratings and rework. Two Behavior sliders, both 0 by default. "Star rating on review %" is the share of reviews that carry a star rating (the rest are a plain confirm). "Unsatisfactory work % of rated reviews" is the share of those that get 1 or 2 stars with a comment, the rest get 3 to 5. A low rating sets the WO to In Progress / Unsatisfactory; the provider then returns onsite, checks out again, and the Subscriber reviews a second time. The invoice follows the last review. Needs a restart; nothing pauses.
 - Removed: the desktop app. Install with Python (`install.sh` or `install.ps1`); updates and the Update now button work as before. Releases no longer carry the installers or `latest.json`.
 
