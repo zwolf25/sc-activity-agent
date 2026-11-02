@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.12.2 - 2026-11-01
+
 - Fix: work orders whose plan is stuck (a failed step waiting on the Errors page) no longer crowd other work orders out of the agent's per-pass limit, so one stuck plan cannot slow the rest.
 
 - Fix: a rated review now reads the work order first. If a person already confirmed it, the step is done; if it is in a status that cannot take a rating, the step stops on the Errors page instead of failing and retrying.
