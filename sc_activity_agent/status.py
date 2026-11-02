@@ -3,7 +3,7 @@ import datetime as dt
 import json
 from zoneinfo import ZoneInfo
 
-STAGES = ["Declined", "Scheduled", "Proposal pending", "On site", "Awaiting return", "Awaiting review", "Invoice due",
+STAGES = ["Declined", "Scheduled", "Proposal pending", "On site", "Awaiting return", "Awaiting review", "Unsatisfactory", "Invoice due",
           "Invoice pending", "Invoice rejected", "Payment due", "Closed"]
 
 
@@ -22,7 +22,7 @@ def stage(done):
         elif kind == "check_out":
             st = "Awaiting review" if p.get("final") else "Awaiting return"
         elif kind == "review":
-            st = "Invoice due"
+            st = "Unsatisfactory" if p.get("unsatisfactory") else "Invoice due"   # B-25: a low rating sends the provider back
         elif kind == "invoice_submit":
             st = "Invoice pending"
         elif kind == "invoice_decide":

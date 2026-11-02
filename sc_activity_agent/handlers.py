@@ -320,6 +320,7 @@ def make_handlers(rt):
         t_in = engine.snap(step["due_at"] + 86400)
         t_out = t_in + int(rt.rng.uniform(1.5, 3) * 3600)
         t_rev = t_out + rt.rng.randint(3600, 86400)
+        rt.store.db.execute("UPDATE steps SET payload=? WHERE wo_id=? AND seq=?", (json.dumps({**json.loads(step["payload"]), "unsatisfactory": True}), wo["id"], step["seq"]))
         rt.store.db.execute("UPDATE steps SET due_at=due_at+? WHERE wo_id=? AND seq>? AND state='pending'", (t_rev - step["due_at"], wo["id"], step["seq"]))
         insert_steps(rt.store, wo["id"], step["seq"], [
             ("prov_note", t_in - 3600, {"situation": "return"}),

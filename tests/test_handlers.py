@@ -739,6 +739,8 @@ def test_unsatisfactory_review_posts_feedback_and_plans_a_return(tmp_path):
     assert body["Answer"] == "unsatisfactory" and body["StarScore"] in (1, 2) and body["Comment"] and (body["LocationId"], body["SubscriberId"]) == (11, 22)
     rows = s.db.execute("SELECT kind FROM steps WHERE wo_id=? ORDER BY seq", (wo["id"],)).fetchall()
     assert [r[0] for r in rows] == ["check_in", "check_out", "review", "prov_note", "check_in", "check_out", "review", "invoice_submit"]
+    from sc_activity_agent.status import stage
+    assert stage([("check_out", {"final": True}), ("review", json.loads(s.db.execute("SELECT payload FROM steps WHERE wo_id=? AND seq=3", (wo["id"],)).fetchone()[0]))]) == "Unsatisfactory"
 
 
 def test_rated_review_confirms_with_stars_and_defaults_stay_plain(tmp_path):
