@@ -711,7 +711,7 @@ def test_after_photo_goes_on_a_closing_note_after_the_final_check_out(tmp_path):
     assert [x[1] for x in _checkout(tmp_path / "b", on=False)[2]] == ["/workorders/9/universalCheckOut"]
 
 
-def _review(tmp_path, behavior):
+def _review(tmp_path, behavior, live=None):
     from types import SimpleNamespace
     s = setup(tmp_path)
     s.put("behavior", behavior)
@@ -721,6 +721,8 @@ def _review(tmp_path, behavior):
     class App(FakeApp):
         def call(self, user, method, path, params=None, body=None, **kw):
             seen.append((method, path, body))
+            if method == "GET" and path == "/workorders/9":
+                return {"Status": live or {"Primary": "COMPLETED", "Extended": "PENDING CONFIRMATION"}}
             return super().call(user, method, path, params, body, **kw)
     rt = Runtime(s, {1: App("sub", []), 2: App("prov", [])}, random.Random(1))
     wo = _wo(s)
@@ -750,3 +752,28 @@ def test_rated_review_confirms_with_stars_and_defaults_stay_plain(tmp_path):
     assert seen[-1][:2] == ("PUT", "/workorders/9/status")
     _, _, seen = _review(tmp_path / "b", {})
     assert seen[-1][:2] == ("PUT", "/workorders/9/status")
+
+
+def test_rated_review_leaves_a_wo_a_user_already_confirmed_and_parks_one_it_cannot_rate(tmp_path):
+    _, _, seen = _review(tmp_path, {"star_rating": 100}, live={"Primary": "COMPLETED", "Extended": "CONFIRMED"})
+    assert not any(c[0] == "POST" for c in seen)
+    with pytest.raises(Park):
+        _review(tmp_path / "b", {"star_rating": 100}, live={"Primary": "IN PROGRESS", "Extended": "UNSATISFACTORY"})
+
+
+def test_steps_inserted_during_a_tick_run_before_the_steps_that_followed(tmp_path):
+    s = setup(tmp_path)
+    wo = _wo(s)
+    for seq, kind in enumerate(["review", "invoice_submit"], 1):
+        s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,payload) VALUES(?,?,?,?,?)", (wo["id"], seq, kind, 100, "{}"))
+    s.db.commit()
+    ran = []
+
+    def review(engine, w, st):
+        ran.append("review")
+        from sc_activity_agent.handlers import insert_steps
+        insert_steps(s, w["id"], st["seq"], [("check_in", 100, {})])   # as rework does: later steps move down
+
+    Engine(s, {"review": review, "check_in": lambda e, w, st: ran.append("check_in"), "invoice_submit": lambda e, w, st: ran.append("invoice")},
+           clock=lambda: 200, per_tick=10).tick()
+    assert ran == ["review"]   # the invoice waits for the inserted check-in; before the fix its stale seq let it run first

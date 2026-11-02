@@ -139,6 +139,11 @@ class Engine:
         now, out = self.clock(), []
         self._check_gap(now)
         for st in self.due(now):
+            # an earlier step in this tick may have inserted steps (rework, resubmit), moved this one or ended the plan: use its current row
+            cur = self.store.db.execute("SELECT * FROM steps WHERE id=?", (st["id"],)).fetchone()
+            if not cur or cur["state"] != "pending":
+                continue
+            st = {**dict(st), **dict(cur)}
             # a WO's steps run in sequence: skip if an earlier step of the same WO is still unfinished
             earlier = self.store.db.execute(
                 "SELECT 1 FROM steps WHERE wo_id=? AND seq<? AND state IN ('pending','failed')", (st["wo_id"], st["seq"])).fetchone()

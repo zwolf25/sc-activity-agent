@@ -1,7 +1,8 @@
 """B-56: live check on an SB2 instance. Creates one work order and runs its whole plan to the end with every step due now,
 then prints each step's outcome and the audit calls. Exit 0 only when no step failed and every step finished or was skipped.
-Refuses to run against Production. Usage: python scripts/live_sb2.py [--data-dir DIR] [--store HQ-NYC] [--trade DOOR] [--photos] [--checklists]
---photos sets both photo sliders to 100 and --checklists turns checklist answering on, for this run only (the settings are restored)."""
+Refuses to run against Production. Usage: python scripts/live_sb2.py [--data-dir DIR] [--store HQ-NYC] [--trade DOOR] [--photos] [--checklists] [--rework]
+--photos sets both photo sliders to 100, --checklists turns checklist answering on, and --rework rates every review and makes the first one unsatisfactory
+(a return visit and a second, rated review), for this run only (the settings are restored)."""
 import argparse
 import pathlib
 import random
@@ -24,6 +25,7 @@ def main(argv=None):
     ap.add_argument("--trade", default="DOOR", help="part of the trade name to prefer (needs a contract at the location)")
     ap.add_argument("--photos", action="store_true")
     ap.add_argument("--checklists", action="store_true")
+    ap.add_argument("--rework", action="store_true")
     a = ap.parse_args(argv)
     if not (pathlib.Path(a.data_dir) / "agent.db").exists():
         sys.exit(f"No instance in {a.data_dir}")
@@ -35,6 +37,8 @@ def main(argv=None):
     saved = {k: st.get(k) for k in ("behavior", "checklists")}
     if a.photos:
         st.put("behavior", {**(saved["behavior"] or {}), "photo_before": 100, "photo_after": 100})
+    if a.rework:
+        st.put("behavior", {**(st.get("behavior") or {}), "star_rating": 100, "rework": 100})
     if a.checklists:
         st.put("checklists", {**(saved["checklists"] or {}), "on": True})
     pick = generator.pick

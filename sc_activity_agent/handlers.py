@@ -303,6 +303,11 @@ def make_handlers(rt):
             return call(wo, step, "PUT", f"/workorders/{wo['sc_id']}/status",
                         body={"Status": {"Primary": "COMPLETED", "Extended": "CONFIRMED"}, "Note": text})
         bad = rt.rng.random() * 100 < b["rework"] and json.loads(step["payload"]).get("round", 1) < 2   # one rework round at most, so a WO always finishes
+        live = (call(wo, step, "GET", f"/workorders/{wo['sc_id']}") or {}).get("Status", {})   # feedback is refused (501) outside COMPLETED / PENDING CONFIRMATION
+        if live.get("Extended") == "CONFIRMED":
+            return   # a user already confirmed it; never overturn
+        if live.get("Primary") != "COMPLETED":
+            raise Park(f"WO status {live} is not one a rating can be posted in. Skip the step to carry on, or cancel the WO.")
         loc = rt.location(wo["location"])
         stars = rt.rng.choice([1, 2]) if bad else rt.rng.choice([3, 4, 4, 5, 5])
         fb = {"Answer": "unsatisfactory" if bad else "satisfactory", "StarScore": stars, "LocationId": loc["db_id"], "SubscriberId": loc["subscriber_id"]}

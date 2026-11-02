@@ -15,32 +15,31 @@ Ordered list of enhancements after v1. The order is the priority: rank 1 is next
 | Rank | ID | Enhancement | Size | Why | Source |
 |------|----|-------------|------|-----|--------|
 | 1 | B-57 | Production rollout check for v0.10.0 to v0.11.x. Zac has switched on checklists and photos in Prod. Left: look at one Prod WO each for checklist answers, before photo and after photo in ServiceChannel, and the update page, Activity days, week switch and the in-app update banner for the latest tag. Also check the B-25 paths once a rating slider is above 0: one rated WO, one reworked WO, and the Unsatisfactory stage on the Dashboard. Ask Zac before touching Prod | S | Four releases of new write paths have only run on SB2. Prod is where a mistake is visible to real users | Claude |
-| 2 | B-60 | Rating review handles a user acting first. `review` posts feedback, which ServiceChannel refuses with 500 / error 501 "Invalid WorkOrder status" once the WO is CONFIRMED or before it is COMPLETED, so the step fails and retries. Read the live status first (as the proposal and invoice steps do): already confirmed = done, still IN PROGRESS = wait | S | Found in the B-25 review. A person confirming the WO first is normal on Prod, and a failing step lands on the Errors page | Claude |
-| 3 | B-61 | `scripts/live_sb2.py` also covers the B-25 paths: a rated review, and an unsatisfactory review through the return visit to the second review. The script is the release check for write paths (B-56) and only does the plain review today | S | The B-25 live check was a throwaway probe. A later change to `review` or `rework` should be caught before a release, not after | Claude |
-| 4 | B-22 | Complete checklists on WOs. Built (v0.10.0, Settings toggle) and verified on SB2. Now sends the answering user's `AuthUserID` (read from the profile) and traces required questions it cannot answer. Verified on SB2 (2026-11-01): the profile gives `AuthUserId` and the answers are recorded. Required question left open on SB2 (2026-11-01): check-out still succeeds, nothing recorded. Left: per-asset questions (needs B-23/B-24) | S | Required questions block submitting the checklist (engineering), so unanswerable ones are the open gap | Zac |
-| 5 | B-23 | Create WOs with assets attached | M, spike | Asset-linked work is the normal case in many accounts | Zac |
-| 6 | B-24 | Providers attach assets to WOs when onsite | M, spike | Pairs with B-23 | Zac |
-| 7 | B-64 | Dashboard stage tiles open a list of the WOs in that stage (WO id, trade, location, next step due). Starts with Unsatisfactory, Invoice rejected and Awaiting review | S | The tiles show counts only; finding which WO is stuck means opening the Errors or Audit pages | Claude |
-| 8 | B-14 | Photos on WOs: relevant to the trade and issue only, with variety (several images per issue type). The library (52 sets, `photos.py`) is built and used for checklist pictures, WO create (B-52) and closing notes (B-53). Left: a set per issue type and replacing the cabled backgrounds | S | Real WOs carry photos. Needs a curated image set per issue type, with licensing checked | Zac |
-| 9 | B-63 | Tidy: drop the unused `contracts` table with an append-only migration (noted in ARCHITECTURE), and fix stale lines in the docs (for example "Production check-in and invoices were still untested" in Known limits) | S | Small debt the docs already admit to. Drifted docs mislead the next change | Claude |
-| 10 | B-62 | Split `handlers.py` (637 lines, 30+ handlers in one `make_handlers` closure) into modules by actor: field visits, review and rework, proposals, invoices, checklists and photos. Behavior unchanged, tests are the net | M | B-15, B-27 and B-29 each add handlers; this is the hardest file to read and review | Claude |
-| 11 | B-15 | Provider-side PM WOs: find PM WOs and move them through the process. Subscribers cannot create PMs through the API, so the agent only picks up existing ones | L, spike | PM is a large share of real volume | Zac |
-| 12 | B-26 | PM compliance flows: pass and fail documentation, and the related follow-up | L, spike | Builds on B-15 | Zac |
-| 13 | B-27 | Linked WOs (parent and child) | M, spike | Common for multi-visit and multi-trade jobs | Zac |
-| 14 | B-28 | Recall WOs | M, spike | Rework against a closed WO. Pairs with B-25 | Zac |
-| 15 | B-65 | Rework variety: a second rework round, and the provider sending a proposal on the return visit. Today one round at most, and the return is always check-in then check-out | S | Real rework is not always one clean extra visit. Pairs with B-28 (recall WOs) | Claude |
-| 16 | B-29 | Avoided WOs: Guided Troubleshooting resolves the issue, and duplicate WOs are detected and avoided | L, spike | Tests the "WO never gets created" paths | Zac |
-| 17 | B-30 | Site audits that result in WOs created | L, spike | A second source of WOs besides the issue list | Zac |
-| 18 | B-31 | Snow and landscaping WOs done by providers with CIWO | L, spike | CIWO has its own check-in model | Zac |
-| 19 | B-32 | Quarterly RFP: a Subscriber runs an RFP with several bidding providers, then issues WOs to the winners | XL, spike | Needs several provider connections and contract changes | Zac |
-| 20 | B-33 | FTM techs and FTM WOs through the process | L, spike | Needs the FTM product model first | Zac |
-| 21 | B-05 | Per-location behavior overrides | M | Locations should differ in volume and trade mix | Claude |
-| 22 | B-07 | Seasonal and holiday weighting (HVAC in summer, quiet holidays) | M | Flat weekday activity is an easy tell | Claude |
-| 23 | B-04 | Deep link from the console to the WO in the ServiceChannel Subscriber view, in place of a WO detail page | S, spike | Finds the WO URL pattern. Keeps the console small | Zac |
-| 24 | B-09 | Scenario presets (quiet week, busy week, storm surge) | S | One click to change load | Claude |
-| 25 | B-16 | Clock speed-up mode for demos on SB2 | M | A full lifecycle in minutes | Claude |
-| 26 | B-13 | Repeat issues on the same asset | M | Needs B-23. Feeds repeat-repair reports | Claude |
-| 27 | B-34 | RT workflows | XL, spike | Very hard. Last on purpose | Zac |
+| 2 | B-66 | Blocked steps starve the tick. `Engine.due` takes the oldest `per_tick` pending steps, including ones blocked behind an unfinished earlier step of the same WO. Enough stuck WOs (a parked plan, a long failure) fill the window and new WOs stop moving; seen on SB2 when stale test WOs hid a live check. Leave blocked steps out of the query, keeping the catch-up order after a long sleep | S | A latent stall on a busy Prod instance. Cheap to fix, but it changes how many steps one WO runs per tick, so test the catch-up path | Claude |
+| 3 | B-22 | Complete checklists on WOs. Built (v0.10.0, Settings toggle) and verified on SB2. Now sends the answering user's `AuthUserID` (read from the profile) and traces required questions it cannot answer. Verified on SB2 (2026-11-01): the profile gives `AuthUserId` and the answers are recorded. Required question left open on SB2 (2026-11-01): check-out still succeeds, nothing recorded. Left: per-asset questions (needs B-23/B-24) | S | Required questions block submitting the checklist (engineering), so unanswerable ones are the open gap | Zac |
+| 4 | B-23 | Create WOs with assets attached | M, spike | Asset-linked work is the normal case in many accounts | Zac |
+| 5 | B-24 | Providers attach assets to WOs when onsite | M, spike | Pairs with B-23 | Zac |
+| 6 | B-64 | Dashboard stage tiles open a list of the WOs in that stage (WO id, trade, location, next step due). Starts with Unsatisfactory, Invoice rejected and Awaiting review | S | The tiles show counts only; finding which WO is stuck means opening the Errors or Audit pages | Claude |
+| 7 | B-14 | Photos on WOs: relevant to the trade and issue only, with variety (several images per issue type). The library (52 sets, `photos.py`) is built and used for checklist pictures, WO create (B-52) and closing notes (B-53). Left: a set per issue type and replacing the cabled backgrounds | S | Real WOs carry photos. Needs a curated image set per issue type, with licensing checked | Zac |
+| 8 | B-63 | Tidy: drop the unused `contracts` table with an append-only migration (noted in ARCHITECTURE), and fix stale lines in the docs (for example "Production check-in and invoices were still untested" in Known limits) | S | Small debt the docs already admit to. Drifted docs mislead the next change | Claude |
+| 9 | B-62 | Split `handlers.py` (637 lines, 30+ handlers in one `make_handlers` closure) into modules by actor: field visits, review and rework, proposals, invoices, checklists and photos. Behavior unchanged, tests are the net | M | B-15, B-27 and B-29 each add handlers; this is the hardest file to read and review | Claude |
+| 10 | B-15 | Provider-side PM WOs: find PM WOs and move them through the process. Subscribers cannot create PMs through the API, so the agent only picks up existing ones | L, spike | PM is a large share of real volume | Zac |
+| 11 | B-26 | PM compliance flows: pass and fail documentation, and the related follow-up | L, spike | Builds on B-15 | Zac |
+| 12 | B-27 | Linked WOs (parent and child) | M, spike | Common for multi-visit and multi-trade jobs | Zac |
+| 13 | B-28 | Recall WOs | M, spike | Rework against a closed WO. Pairs with B-25 | Zac |
+| 14 | B-65 | Rework variety: a second rework round, and the provider sending a proposal on the return visit. Today one round at most, and the return is always check-in then check-out | S | Real rework is not always one clean extra visit. Pairs with B-28 (recall WOs) | Claude |
+| 15 | B-29 | Avoided WOs: Guided Troubleshooting resolves the issue, and duplicate WOs are detected and avoided | L, spike | Tests the "WO never gets created" paths | Zac |
+| 16 | B-30 | Site audits that result in WOs created | L, spike | A second source of WOs besides the issue list | Zac |
+| 17 | B-31 | Snow and landscaping WOs done by providers with CIWO | L, spike | CIWO has its own check-in model | Zac |
+| 18 | B-32 | Quarterly RFP: a Subscriber runs an RFP with several bidding providers, then issues WOs to the winners | XL, spike | Needs several provider connections and contract changes | Zac |
+| 19 | B-33 | FTM techs and FTM WOs through the process | L, spike | Needs the FTM product model first | Zac |
+| 20 | B-05 | Per-location behavior overrides | M | Locations should differ in volume and trade mix | Claude |
+| 21 | B-07 | Seasonal and holiday weighting (HVAC in summer, quiet holidays) | M | Flat weekday activity is an easy tell | Claude |
+| 22 | B-04 | Deep link from the console to the WO in the ServiceChannel Subscriber view, in place of a WO detail page | S, spike | Finds the WO URL pattern. Keeps the console small | Zac |
+| 23 | B-09 | Scenario presets (quiet week, busy week, storm surge) | S | One click to change load | Claude |
+| 24 | B-16 | Clock speed-up mode for demos on SB2 | M | A full lifecycle in minutes | Claude |
+| 25 | B-13 | Repeat issues on the same asset | M | Needs B-23. Feeds repeat-repair reports | Claude |
+| 26 | B-34 | RT workflows | XL, spike | Very hard. Last on purpose | Zac |
 
 ## Ideas waiting for a spec
 None yet. Zac's new ideas go here first, then get sized and ranked.
@@ -52,6 +51,8 @@ None yet. Zac's new ideas go here first, then get sized and ranked.
 | B-55 | `scripts/bump_version.py` sets all version files together; the sync test now also checks `Cargo.lock` and `package-lock.json` | 0.11.3 |
 | B-56 | `scripts/live_sb2.py`: one full work order run on SB2 as a release check (refuses Production) | 0.11.3 |
 | B-59 | Dashboard remembers Hide done and Hide skipped (`dashboard_hide`) | 0.11.3 |
+| B-60 | A rated review reads the live WO first: already CONFIRMED = done, any status other than COMPLETED parks the step on the Errors page (feedback is refused outside COMPLETED / PENDING CONFIRMATION). Also fixed: the engine now re-reads a step's row before running it, so steps a handler inserts mid-tick (rework, invoice resubmit) run before the steps that followed | unreleased |
+| B-61 | `scripts/live_sb2.py --rework`: rates every review and makes the first one unsatisfactory, through the return visit to a second rated review and on to payment. PASS on SB2 | unreleased |
 | B-25 | Star ratings and rework: Behavior sliders `star_rating` and `rework` (default 0). A rated review posts feedback; 1 or 2 stars sets the WO to Unsatisfactory, the provider returns onsite, and the Subscriber reviews again (one round at most). Verified on SB2 | 0.12.0 |
 | B-58 | Retired the desktop app (Tauri shell, packaging, installers, welcome page, desktop CI and the Python code only it used). The source install is the supported path; rebuild later if there is a reason to pivot (git history keeps it, last shipped in 0.11.3) | 0.12.0 |
 | B-52 | Before photos attached when a WO is created, picked by trade from the photo library, as the Behavior slider `photo_before` (default 0). Verified on SB2. Prod check is in B-57 | 0.11.0, slider in 0.11.1 |

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fix: a rated review now reads the work order first. If a person already confirmed it, the step is done; if it is in a status that cannot take a rating, the step stops on the Errors page instead of failing and retrying.
+- Fix: steps added while a tick is running (the return visit after an unsatisfactory review, a resubmitted invoice) now run before the steps that followed them. Only a busy tick could run them out of order.
+
 - Change: the sliders on the Behavior page now follow the life of a work order, from creation through payment, with the activity hours last.
 
 ## v0.12.1 - 2026-11-01
