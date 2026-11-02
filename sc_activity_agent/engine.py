@@ -48,7 +48,9 @@ class Engine:
         return self.store.db.execute(
             """SELECT s.*, w.sc_id, w.location, w.state AS wo_state FROM steps s JOIN work_orders w ON w.id=s.wo_id
                WHERE s.state='pending' AND s.due_at<=? AND w.state NOT IN ('cancelled','closed')
-               ORDER BY s.due_at LIMIT ?""", (now, self.per_tick)).fetchall()
+                 AND NOT EXISTS (SELECT 1 FROM steps e WHERE e.wo_id=s.wo_id AND e.seq<s.seq
+                                 AND (e.state='failed' OR (e.state='pending' AND e.due_at>?)))
+               ORDER BY s.due_at LIMIT ?""", (now, now, self.per_tick)).fetchall()   # B-66: a step behind a failed or future one cannot run, so it must not take a slot
 
     def snap(self, ts):
         """Move ts to the next moment inside activity hours on an activity day (unchanged if already inside)."""

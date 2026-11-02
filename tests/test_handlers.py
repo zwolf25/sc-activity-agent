@@ -777,3 +777,20 @@ def test_steps_inserted_during_a_tick_run_before_the_steps_that_followed(tmp_pat
     Engine(s, {"review": review, "check_in": lambda e, w, st: ran.append("check_in"), "invoice_submit": lambda e, w, st: ran.append("invoice")},
            clock=lambda: 200, per_tick=10).tick()
     assert ran == ["review"]   # the invoice waits for the inserted check-in; before the fix its stale seq let it run first
+
+
+def test_steps_blocked_behind_a_failed_step_do_not_starve_other_wos(tmp_path):
+    s = setup(tmp_path)
+    for i in (1, 2):
+        s.db.execute("INSERT INTO work_orders(sc_id,location,state,created_at,ctx) VALUES(?,'HQ-NYC','active',0,'{}')", (i,))
+    stuck, live = (r[0] for r in s.db.execute("SELECT id FROM work_orders ORDER BY id"))
+    s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,payload,state) VALUES(?,1,'accept',10,'{}','failed')", (stuck,))
+    for seq in (2, 3, 4):
+        s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,payload) VALUES(?,?,'prov_note',?,'{}')", (stuck, seq, 10 + seq))
+    s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,payload) VALUES(?,1,'accept',100,'{}')", (live,))
+    s.db.commit()
+    ran = []
+    e = Engine(s, {"accept": lambda en, w, st: ran.append(w["sc_id"]), "prov_note": lambda en, w, st: ran.append("note")}, clock=lambda: 200, per_tick=3)
+    assert [r["wo_id"] for r in e.due(200)] == [live]
+    e.tick()
+    assert ran == [2]
