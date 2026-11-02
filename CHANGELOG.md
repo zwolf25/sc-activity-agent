@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- New: star ratings and rework. Two Behavior sliders, both 0 by default. "Star rating on review %" confirms the work with a 3 to 5 star rating. "Unsatisfactory work %" rates it 1 or 2 stars with a comment, which sets the WO to In Progress / Unsatisfactory; the provider then returns onsite, checks out again, and the Subscriber reviews a second time. The invoice follows the last review. Needs a restart; nothing pauses.
 - Removed: the desktop app. Install with Python (`install.sh` or `install.ps1`); updates and the Update now button work as before. Releases no longer carry the installers or `latest.json`.
 
 - Fix: an invoice posted after 7 PM US Eastern is now paid. ServiceChannel dates such an invoice the next day and refused a payment dated earlier (error 1178), so the payment date is now never before the invoice date.

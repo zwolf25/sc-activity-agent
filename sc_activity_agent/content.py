@@ -70,6 +70,12 @@ T = {  # (role, situation) -> templates; {slots} filled from ctx
     ("subscriber", "review"): [
         "Reviewed. Work looks good.",
         "Confirmed with the store, the {issue} is resolved."],
+    ("subscriber", "unsatisfactory"): [
+        "The {issue} is not fixed. Please send the technician back to finish the repair.",
+        "Store reports the {issue} is still happening. Please return to complete the work."],
+    ("subscriber", "low_stars"): [
+        "Work was incomplete and the store is not satisfied. Please come back and finish the job.",
+        "Not up to standard. The {issue} needs another visit."],
     ("subscriber", "invoice_ok"): [
         "Invoice approved.",
         "Approved. Thank you for the quick turnaround."],

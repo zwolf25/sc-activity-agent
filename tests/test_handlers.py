@@ -709,3 +709,40 @@ def test_after_photo_goes_on_a_closing_note_after_the_final_check_out(tmp_path):
     parts = sent[2][3]
     assert json.loads(parts[0][3])[0]["Description"] == "Photo after the work" and parts[1][1] == "hvac-condensate-pan_after.jpg"
     assert [x[1] for x in _checkout(tmp_path / "b", on=False)[2]] == ["/workorders/9/universalCheckOut"]
+
+
+def _review(tmp_path, behavior):
+    from types import SimpleNamespace
+    s = setup(tmp_path)
+    s.put("behavior", behavior)
+    s.db.execute("UPDATE locations SET db_id=11, subscriber_id=22")
+    seen = []
+
+    class App(FakeApp):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            seen.append((method, path, body))
+            return super().call(user, method, path, params, body, **kw)
+    rt = Runtime(s, {1: App("sub", []), 2: App("prov", [])}, random.Random(1))
+    wo = _wo(s)
+    for seq, kind in enumerate(["check_in", "check_out", "review", "invoice_submit"], 1):
+        s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,payload) VALUES(?,?,?,?,?)", (wo["id"], seq, kind, 1000 + seq, json.dumps({"visit": 1})))
+    s.db.commit()
+    st = {"kind": "review", "seq": 3, "due_at": NOW, "payload": "{}"}
+    make_handlers(rt)["review"](SimpleNamespace(snap=lambda t: t), wo, st)
+    return s, wo, seen
+
+
+def test_unsatisfactory_review_posts_feedback_and_plans_a_return(tmp_path):
+    s, wo, seen = _review(tmp_path, {"rework": 100})
+    m, path, body = seen[-1]
+    assert (m, path) == ("POST", "/feedbacks/workorders/9")
+    assert body["Answer"] == "unsatisfactory" and body["StarScore"] in (1, 2) and body["Comment"] and (body["LocationId"], body["SubscriberId"]) == (11, 22)
+    rows = s.db.execute("SELECT kind FROM steps WHERE wo_id=? ORDER BY seq", (wo["id"],)).fetchall()
+    assert [r[0] for r in rows] == ["check_in", "check_out", "review", "prov_note", "check_in", "check_out", "review", "invoice_submit"]
+
+
+def test_rated_review_confirms_with_stars_and_defaults_stay_plain(tmp_path):
+    _, _, seen = _review(tmp_path, {"star_rating": 100})
+    assert seen[-1][1] == "/feedbacks/workorders/9" and seen[-1][2]["Answer"] == "satisfactory" and seen[-1][2]["StarScore"] >= 3
+    _, _, seen = _review(tmp_path / "b", {})
+    assert seen[-1][:2] == ("PUT", "/workorders/9/status")

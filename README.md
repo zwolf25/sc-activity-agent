@@ -36,6 +36,8 @@ It creates a launcher named SC Activity Agent (in `~/Applications` on macOS, the
 
 **Photos.** Two Behavior sliders, both 0 by default: "Before photo on new WOs %" and "After photo on closing note %". The photos come from a library that ships with the app, matched to the WO's trade, and a WO's before and after photos come from the same scene.
 
+**Star ratings and rework.** Two Behavior sliders, both 0 by default: "Star rating on review %" (the Subscriber confirms the work with 3 to 5 stars) and "Unsatisfactory work %" (1 or 2 stars with a comment; the WO goes back to In Progress, the provider returns for another visit, and the Subscriber reviews again). At most one rework round per WO.
+
 Work order creation only runs while the agent runs. If the machine sleeps, the agent notices the gap and moves the remaining steps forward. Settings chooses how. Start at login is on the Settings page and cannot wake a sleeping machine.
 
 ## Production and test

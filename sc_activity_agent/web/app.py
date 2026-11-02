@@ -55,6 +55,8 @@ SLIDERS = [("wo_per_month", "Work orders per month", "Per enabled location, spre
            ("first_time_fix", "First-time fix %", "Rest need 2 or 3 visits", 0, 100, 1),
            ("photo_before", "Before photo on new WOs %", "Share of new work orders created with a photo of the problem, from the library for the trade", 0, 100, 1),
            ("photo_after", "After photo on closing note %", "Share of finished work orders where the provider posts a work-complete note with a photo of the finished work, from the same scene as the before photo", 0, 100, 1),
+           ("star_rating", "Star rating on review %", "Share of reviews where the Subscriber confirms the work with a 3 to 5 star rating (the rating replaces the plain confirm)", 0, 100, 1),
+           ("rework", "Unsatisfactory work %", "Share of reviews where the Subscriber rates the work 1 or 2 stars and marks it Unsatisfactory; the WO goes back to In Progress, the provider returns onsite to finish, and the Subscriber reviews again", 0, 100, 1),
            ("hours_start", "Activity starts (hour)", "Local time at the location", 0, 23, 1),
            ("hours_end", "Activity ends (hour)", "", 1, 24, 1)]
 
