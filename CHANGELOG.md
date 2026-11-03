@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.12.4 - 2026-11-02
+
+- A step that fails three times because of its user (no permission, over the approval limit, an unexplained refusal) now tries another user who can do it. The step fails and sends the alert only when every capable user has failed. The Errors page shows the switch in the step's error text.
+- Retry from the Errors page starts again with a fresh choice of user.
+- Restart needed; nothing pauses and no migration runs.
+
 ## v0.12.3 - 2026-11-02
 
 - Fix: each step now keeps one user. Before, every call in a step could use a different user, so one account's missing permission or approval limit failed the step on some retries and not others. A step's user is chosen the first time it runs and kept for its retries.

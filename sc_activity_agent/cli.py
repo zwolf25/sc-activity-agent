@@ -104,6 +104,7 @@ def build_engine(store, with_rt=False):
     apps = Apps()
     rt = Runtime(store, apps, random.Random())
     engine = Engine(store, make_handlers(rt))
+    engine.rotate = rt.rotate_user
     return (engine, rt) if with_rt else engine
 
 

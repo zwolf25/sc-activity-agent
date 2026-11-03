@@ -14,12 +14,20 @@ MAX_ATTEMPTS = 3
 BACKOFF = (120, 600, 1800)
 
 
+def user_bound(e):
+    """A refusal that another user may not get: no permission or over the approval limit (403), an opaque 501, a status change refused for this user (921).
+    "Invalid WorkOrder status" is about the WO, so it never rotates."""
+    b = str(getattr(e, "body", ""))
+    return isinstance(e, ScError) and (e.status == 403 or '"ErrorCode":921' in b or ('"ErrorCode":501' in b and "Invalid WorkOrder status" not in b))
+
+
 class Engine:
     def __init__(self, store, handlers, clock=time.time, per_tick=10):
         """handlers: {step_kind: fn(engine, wo_row, step_row) -> None}. Raise ScError to fail a step."""
         self.store, self.handlers, self.clock, self.per_tick = store, handlers, clock, per_tick
         self.paused_at = store.get("paused_at")
         self.rng = random.Random()
+        self.rotate = None   # fn(wo, step) -> bool, set by the CLI: pick another user for a step
 
     @property
     def paused(self):
@@ -162,7 +170,10 @@ class Engine:
                 if isinstance(e, ScError) and e.status == 0:  # paused mid-tick
                     break
                 n = MAX_ATTEMPTS if isinstance(e, Park) else st["attempts"] + 1
-                if n >= MAX_ATTEMPTS:
+                if n >= MAX_ATTEMPTS and self.rotate and user_bound(e) and self.rotate(wo, st):
+                    self.store.db.execute("UPDATE steps SET attempts=0, error=?, due_at=? WHERE id=?", (f"{e} (switching to another user after {n} failures)", now, st["id"]))
+                    out.append((st["id"], "switch"))
+                elif n >= MAX_ATTEMPTS:
                     self.store.db.execute("UPDATE steps SET state='failed', attempts=?, error=? WHERE id=?", (n, str(e), st["id"]))
                     out.append((st["id"], "failed"))
                     Alerts(self.store).step_failed(wo, st, e)
@@ -175,7 +186,8 @@ class Engine:
 
     # operator actions from the Errors page
     def retry(self, step_id):
-        self.store.db.execute("UPDATE steps SET state='pending', attempts=0, due_at=? WHERE id=?", (self.clock(), step_id))
+        p = {k: v for k, v in json.loads(self.store.db.execute("SELECT payload FROM steps WHERE id=?", (step_id,)).fetchone()[0]).items() if k not in ("user", "tried")}   # re-pick: the account may be fixed
+        self.store.db.execute("UPDATE steps SET state='pending', attempts=0, due_at=?, payload=? WHERE id=?", (self.clock(), json.dumps(p), step_id))
         self.store.db.commit()
 
     def skip(self, step_id):

@@ -814,3 +814,17 @@ def test_rated_review_on_a_completed_wo_not_pending_confirmation_confirms_plainl
     assert seen[-1][:2] == ("PUT", "/workorders/9/status") and not any(c[0] == "POST" for c in seen)
     _, _, seen = _review(tmp_path / "b", {"star_rating": 100}, live={"Primary": "COMPLETED", "Extended": "NO CHARGE"})
     assert not any(c[0] in ("POST", "PUT") for c in seen)
+
+
+def test_rotate_user_hands_a_step_to_each_other_user_once_then_gives_up(tmp_path):
+    s = setup(tmp_path)
+    s.db.execute("INSERT INTO users(id,conn_id,username,password,can_do) SELECT 9,conn_id,'sub2',password,can_do FROM users WHERE id=1")
+    s.db.commit()
+    rt = Runtime(s, {1: 1, 2: 2}, random.Random(5))
+    wo = _wo(s, provider_id=2000078685)
+    s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,payload) VALUES(?,0,'review',1,'{}')", (wo["id"],))
+    st = s.db.execute("SELECT * FROM steps").fetchone()
+    a = rt.user_for("HQ-NYC", "review", wo, st)[1][0]
+    assert rt.rotate_user(wo, st)
+    b = rt.user_for("HQ-NYC", "review", wo, st)[1][0]
+    assert a != b and not rt.rotate_user(wo, st)   # both tried: the step fails for good

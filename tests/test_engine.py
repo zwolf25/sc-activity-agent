@@ -1,3 +1,4 @@
+import json
 import random
 
 from sc_activity_agent import planner
@@ -98,3 +99,43 @@ def test_non_api_error_fails_the_step_instead_of_looping(tmp_path):
         t[0] += 500
     row = s.db.execute("SELECT * FROM steps WHERE kind='accept'").fetchone()
     assert row["state"] == "failed" and "ProviderId" in row["error"]
+
+
+def _limit_handler(bad_user):
+    def run(engine, wo, st):
+        user = json.loads(engine.store.db.execute("SELECT payload FROM steps WHERE id=?", (st["id"],)).fetchone()[0]).get("user", 1)
+        if user == bad_user:
+            raise ScError(403, '{"ErrorCode":100,"ErrorMessage":"Invoice Amount exceeds user Limit"}', "/x")
+    return run
+
+
+def test_user_bound_failure_switches_user_after_three_fails_and_alerts_only_when_all_failed(tmp_path):
+    t = [NOW]
+    s, e, plan = setup(tmp_path, {p["kind"]: _limit_handler(1) for p in planner.build_plan(random.Random(5), NOW, {})}, lambda: t[0])
+    picks = iter([2, 3])   # the next user rotate_user would hand the step
+    def rotate(wo, st):
+        p = json.loads(s.db.execute("SELECT payload FROM steps WHERE id=?", (st["id"],)).fetchone()[0])
+        nxt = next(picks, None)
+        if nxt is None:
+            return False
+        s.db.execute("UPDATE steps SET payload=? WHERE id=?", (json.dumps({**p, "user": nxt, "tried": p.get("tried", []) + [p.get("user", 1)]}), st["id"]))
+        return True
+    e.rotate = rotate
+    s.db.execute("UPDATE steps SET payload=json_set(payload,'$.user',1) WHERE seq=0")
+    s.db.commit()
+    first = s.db.execute("SELECT id FROM steps WHERE seq=0").fetchone()[0]
+    t[0] = plan[0]["due_at"] + 10
+    outs = []
+    for _ in range(12):   # small steps: a jump over 600 s counts as a sleep gap and shifts the plan
+        outs += e.tick()
+        t[0] += 400
+    assert [o for o in outs if o[0] == first] == [(first, "retry"), (first, "retry"), (first, "switch"), (first, "done")]
+    assert (first, "done") in outs
+    row = s.db.execute("SELECT state, attempts FROM steps WHERE id=?", (first,)).fetchone()
+    assert (row["state"], row["attempts"]) == ("done", 0)
+
+
+def test_non_user_bound_failure_never_switches(tmp_path):
+    from sc_activity_agent.engine import user_bound
+    assert user_bound(ScError(403, '{"ErrorCode":100}')) and user_bound(ScError(400, '{"ErrorCode":921}')) and user_bound(ScError(500, '{"ErrorCode":501,"ErrorMessage":"Unspecified error"}'))
+    assert not user_bound(ScError(500, '{"ErrorCode":501,"ErrorMessage":"Invalid WorkOrder status"}')) and not user_bound(ScError(500, "boom")) and not user_bound(ValueError("x"))
