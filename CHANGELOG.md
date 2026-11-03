@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- New `agent assets plan | seed | audit | enrich` commands create realistic assets (HVAC, Electrical, Plumbing) at a location: real brands and model numbers from a bundled catalog, matching serial numbers, install and purchase dates, condition, value, area and description. `plan` is a dry run; `seed` and `enrich` write only with `--yes`. Reruns create only what is missing, and one bad asset is logged without stopping the run. Production needs the location in the `assets.approved_locations` setting first. The update adds two database tables; restart the agent after updating, nothing pauses.
+
 ## v0.12.4 - 2026-11-02
 
 - A step that fails three times because of its user (no permission, over the approval limit, an unexplained refusal) now tries another user who can do it. The step fails and sends the alert only when every capable user has failed. The Errors page shows the switch in the step's error text.

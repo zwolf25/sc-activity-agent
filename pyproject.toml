@@ -25,5 +25,7 @@ include = ["sc_activity_agent*"]
 "sc_activity_agent.web" = ["static/*", "templates/*"]   # without this a pip install has no console pages
 "sc_activity_agent.photos" = ["*.jpg", "manifest.json"]   # the before/after photo library
 
+"sc_activity_agent" = ["assets_catalog.json"]   # the asset seeding catalog
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

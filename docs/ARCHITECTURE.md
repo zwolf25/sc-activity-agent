@@ -25,6 +25,7 @@ One Python process runs two things: an engine loop and a localhost web console. 
 | `creator.py` | Rolls daily WO counts, picks issues, creates WOs, saves their plans |
 | `generator.py` | Pure helpers: issue flattening, Rank 1 trades, picking, payloads |
 | `content.py` | Note templates keyed by role and situation |
+| `assets.py`, `assets_catalog.json` | Asset seeding (B-67): a catalog of real brand/model/serial formats per asset type, a deterministic blueprint per (store id, trade), and the `agent assets` commands. Design and sources: `docs/asset-seeding-design.md`, `docs/asset-seeding-research.md` |
 | `photos.py` | The bundled before/after photo library (`photos/`, `manifest.json`): pick a set by trade, reuse it by id |
 | `alerts.py` | Optional Telegram alerts and action buttons: outbound only (sendMessage, getUpdates long poll), never raises into the engine |
 | `status.py` | Dashboard counts, the This week table, step context text |

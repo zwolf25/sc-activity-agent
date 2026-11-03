@@ -49,6 +49,13 @@ MIGRATIONS = [
     UPDATE users SET can_do=(SELECT json_group_array(r.action) FROM roles r
                              WHERE r.location='*' AND EXISTS (SELECT 1 FROM json_each(r.user_ids) j WHERE j.value=users.id));
     """,
+    # 2 (B-67): assets and asset types the agent created, so reruns and `enrich` know which are ours.
+    """
+    CREATE TABLE IF NOT EXISTS assets(
+      id INTEGER PRIMARY KEY, location TEXT NOT NULL, tag TEXT NOT NULL, trade TEXT, type TEXT, created_at REAL NOT NULL,
+      UNIQUE(location, tag));
+    CREATE TABLE IF NOT EXISTS asset_types(id INTEGER PRIMARY KEY, name TEXT NOT NULL, trade TEXT, created_at REAL NOT NULL);
+    """,
 ]
 
 
