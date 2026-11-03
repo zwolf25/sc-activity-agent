@@ -59,6 +59,14 @@ class Runtime:
                 u = self.rng.choice(free or rows)
                 if wo:
                     self.save_ctx(wo, techs={**techs, f"{visit}.{tech}": u["id"]})
+        if u is None and step is not None and "id" in step.keys():
+            # one user owns a step: pinned on first pick (payload "user"), reused by every call in it and by each retry. Read the DB, the row may be stale
+            p = json.loads(self.store.db.execute("SELECT payload FROM steps WHERE id=?", (step["id"],)).fetchone()[0])
+            u = next((r for r in rows if r["id"] == p.get("user")), None)
+            if u is None:
+                u = self.rng.choice(rows)
+                self.store.db.execute("UPDATE steps SET payload=? WHERE id=?", (json.dumps({**p, "user": u["id"]}), step["id"]))
+                self.store.db.commit()
         u = u or self.rng.choice(rows)
         return self.apps[u["conn_id"]], (u["username"], self.store.dec(u["password"]))
 
@@ -297,17 +305,32 @@ def make_handlers(rt):
         """Subscriber verifies the work. Plain: COMPLETED/CONFIRMED with the review text as the status note. With the Behavior sliders (B-25) a share of
         reviews (star_rating) is a rating instead (POST /feedbacks). Of those, rework % get 1 or 2 stars and mark the WO Unsatisfactory (IN PROGRESS)
         so the provider returns for another visit; the rest get 3 to 5 stars and confirm it. Feedback is only accepted while the WO is COMPLETED / PENDING CONFIRMATION (verified on SB2)."""
-        b = {**planner.DEFAULTS, **rt.store.get("behavior", {})}
-        if rt.rng.random() * 100 >= b["star_rating"]:
+        def confirm():
             text = content.note("subscriber", "review", ctx_of(wo), rt.rng)
             return call(wo, step, "PUT", f"/workorders/{wo['sc_id']}/status",
                         body={"Status": {"Primary": "COMPLETED", "Extended": "CONFIRMED"}, "Note": text})
-        bad = rt.rng.random() * 100 < b["rework"] and json.loads(step["payload"]).get("round", 1) < 2   # one rework round at most, so a WO always finishes
+
+        def rolled(key, fn):   # roll once and keep it in the payload: a retry must not turn a rating into a plain confirm or back
+            p = json.loads(rt.store.db.execute("SELECT payload FROM steps WHERE id=?", (step["id"],)).fetchone()[0]) if "id" in step.keys() else {}
+            if key not in p:
+                p[key] = fn()
+                if "id" in step.keys():
+                    rt.store.db.execute("UPDATE steps SET payload=? WHERE id=?", (json.dumps(p), step["id"]))
+                    rt.store.db.commit()
+            return p[key]
+        b = {**planner.DEFAULTS, **rt.store.get("behavior", {})}
+        if not rolled("rated", lambda: rt.rng.random() * 100 < b["star_rating"]):
+            return confirm()
+        bad = rolled("bad", lambda: rt.rng.random() * 100 < b["rework"] and json.loads(step["payload"]).get("round", 1) < 2)   # one rework round at most, so a WO always finishes
         live = (call(wo, step, "GET", f"/workorders/{wo['sc_id']}") or {}).get("Status", {})   # feedback is refused (501) outside COMPLETED / PENDING CONFIRMATION
         if live.get("Extended") == "CONFIRMED":
             return   # a user already confirmed it; never overturn
         if live.get("Primary") != "COMPLETED":
             raise Park(f"WO status {live} is not one a rating can be posted in. Skip the step to carry on, or cancel the WO.")
+        if live.get("Extended") in ("NO CHARGE", "CANCELED"):
+            return   # a user closed it that way; never overturn
+        if live.get("Extended") != "PENDING CONFIRMATION":
+            return confirm()   # feedback gets 501 "Invalid WorkOrder status" here, the plain confirm still works
         loc = rt.location(wo["location"])
         stars = rt.rng.choice([1, 2]) if bad else rt.rng.choice([3, 4, 4, 5, 5])
         fb = {"Answer": "unsatisfactory" if bad else "satisfactory", "StarScore": stars, "LocationId": loc["db_id"], "SubscriberId": loc["subscriber_id"]}
@@ -345,9 +368,9 @@ def make_handlers(rt):
             v[k] = min(t, v[k]) if k in v else t
         return sum(max(0, v["check_out"] - v["check_in"]) for v in visits.values() if len(v) == 2) / 3600
 
-    def no_charge(wo):
+    def no_charge(wo, step):
         """A WO with no NTE cannot be invoiced: the Subscriber closes it as COMPLETED/NO CHARGE (verified on SB2) and the plan ends."""
-        app, user = rt.user_for(wo["location"], "sub_note", wo)
+        app, user = rt.user_for(wo["location"], "sub_note", wo, step)
         app.call(user, "PUT", f"/workorders/{wo['sc_id']}/status", action="no_charge", wo=wo["sc_id"], write=True,
                  body={"Status": {"Primary": "COMPLETED", "Extended": "NO CHARGE"}, "Note": "No NTE on this work order, closing with no charge."})
         rt.store.db.execute("UPDATE work_orders SET state='closed' WHERE id=?", (wo["id"],))
@@ -361,7 +384,7 @@ def make_handlers(rt):
         flaw = json.loads(step["payload"]).get("flaw")
         live = call(wo, step, "GET", f"/workorders/{wo['sc_id']}") or {}
         if live.get("Nte") is not None and float(live["Nte"]) <= 0:
-            return no_charge(wo)   # the API refuses any invoice above an NTE of 0 (1104), so the WO closes as No Charge
+            return no_charge(wo, step)   # the API refuses any invoice above an NTE of 0 (1104), so the WO closes as No Charge
         nte = float(c.get("nte") or 0)
         rates = rt.store.get("agreed_rates", {})
         key = f"{c.get('provider_id')}:2"

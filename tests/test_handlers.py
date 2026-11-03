@@ -794,3 +794,23 @@ def test_steps_blocked_behind_a_failed_step_do_not_starve_other_wos(tmp_path):
     assert [r["wo_id"] for r in e.due(200)] == [live]
     e.tick()
     assert ran == [2]
+
+
+def test_a_step_keeps_one_user_across_calls_and_retries(tmp_path):
+    s = setup(tmp_path)
+    s.db.execute("INSERT INTO users(id,conn_id,username,password,can_do) SELECT 9,conn_id,'sub2',password,can_do FROM users WHERE id=1")
+    s.db.commit()
+    rt = Runtime(s, {1: 1, 2: 2}, random.Random(5))
+    wo = _wo(s, provider_id=2000078685)
+    s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,payload) VALUES(?,0,'review',1,'{}')", (wo["id"],))
+    st = s.db.execute("SELECT * FROM steps").fetchone()
+    assert s.db.execute("SELECT count(*) FROM users WHERE can_do LIKE '%review%'").fetchone()[0] >= 2   # two candidates, so one pick proves the pin
+    picks = {rt.user_for("HQ-NYC", "review", wo, st)[1][0] for _ in range(30)}
+    assert len(picks) == 1
+
+
+def test_rated_review_on_a_completed_wo_not_pending_confirmation_confirms_plainly_and_keeps_its_roll(tmp_path):
+    _, _, seen = _review(tmp_path, {"star_rating": 100}, live={"Primary": "COMPLETED", "Extended": "PAID"})
+    assert seen[-1][:2] == ("PUT", "/workorders/9/status") and not any(c[0] == "POST" for c in seen)
+    _, _, seen = _review(tmp_path / "b", {"star_rating": 100}, live={"Primary": "COMPLETED", "Extended": "NO CHARGE"})
+    assert not any(c[0] in ("POST", "PUT") for c in seen)

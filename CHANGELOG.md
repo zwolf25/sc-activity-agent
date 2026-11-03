@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.12.3 - 2026-11-02
+
+- Fix: each step now keeps one user. Before, every call in a step could use a different user, so one account's missing permission or approval limit failed the step on some retries and not others. A step's user is chosen the first time it runs and kept for its retries.
+- Fix: a star-rated review no longer fails with "Invalid WorkOrder status" when the work order is COMPLETED but not waiting for confirmation; it confirms the work order plainly. A retry also keeps the rated or plain choice.
+- Restart needed; nothing pauses and no migration runs. Steps already planned get their user the first time they run.
+
 ## v0.12.2 - 2026-11-01
 
 - Fix: work orders whose plan is stuck (a failed step waiting on the Errors page) no longer crowd other work orders out of the agent's per-pass limit, so one stuck plan cannot slow the rest.
