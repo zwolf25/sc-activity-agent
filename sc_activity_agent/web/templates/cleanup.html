@@ -22,6 +22,6 @@
 {% if runstate %}<p>{% if runstate.running %}Running: {{ runstate.cancelled + runstate.skipped + runstate.errors|length }} of {{ runstate.total }} done.{% else %}Last run: {{ runstate.cancelled }} cancelled, {{ runstate.skipped }} skipped (changed since the preview), {{ runstate.errors|length }} error(s).{% endif %}</p>
 {% for e in runstate.errors[:5] %}<div class="note">{{ e }}</div>{% endfor %}{% endif %}</div>
 <h3>Work orders the agent created</h3>
-<div class="card tbl"><table data-page="10"><thead><tr><th>WO</th><th>Location</th><th>Trade</th><th>State</th><th></th></tr></thead><tbody>
-{% for r in rows %}<tr><td class="mono">{{ r.sc_id }}</td><td>{{ r.location }}</td><td>{{ r.trade }}</td><td>{{ r.state }}</td><td>{% if r.state != 'cancelled' %}<form method="post" action="/cleanup/{{ r.id }}/cancel"><button class="sm">Cancel WO</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="5">No work orders created yet.</td></tr>{% endfor %}
+<div class="card tbl"><table data-page="10"><thead><tr><th>WO</th><th>Created</th><th>Location</th><th>Trade</th><th>State</th><th></th></tr></thead><tbody>
+{% for r in rows %}<tr><td class="mono">{{ r.sc_id }}</td><td class="mono">{{ r.when }}</td><td>{{ r.location }}</td><td>{{ r.trade }}</td><td>{{ r.state }}</td><td>{% if r.state != 'cancelled' %}<form method="post" action="/cleanup/{{ r.id }}/cancel"><button class="sm">Cancel WO</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="6">No work orders created yet.</td></tr>{% endfor %}
 </tbody></table></div>{% endblock %}

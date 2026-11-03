@@ -11,7 +11,7 @@
     <form method="post" action="{{ '/resume' if paused else '/pause' }}"><button class="{{ 'primary' if paused else '' }}">{{ 'Resume' if paused else 'Pause' }}</button></form>
   </div>
 </div>
-{% if update %}<div class="banner warn row"><span>Update {{ update.tag }} is available. The agent pauses, installs it and restarts.</span><form method="post" action="/update"><button class="primary">Update now</button></form></div>{% endif %}
+{% if update and here != 'updating' %}<div class="banner warn row">{% if update_busy %}<span>Updating to {{ update.tag }}. This takes a minute.</span><a href="/updating">See progress</a>{% else %}<span>Update {{ update.tag }} is available. The agent pauses, installs it and restarts.</span><form method="post" action="/update"><button class="primary">Update now</button></form>{% endif %}</div>{% endif %}
 <div class="layout"><nav>
   {% for key, label in nav %}<a href="/{{ key }}" class="{{ 'on' if here == key }}">{{ label }}{% if key == 'errors' and failed %}<span class="badge">{{ failed }}</span>{% endif %}</a>{% endfor %}
   <small class="mono" style="color:var(--muted);padding:8px 12px">v{{ version }}</small>

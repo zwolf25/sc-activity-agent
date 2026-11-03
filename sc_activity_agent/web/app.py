@@ -88,7 +88,7 @@ def create_app(store, engine=None, rt=None):
         failed = db.execute("SELECT COUNT(*) FROM steps WHERE state='failed'").fetchone()[0]
         base = dict(request=request, nav=NAV, here=name, env=store.get("env"), version=__version__,
                     paused=store.get("paused_at") is not None, failed=failed,
-                    port=store.get("port"), twin_port=store.get("twin_port"), setup=setup_checks(), update=update.pending(store))
+                    port=store.get("port"), twin_port=store.get("twin_port"), setup=setup_checks(), update=update.pending(store), update_busy=bool(update.in_progress(store)))
         return tpl.TemplateResponse(request, f"{name}.html", {**base, **ctx})
 
     def missing_actions():
@@ -288,7 +288,8 @@ def create_app(store, engine=None, rt=None):
     @app.get("/errors")
     def errors(request: Request):
         rows = db.execute("SELECT s.*, w.sc_id FROM steps s JOIN work_orders w ON w.id=s.wo_id WHERE s.state='failed' ORDER BY s.due_at").fetchall()
-        return page(request, "errors", rows=rows, create_errors=store.get("create_errors", [])[::-1])
+        return page(request, "errors", rows=rows, create_errors=[dict(e, when=datetime.fromtimestamp(e["at"], ZoneInfo(store.get("tz", "America/New_York"))).strftime("%a %b %d, %H:%M"))
+                                                    for e in store.get("create_errors", [])[::-1]])
 
     @app.post("/steps/{sid}/{action}")
     def step_action(sid: int, action: str):
@@ -368,7 +369,8 @@ def create_app(store, engine=None, rt=None):
     def locations(request: Request, q: str = "", msg: str = ""):
         locs = db.execute("SELECT * FROM locations ORDER BY store_id").fetchall()
         r1 = store.get("rank1", {})
-        con = [{"location": k, "trade": t} for k, v in sorted(r1.items()) for t in v["trades"]]
+        seeded = {(r["location"], (r["trade"] or "").upper()): r["n"] for r in db.execute("SELECT location, trade, COUNT(*) n FROM assets GROUP BY location, trade")}
+        con = [{"location": k, "trade": t, "assets": seeded.get((k, t.upper()), 0)} for k, v in sorted(r1.items()) for t in v["trades"]]
         skipped = [{"location": k, "trades": v["skipped"]} for k, v in sorted(r1.items()) if v.get("skipped")]
         checked = max((v["at"] for v in r1.values()), default=None)
         have = {l["store_id"] for l in locs}
@@ -444,7 +446,9 @@ def create_app(store, engine=None, rt=None):
 
     @app.get("/cleanup")
     def cleanup(request: Request, msg: str = ""):
-        rows = db.execute("SELECT * FROM work_orders ORDER BY created_at DESC LIMIT 500").fetchall()
+        z = ZoneInfo(store.get("tz", "America/New_York"))
+        rows = [dict(r, when=datetime.fromtimestamp(r["created_at"], z).strftime("%a %b %d, %H:%M"))
+                for r in db.execute("SELECT * FROM work_orders ORDER BY created_at DESC LIMIT 500")]
         prev = store.get("cleanup_preview")
         if prev:
             prev = {**prev, "when": datetime.fromtimestamp(prev["at"], ZoneInfo(store.get("tz", "America/New_York"))).strftime("%b %d %H:%M")}

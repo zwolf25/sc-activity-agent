@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## v0.14.1 - 2026-11-03
+
+- Taking an update needs one press. The progress page no longer shows a second "Update now" button, and other pages show "Updating to vX" with a link to progress while an update runs. The progress page has a moving bar and says whether it is installing or restarting.
+
+- The Cleanup page table "Work orders the agent created" has a Created column with the date and time.
+
+- Work order creation errors on the Errors page show the date and time (for example "Tue Nov 03, 14:05") instead of a raw number.
+
+- The Audit log table wraps long values (call paths, users) instead of scrolling sideways.
+
+- The Locations page table "Trades we can create" has a new column, "Set up for assets": Yes with the count of agent-seeded assets, or No, per location and trade.
+
 ## v0.14.0 - 2026-11-03
 
 - Two new Behavior sliders, both default 0 (no change until raised): "WOs created with an asset %" sends a seeded asset of the issue's equipment type (HVAC RTU, Generator, Electrical Panel, Exit Signs, Lighting, Water Heater, Backflow Preventer, Flushometer Valve) when the new WO is created. "Provider attaches an asset on site %" has the provider attach an asset at the first check-in of a WO that has none: the issue's equipment type, or any seeded asset in the WO's trade at that location. An attach the API refuses is skipped and the visit continues.
