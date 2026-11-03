@@ -76,6 +76,7 @@ def blueprint(cat, store_id, trade, today):
         m, letter = rng.choice(models), rng.choice(LETTERS)
         made = install - dt.timedelta(days=rng.randint(30, 180))
         seq = rng.randint(10000, 89999)
+        base = rng.uniform(*m.get("value", e["value"]))   # one price per batch; units bought together cost about the same
         for i in range(size):
             used[e["code"]] = used.get(e["code"], 0) + 1
             when = min(today, install + dt.timedelta(days=rng.randint(0, 25) if i else 0))
@@ -86,7 +87,7 @@ def blueprint(cat, store_id, trade, today):
                 tag=f"{prefix}-{e['code']}-{used[e['code']]:02d}", brand=m["brand"], model=m["model"], source=m["source"],
                 serial=SERIALS[m["serial"]](made, seq + i, letter), install=when.isoformat() + "T08:00:00",
                 purchase=(when - dt.timedelta(days=rng.randint(3, 30))).isoformat() + "T00:00:00",
-                value=int(round(rng.uniform(*e["value"]) / 50) * 50), condition=min(cond, 39) if frac > 1 else cond,
+                value=int(round(base * rng.uniform(0.95, 1.05) / 50) * 50), condition=min(cond, 39) if frac > 1 else cond,
                 area=rng.choice(e["areas"]), description=_describe(e, m)))
     return out
 

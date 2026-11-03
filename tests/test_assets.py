@@ -89,3 +89,12 @@ def test_seed_logs_bad_asset_and_continues_and_rerun_creates_nothing(tmp_path):
     have = [{"Tag": p["Tag"], "Trade": "PLUMBING"} for p in app.posts]
     again = assets.plan(CAT, "HQ-NYC", ["PLUMBING"], have, TODAY)
     assert [i["tag"] for i in again] == [first]   # only the one that failed is retried
+
+
+def test_value_follows_model_and_batch():
+    for t in ("HVAC", "ELECTRICAL"):
+        for store in ("HQ-NYC", "ZW123", "ST-9"):
+            for i in assets.blueprint(CAT, store, t, TODAY):
+                m = next(m for e in CAT["entries"] if e["code"] == i["code"] for m in e["models"] if m["model"] == i["model"])
+                lo, hi = m.get("value", next(e["value"] for e in CAT["entries"] if e["code"] == i["code"]))
+                assert lo * 0.94 <= i["value"] <= hi * 1.06 + 50
