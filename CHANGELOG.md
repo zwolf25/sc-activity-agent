@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+## v0.14.0 - 2026-11-03
+
+- Two new Behavior sliders, both default 0 (no change until raised): "WOs created with an asset %" sends a seeded asset of the issue's equipment type (HVAC RTU, Generator, Electrical Panel, Exit Signs, Lighting, Water Heater, Backflow Preventer, Flushometer Valve) when the new WO is created. "Provider attaches an asset on site %" has the provider attach an asset at the first check-in of a WO that has none: the issue's equipment type, or any seeded asset in the WO's trade at that location. An attach the API refuses is skipped and the visit continues.
 - Asset seeding no longer stops when a newly created asset type is not yet in the list: it uses the id the create returns, or retries the lookup. This stopped the first Production run after two types were created.
 
 ## v0.13.0 - 2026-11-02

@@ -20,6 +20,20 @@ EMPTY_FIELDS = {"ModelNo": "model", "SerialNo": "serial", "InstallDate": "instal
                 "OriginalValue": "value", "Condition": "condition", "Area": "area", "Description": "description"}
 
 
+# Issue-list equipment (Equipment column) -> asset type name, for B-23/B-24. Items not listed have no matching asset type.
+ISSUE_ASSET = {"HVAC RTU": "RTU", "Electrical Panel": "Electrical Panel", "Generator": "Generator", "Exit Signs, Emergency Lights": "Exit Sign / Emergency Light",
+               "Lighting": "LED Light Fixture", "Water Heater": "Water Heater", "Backflow Preventer": "Backflow Preventer",
+               "Flushometer Valve": "Flushometer Valve"}
+
+
+def pick(store, rng, store_id, item, trade=None):
+    """The id of a seeded asset at the location for this issue's equipment, or of any seeded asset in `trade` when `trade` is given and the
+    equipment has no match. None when there is none. Only assets the agent created are used (the `assets` table)."""
+    rows = store.db.execute("SELECT id, type, trade FROM assets WHERE location=?", (store_id,)).fetchall()
+    own = [r["id"] for r in rows if r["type"] == ISSUE_ASSET.get(item.strip())]
+    return rng.choice(own) if own else rng.choice([r["id"] for r in rows if trade and r["trade"] == trade.upper()] or [None])
+
+
 def load_catalog():
     return json.loads(CATALOG.read_text())
 

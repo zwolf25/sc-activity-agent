@@ -9,6 +9,7 @@ DEFAULTS = {
     "late_checkin": 15, "late_days": 2,
     "time_on_site_hrs": 2.0, "pay_days": 30, "multi_tech": 5, "emergency_hours": 8, "decline": 0, "reassign": 0, "invoice_rate_flaw": 0, "invoice_hours_flaw": 0, "no_show": 0, "reschedule": 0, "first_time_fix": 80,
     "hours_start": 8, "hours_end": 17, "days": [0, 1, 2, 3, 4],   # activity days, Monday = 0
+    "asset_on_create": 0, "asset_on_site": 0,   # % of new WOs created with a seeded asset, and of the rest where the provider attaches one on site (B-23, B-24)
     "photo_before": 0, "photo_after": 0, "star_rating": 0, "rework": 0,   # % of new WOs that get a before photo, and of finished WOs that get an after photo on the closing note
     "resume_policy": "catch_up",
 }

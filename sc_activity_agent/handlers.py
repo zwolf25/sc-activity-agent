@@ -6,7 +6,7 @@ import json
 import time
 from zoneinfo import ZoneInfo
 
-from . import content, photos, planner
+from . import assets, content, photos, planner
 from .client import Later, Park, ScError
 
 ACTION = {"accept": "accept", "prov_note": "provider_note", "sub_note": "subscriber_note", "review": "review",
@@ -205,6 +205,28 @@ def make_handlers(rt):
         loc = rt.location(wo["location"])
         checkio(f"/workorders/{wo['sc_id']}/universalCheckIn",
                 {"Latitude": loc["lat"], "Longitude": loc["lon"], "TechsCount": 1, "CheckInTime": _iso(step["due_at"])}, wo, step)
+        attach_asset(wo, step)
+
+    def attach_asset(wo, step):
+        """B-24: once per WO, on its first check-in, the provider attaches a seeded asset (Behavior slider, default 0) when the WO was created
+        without one. The call needs a user of the WO's own provider and an asset of the WO's trade at its location. Fail-soft: a refusal or a
+        pause only skips the attach (shortcut: a paused attach is not retried), the visit goes on."""
+        c = ctx_of(wo)
+        pct = {**planner.DEFAULTS, **rt.store.get("behavior", {})}["asset_on_site"]
+        if not pct or c.get("asset_id") or c.get("asset_tried") or json.loads(step["payload"]).get("tech", 0):
+            return
+        rt.save_ctx(wo, asset_tried=True)
+        if rt.rng.random() * 100 >= pct:
+            return
+        asset = assets.pick(rt.store, rt.rng, wo["location"], c.get("equipment", ""), wo["trade"])
+        if not asset:
+            return
+        try:
+            app, user = rt.user_for(wo["location"], "check_in", wo, step)
+            app.call(user, "PUT", f"/assets/workorders/{wo['sc_id']}/attach", action="asset_attach", wo=wo["sc_id"], write=True, body={"AssetId": asset})
+            rt.save_ctx(wo, asset_id=asset)
+        except ScError:
+            pass
 
     def answer_checklists(wo, step):
         """B-22: before the primary tech checks out, answer every checklist the location has for the WO's trade (Settings toggle, off by

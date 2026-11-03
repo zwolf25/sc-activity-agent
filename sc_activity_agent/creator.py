@@ -5,7 +5,7 @@ import json
 import time
 from zoneinfo import ZoneInfo
 
-from . import generator, photos, planner
+from . import assets, generator, photos, planner
 from .client import ScError
 from .engine import add_plan
 
@@ -150,12 +150,17 @@ class Creator:
         locd = {"subscriber_id": loc["subscriber_id"], "id": loc["db_id"], "store_id": loc["store_id"]}
         body = generator.payload(issue, locd, self._header_id(loc, dashboard), area, sched.replace(tzinfo=None),
                                  dt.datetime.fromtimestamp(now, ZoneInfo(tz)).replace(tzinfo=None), test=bool(self.store.get("test_flag", False)))
+        asset = assets.pick(self.store, self.rng, loc["store_id"], issue["item"]) if b["asset_on_create"] and self.rng.random() * 100 < b["asset_on_create"] else None
+        if asset:
+            body["AssetId"] = asset
         app, user = self._sub(loc)
         r = app.call(user, "POST", "/workorders", body=body, action="create_wo", write=True)
         ctx = dict(trade=issue["trade"], issue=issue["problem"], location=loc["name"] or loc["store_id"],
                    sched_day=sched.strftime("%A"), eta=sched.strftime("%I:%M %p").lstrip("0"),
                    eta_end=(sched + dt.timedelta(hours=2)).strftime("%I:%M %p").lstrip("0"), area="sales floor",
                    equipment=issue["item"], amount="", nte=issue["nte"], category=issue["category"])
+        if asset:
+            ctx["asset_id"] = asset
         pid = self.store.get("rank1", {}).get(loc["store_id"], {}).get("owners", {}).get(issue["trade"])
         if pid:
             ctx["provider_id"] = pid

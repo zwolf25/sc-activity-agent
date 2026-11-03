@@ -1,5 +1,6 @@
 import random
 
+from sc_activity_agent import assets
 from sc_activity_agent.client import ScError
 from sc_activity_agent.creator import Creator
 from sc_activity_agent.store import Store
@@ -126,3 +127,15 @@ def test_a_refused_before_photo_does_not_lose_the_wo_plan(tmp_path):
     app.call = call
     assert c.tick() == [("HQ", 9001)]
     assert s.db.execute("SELECT COUNT(*) FROM steps").fetchone()[0] > 5
+
+
+def test_asset_id_is_sent_only_when_the_slider_is_on_and_the_location_has_a_match(tmp_path, monkeypatch):
+    for pct, want in ((0, None), (100, 4242)):
+        s, app, c = setup(tmp_path / str(pct))
+        s.put("behavior", {"wo_per_month": 2000, "asset_on_create": pct})
+        s.db.execute("INSERT INTO assets(id,location,tag,trade,type,created_at) VALUES(4242,'HQ','T1','DOORS','Automatic Door',0)")
+        s.db.commit()
+        monkeypatch.setitem(assets.ISSUE_ASSET, "Automatic Door", "Automatic Door")
+        c.tick()
+        post = next(b for m, p, b in app.calls if m == "POST")
+        assert post.get("AssetId") == want

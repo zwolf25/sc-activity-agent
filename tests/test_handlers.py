@@ -274,7 +274,7 @@ def _tech(s, uid, conn, can=("check_in", "check_out")):
 
 
 def step(kind, **p):
-    return {"kind": kind, "payload": json.dumps(p)}
+    return {"kind": kind, "payload": json.dumps(p), "due_at": NOW}
 
 
 def test_provider_steps_only_use_users_of_the_wos_provider(tmp_path):
@@ -828,3 +828,23 @@ def test_rotate_user_hands_a_step_to_each_other_user_once_then_gives_up(tmp_path
     assert rt.rotate_user(wo, st)
     b = rt.user_for("HQ-NYC", "review", wo, st)[1][0]
     assert a != b and not rt.rotate_user(wo, st)   # both tried: the step fails for good
+
+
+def test_check_in_attaches_a_seeded_asset_once_and_only_when_none_is_on_the_wo(tmp_path):
+    s = setup(tmp_path)
+    s.put("behavior", {"asset_on_site": 100})
+    s.db.execute("INSERT INTO assets(id,location,tag,trade,type,created_at) VALUES(55,'HQ-NYC','T1','HVAC','RTU',0)")
+    s.db.commit()
+    calls = []
+    rt = Runtime(s, {1: FakeApp("sub", calls), 2: FakeApp("prov", calls)}, random.Random(1))
+    h = make_handlers(rt)["check_in"]
+    wo = _wo(s, provider_id=2000078685, equipment="HVAC RTU")
+    h(None, wo, step("check_in", visit=1))
+    h(None, s.db.execute("SELECT * FROM work_orders").fetchone(), step("check_in", visit=2))
+    assert [c for c in calls if c[3] == "/assets/workorders/9/attach"] == [("prov", "prov_user", "PUT", "/assets/workorders/9/attach")]
+    assert json.loads(s.db.execute("SELECT ctx FROM work_orders").fetchone()[0])["asset_id"] == 55
+    calls.clear()
+    s.db.execute("UPDATE work_orders SET ctx=?", (json.dumps({**CTX, "provider_id": 2000078685, "asset_id": 7}),))
+    s.db.commit()
+    h(None, s.db.execute("SELECT * FROM work_orders").fetchone(), step("check_in", visit=1))
+    assert not [c for c in calls if "attach" in c[3]]

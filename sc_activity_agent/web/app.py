@@ -38,6 +38,7 @@ NAV = [("dashboard", "Dashboard"), ("behavior", "Behavior"), ("locations", "Loca
 # A new slider goes in at its place in that flow, not at the end.
 SLIDERS = [("wo_per_month", "Work orders per month", "Per enabled location, spread over the activity days", 0, 600, 5),
            ("photo_before", "Before photo on new WOs %", "Share of new work orders created with a photo of the problem, from the library for the trade", 0, 100, 1),
+           ("asset_on_create", "WOs created with an asset %", "Share of new work orders created with a seeded asset on them, when the location has one for the issue's equipment (HVAC RTU, Generator, Electrical Panel, Exit Signs, Lighting, Water Heater, Backflow Preventer, Flushometer Valve)", 0, 100, 1),
            ("emergency_hours", "Treat as emergency up to (hours)", "A WO whose original ETA is at most this many hours after its call date gets the fast emergency plan; 0 = never", 0, 72, 1),
            ("sub_notes", "Subscriber notes per WO", "Average", 0, 8, 0.5),
            ("prov_notes", "Provider notes per WO", "Average", 0, 8, 0.5),
@@ -48,6 +49,7 @@ SLIDERS = [("wo_per_month", "Work orders per month", "Per enabled location, spre
            ("proposal_rate", "Proposal rate %", "Share of WOs that get a proposal", 0, 100, 1),
            ("proposal_approval", "Proposal approval %", "Rest are rejected", 0, 100, 1),
            ("late_checkin", "Late check-in %", "Provider arrives after the scheduled date", 0, 100, 1),
+           ("asset_on_site", "Provider attaches an asset on site %", "Of the work orders created without an asset, the share where the provider attaches one between check-in and check-out: the asset for the issue's equipment, or any seeded asset in the WO's trade at the location", 0, 100, 1),
            ("late_days", "Average days late", "", 1, 7, 1),
            ("first_time_fix", "First-time fix %", "Rest need 2 or 3 visits", 0, 100, 1),
            ("time_on_site_hrs", "Average time on site (hours)", "Check-in to check-out per visit", 0.5, 8, 0.5),

@@ -247,3 +247,8 @@ Provider app and user (SydeTech, Production app does not exist on SB2; a separat
 - `POST /assets` (Subscriber) creates an asset: needs `LocationId`, `StoreId`, `Tag`, `AssetTypeId`, `BrandId` plus `Manufacturer` (without a brand: 400 error 503 "Brand (Manufacturer) is empty"). It returns `{"Id": ...}`. SB2 Doors asset types: 17572 "xoi", 22414 "door test".
 - Gotcha: a `GET /workorders/{id}` or `/accept` by a provider user who does not own the WO returns "Work order is not found" (error 502). Pick the user by the WO's provider id.
 - Test data left on SB2 (not cleaned up): WOs 368856116 to 368856120 and assets 10889508 (tag DOOR-TEST-1, Doors, HQ-NYC) and 10889537 (tag HQNYC-RTU-01, RTU, HQ-NYC), and asset type 38779 ("LED Light Fixture", Electrical). Asset create/update findings: see `docs/asset-seeding-research.md`, "SB2 write probes".
+
+## Which dashboard a WO create uses (SB2 spike, 2026-11-03)
+- `POST /workorders` resolves the issue on the token user's active dashboard. `IssueListHeaderId` does not override it: with dashboard 2751 selected and active, an item only on dashboard 3151 (`Minni Split`) failed with 502 "Cannot find issue choice" even with 3151's header id. `GET /issuelist/issuechoice` (read-only) follows the same active dashboard; the NTE it returns shows which list is served.
+- A dashboard change on the user can take a few minutes to reach `issuechoice`.
+- Leaving out `IssueRequestInfo`, `IssueListHeaderId` and `ProblemCode` creates an OPEN WO (WO 368877480) with trade, category, priority, NTE and the contracted provider as sent. `ProblemCode` comes back empty. Leaving out only `IssueListHeaderId` still fails with 502.
