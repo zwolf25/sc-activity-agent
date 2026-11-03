@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Asset seeding no longer stops when a newly created asset type is not yet in the list: it uses the id the create returns, or retries the lookup. This stopped the first Production run after two types were created.
+
 ## v0.13.0 - 2026-11-02
 
 - New `agent assets plan | seed | audit | enrich` commands create realistic assets (HVAC, Electrical, Plumbing) at a location: real brands and model numbers from a bundled catalog, matching serial numbers, install and purchase dates, condition, value, area and description. `plan` is a dry run; `seed` and `enrich` write only with `--yes`. Reruns create only what is missing, and one bad asset is logged without stopping the run. Production needs the location in the `assets.approved_locations` setting first. The update adds two database tables; restart the agent after updating, nothing pauses.

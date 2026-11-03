@@ -167,10 +167,16 @@ class Seeder:
         for t in self.types(loc):
             trade_ids.setdefault(t["PrimaryTrade"].upper(), t["TradeId"])
         for name, trade in new_types:
-            app.call(user, "POST", "/assettypes", body={"Name": name, "PrimaryTrade": trade, "TradeId": trade_ids[trade], "IsActive": True, "IsCircuit": False},
-                     action="create_asset_type", write=True)
-            self.store.db.execute("INSERT INTO asset_types(id, name, trade, created_at) VALUES(?,?,?,?)",
-                                  (next(t["Id"] for t in self.types(loc) if t["Name"] == name), name, trade, time.time()))
+            r = app.call(user, "POST", "/assettypes", body={"Name": name, "PrimaryTrade": trade, "TradeId": trade_ids[trade], "IsActive": True, "IsCircuit": False},
+                         action="create_asset_type", write=True)
+            tid = r.get("Id") if isinstance(r, dict) else None
+            for _ in range(5):   # the list can lag a create by a moment on Production
+                if tid:
+                    break
+                tid = next((t["Id"] for t in self.types(loc) if t["Name"] == name and t["PrimaryTrade"].upper() == trade), None)
+                if not tid:
+                    self.sleep(3)
+            self.store.db.execute("INSERT OR IGNORE INTO asset_types(id, name, trade, created_at) VALUES(?,?,?,?)", (tid, name, trade, time.time()))
             self.store.db.commit()
             print(f"created asset type {name} ({trade})")
         types = {(t["Name"].lower(), t["PrimaryTrade"].upper()): t["Id"] for t in self.types(loc)}
