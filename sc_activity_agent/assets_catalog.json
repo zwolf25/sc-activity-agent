@@ -1,0 +1,156 @@
+{
+  "_note": "Draft catalog for B-67 asset seeding (docs/asset-seeding-design.md). Nothing reads this file yet. source: manufacturer = checked against a manufacturer document; distributor = distributor or product listing; writeup = research write-up supplied by Zac, not checked by us; unverified = shape only, confirm before a Production run. Value ranges, life_years and weights are industry knowledge, not sourced. Excluded for lack of a sourced model: mini-split, Rheem and A.O. Smith water heaters, Trane full model strings.",
+  "brands": {
+    "Carrier": 8,
+    "Trane": 22,
+    "Lennox": 6,
+    "YORK": 21,
+    "Bradford White": 178,
+    "Lithonia": 3720,
+    "Sure-Lites": 15302,
+    "Square D (Schneider Electric)": 366,
+    "Generac": 1230,
+    "Watts": 1661,
+    "Zurn": 386,
+    "SLOAN": 2824
+  },
+  "targets": {
+    "HVAC": [3, 8],
+    "ELECTRICAL": [8, 20],
+    "PLUMBING": [6, 14]
+  },
+  "entries": [
+    {
+      "trade": "HVAC",
+      "type": "RTU",
+      "code": "RTU",
+      "weight": 6,
+      "max": 8,
+      "life_years": 15,
+      "value": [9000, 32000],
+      "areas": ["Roof"],
+      "refrigerant": true,
+      "describe": "rooftop unit",
+      "models": [
+        {"brand": "Carrier", "model": "48TCED08A2A5-0A0G0", "tons": 7.5, "serial": "carrier", "source": "distributor"},
+        {"brand": "Carrier", "model": "48TCED09A2A6-0A0G0", "tons": 8.5, "serial": "carrier", "source": "distributor"},
+        {"brand": "Carrier", "model": "48TCED12A2A5-0A0G0", "tons": 10, "serial": "carrier", "source": "distributor"},
+        {"brand": "Trane", "model": "YHC060", "tons": 5, "serial": "trane", "source": "unverified"},
+        {"brand": "Lennox", "model": "LGH060U4ES1Y", "tons": 5, "serial": "lennox", "source": "manufacturer"},
+        {"brand": "Lennox", "model": "LGH120H4BS1Y", "tons": 10, "serial": "lennox", "source": "writeup"},
+        {"brand": "Lennox", "model": "TGA036S2B", "tons": 3, "serial": "lennox", "until_year": 2009, "source": "writeup"},
+        {"brand": "Lennox", "model": "TGA090H2B", "tons": 7.5, "serial": "lennox", "until_year": 2009, "source": "manufacturer"},
+        {"brand": "YORK", "model": "ZJ090N18B2A1AAA1A2", "tons": 7.5, "serial": "york", "from_year": 2005, "source": "unverified"}
+      ]
+    },
+    {
+      "trade": "ELECTRICAL",
+      "type": "Generator",
+      "code": "GEN",
+      "weight": 1,
+      "max": 1,
+      "life_years": 25,
+      "value": [9000, 45000],
+      "areas": ["Exterior"],
+      "describe": "standby generator",
+      "models": [
+        {"brand": "Generac", "model": "RG02224ANAX", "kw": 22, "serial": "generic", "source": "distributor"},
+        {"brand": "Generac", "model": "XG04845ANAC", "kw": 48, "serial": "generic", "source": "distributor"},
+        {"brand": "Generac", "model": "RD04833ADAL", "kw": 48, "serial": "generic", "source": "distributor"}
+      ]
+    },
+    {
+      "trade": "ELECTRICAL",
+      "type": "Electrical Panel",
+      "code": "PNL",
+      "create_type": true,
+      "weight": 2,
+      "max": 4,
+      "life_years": 35,
+      "value": [1800, 6500],
+      "areas": ["Electrical Room", "Back Room"],
+      "describe": "panelboard",
+      "models": [
+        {"brand": "Square D (Schneider Electric)", "model": "NQ442L2C", "amps": 225, "serial": "generic", "source": "distributor"},
+        {"brand": "Square D (Schneider Electric)", "model": "QO142M200PRB", "amps": 200, "serial": "generic", "source": "distributor"}
+      ]
+    },
+    {
+      "trade": "ELECTRICAL",
+      "type": "LED Light Fixture",
+      "code": "LTG",
+      "create_type": true,
+      "weight": 8,
+      "max": 12,
+      "life_years": 13,
+      "value": [90, 260],
+      "areas": ["Sales Floor", "Back Room"],
+      "describe": "LED troffer",
+      "models": [
+        {"brand": "Lithonia", "model": "2GTL4 A12 120 LP840", "size": "2x4", "serial": "generic", "source": "distributor"},
+        {"brand": "Lithonia", "model": "2GTL2 A12 120 LP840", "size": "2x2", "serial": "generic", "source": "distributor"}
+      ]
+    },
+    {
+      "trade": "ELECTRICAL",
+      "type": "Exit Sign / Emergency Light",
+      "code": "EXT",
+      "create_type": true,
+      "weight": 4,
+      "max": 6,
+      "life_years": 10,
+      "value": [70, 220],
+      "areas": ["Sales Floor", "Back Room", "Entrance"],
+      "describe": "LED exit sign with emergency lights",
+      "models": [
+        {"brand": "Sure-Lites", "model": "APC7RG", "serial": "generic", "source": "distributor"},
+        {"brand": "Sure-Lites", "model": "EUX6G", "serial": "generic", "source": "distributor"}
+      ]
+    },
+    {
+      "trade": "PLUMBING",
+      "type": "Water Heater",
+      "code": "WH",
+      "weight": 3,
+      "max": 2,
+      "life_years": 11,
+      "value": [1800, 4500],
+      "areas": ["Mechanical Room", "Back Room"],
+      "describe": "gas water heater, 50 gal",
+      "models": [
+        {"brand": "Bradford White", "model": "RG250T6N", "gallons": 50, "serial": "bradford", "source": "distributor"}
+      ]
+    },
+    {
+      "trade": "PLUMBING",
+      "type": "Backflow Preventer",
+      "code": "BFP",
+      "create_type": true,
+      "weight": 2,
+      "max": 2,
+      "life_years": 25,
+      "value": [450, 2200],
+      "areas": ["Mechanical Room", "Exterior"],
+      "describe": "backflow preventer assembly",
+      "models": [
+        {"brand": "Watts", "model": "007M1-QT-FZ", "serial": "generic", "source": "distributor"},
+        {"brand": "Zurn", "model": "975XL2", "serial": "generic", "source": "distributor"}
+      ]
+    },
+    {
+      "trade": "PLUMBING",
+      "type": "Flushometer Valve",
+      "code": "FLU",
+      "create_type": true,
+      "weight": 5,
+      "max": 8,
+      "life_years": 15,
+      "value": [150, 300],
+      "areas": ["Restroom"],
+      "describe": "flushometer valve, 1.28 gpf",
+      "models": [
+        {"brand": "SLOAN", "model": "Royal 111-1.28", "serial": "generic", "source": "distributor"}
+      ]
+    }
+  ]
+}
