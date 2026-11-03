@@ -323,3 +323,13 @@ def test_dashboard_switches_to_next_week_remembers_it_and_resets_with_the_new_we
     c.get("/dashboard?w=next")
     s.put("dashboard_week", {**s.get("dashboard_week"), "monday": "2000-01-03"})   # chosen in an earlier week
     assert "<td>accept</td>" in c.get("/dashboard").text   # a new week starts on this week
+
+
+def test_stage_page_and_dashboard_warning(tmp_path):
+    s, c = client(tmp_path)
+    assert c.get("/stage?s=Awaiting+review").status_code == 200
+    assert "Unknown stage" in c.get("/stage?s=Nope").text
+    s.put("dash_check", {"dashboard": 2751, "at": 0, "location": "HQ-NYC", "checked": 6, "bad": 4, "warn": True})
+    assert "Dashboard mismatch: 4 of 6" in c.get("/audit").text
+    s.put("dash_check", {"dashboard": 2751, "at": 0, "location": "HQ-NYC", "checked": 6, "bad": 0, "warn": False})
+    assert "Dashboard mismatch" not in c.get("/audit").text

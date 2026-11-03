@@ -15,7 +15,7 @@
 <button class="sm">Clean up now</button></form>
 {% if prev %}<p><b>{{ prev['items']|length }}</b> work order(s) found {{ prev.when }} ({{ prev.days }}+ days idle{% if prev.protected %}, {{ prev.protected }} skipped for label "{{ prev.protect }}"{% endif %}). Each one is re-checked just before it is cancelled.</p>
 {% if prev['items'] %}<div class="tbl"><table data-page="10"><thead><tr><th>WO</th><th>Location</th><th>Trade</th><th>Status</th><th>Last activity</th><th>Provider</th></tr></thead><tbody>
-{% for i in prev['items'] %}<tr><td class="mono">{{ i.id }}</td><td>{{ i.location }}</td><td>{{ i.trade }}</td><td>{{ i.status }}</td><td>{{ i.updated[:10] }}</td><td>{{ i.provider }}</td></tr>{% endfor %}
+{% for i in prev['items'] %}<tr><td class="mono">{{ i.id }}</td><td>{{ i.location }}</td><td>{{ i.trade }}</td><td>{{ i.status }}</td><td>{{ i.when }}</td><td>{{ i.provider }}</td></tr>{% endfor %}
 </tbody></table></div>
 <form method="post" action="/cleanup/run"><label class="chk"><input type="checkbox" name="confirm" value="1"> I reviewed this list and want these work orders cancelled in ServiceChannel</label>
 <button class="sm">Cancel all</button></form>{% endif %}{% endif %}

@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block body %}
+<div class="card tbl"><div class="row"><h3>{{ title or 'Stage' }}</h3><a href="/dashboard">Back to the dashboard</a></div>
+{% if not known %}<p>Unknown stage.</p>{% else %}<table data-page="20"><thead><tr><th>WO</th><th>Trade</th><th>Location</th><th>Next step</th><th>Due</th></tr></thead><tbody>
+{% for r in rows %}<tr><td class="mono"><a href="/audit?q={{ r.sc_id }}">{{ r.sc_id }}</a></td><td>{{ r.trade }}</td><td>{{ r.location }}</td><td>{{ r.next_kind.replace('_', ' ') if r.next_kind else 'None pending' }}</td><td class="mono">{{ r.when }}</td></tr>{% else %}<tr><td colspan="5">No work orders in this stage.</td></tr>{% endfor %}
+</tbody></table>{% endif %}</div>{% endblock %}

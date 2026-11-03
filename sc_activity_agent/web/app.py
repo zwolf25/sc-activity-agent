@@ -65,12 +65,21 @@ SLIDERS = [("wo_per_month", "Work orders per month", "Per enabled location, spre
            ("hours_end", "Activity ends (hour)", "", 1, 24, 1)]
 
 
+STAMP = "%a %b %d, %H:%M"   # the one date-time format every page uses, in the instance's time zone
+
+
+def stamp(t, z):
+    """Format an epoch or an ISO-8601 string (as ServiceChannel sends it, UTC with a Z) as STAMP in zone z."""
+    d = datetime.fromisoformat(t.replace("Z", "+00:00")).astimezone(z) if isinstance(t, str) else datetime.fromtimestamp(t, z)
+    return d.strftime(STAMP)
+
+
 def gap_text(g, z):
     """Readable offline notice: local times, how long, and what the agent did about it."""
     a, b = (datetime.fromtimestamp(g[k], z) for k in ("start", "end"))
     mins = max(1, round((g["end"] - g["start"]) / 60))
     span = f"{mins} min" if mins < 120 else f"{mins / 60:.0f} h"
-    fmt = "%a %b %d, %H:%M"
+    fmt = STAMP
     moved = f"{g['steps']} scheduled steps were moved forward to make up for it." if g["steps"] else "No scheduled steps were affected."
     return f"The agent was not running from {a.strftime(fmt)} to {b.strftime(fmt)} ({span}), for example while the computer slept or the app was updated. {moved}"
 
@@ -88,7 +97,7 @@ def create_app(store, engine=None, rt=None):
         failed = db.execute("SELECT COUNT(*) FROM steps WHERE state='failed'").fetchone()[0]
         base = dict(request=request, nav=NAV, here=name, env=store.get("env"), version=__version__,
                     paused=store.get("paused_at") is not None, failed=failed,
-                    port=store.get("port"), twin_port=store.get("twin_port"), setup=setup_checks(), update=update.pending(store), update_busy=bool(update.in_progress(store)))
+                    port=store.get("port"), twin_port=store.get("twin_port"), setup=setup_checks(), update=update.pending(store), update_busy=bool(update.in_progress(store)), dash_warn=(store.get("dash_check") or {}) if (store.get("dash_check") or {}).get("warn") else None)
         return tpl.TemplateResponse(request, f"{name}.html", {**base, **ctx})
 
     def missing_actions():
@@ -165,7 +174,7 @@ def create_app(store, engine=None, rt=None):
         shown = mon + timedelta(days=7 if w == "next" else 0)
         rows, total, pages, cur = status.week(db, tz, hide_done=bool(hide_done), hide_skipped=bool(hide_skipped), page=page_no, weeks_ahead=int(w == "next"))
         z = ZoneInfo(tz)
-        week = [dict(r, when=datetime.fromtimestamp(r["due_at"], z).strftime("%a %b %d, %H:%M"), detail=status.detail(r["kind"], json.loads(r["payload"]))) for r in rows]
+        week = [dict(r, when=stamp(r["due_at"], z), detail=status.detail(r["kind"], json.loads(r["payload"]))) for r in rows]
         return page(request, "dashboard", stages=status.by_stage(db), week=week, total=total, pages=pages, cur=cur, w=w, span=f"{shown:%b %d} to {shown + timedelta(days=6):%b %d}", hide_done=bool(hide_done), hide_skipped=bool(hide_skipped),
                     gaps=[dict(g, i=i, text=gap_text(g, z)) for i, g in enumerate(store.get("gaps", [])) if not g["acked"]],
                     blocked=[p["name"] for p in pair_status() if p["state"] == "blocked"])
@@ -283,12 +292,19 @@ def create_app(store, engine=None, rt=None):
                           "WHERE (?='' OR user LIKE ? OR path LIKE ? OR action LIKE ? OR CAST(sc_wo AS TEXT) LIKE ?) "
                           "AND (?='' OR http>=400 OR http IS NULL OR http=0) ORDER BY id DESC LIMIT 200",
                           (q, like, like, like, like, failed)).fetchall()
-        return page(request, "audit", rows=rows, q=q, failed=failed)
+        z = ZoneInfo(store.get("tz", "America/New_York"))
+        return page(request, "audit", rows=[dict(r, when=stamp(r["ts"], z)) for r in rows], q=q, failed=failed)
+
+    @app.get("/stage")
+    def stage_list(request: Request, s: str = ""):
+        z = ZoneInfo(store.get("tz", "America/New_York"))
+        rows = [dict(r, when=stamp(r["next_due"], z) if r["next_due"] else "") for r in status.in_stage(db, s)] if s in status.STAGES else []
+        return page(request, "stage", title=s, rows=rows, known=s in status.STAGES)
 
     @app.get("/errors")
     def errors(request: Request):
         rows = db.execute("SELECT s.*, w.sc_id FROM steps s JOIN work_orders w ON w.id=s.wo_id WHERE s.state='failed' ORDER BY s.due_at").fetchall()
-        return page(request, "errors", rows=rows, create_errors=[dict(e, when=datetime.fromtimestamp(e["at"], ZoneInfo(store.get("tz", "America/New_York"))).strftime("%a %b %d, %H:%M"))
+        return page(request, "errors", rows=rows, create_errors=[dict(e, when=stamp(e["at"], ZoneInfo(store.get("tz", "America/New_York"))))
                                                     for e in store.get("create_errors", [])[::-1]])
 
     @app.post("/steps/{sid}/{action}")
@@ -379,7 +395,7 @@ def create_app(store, engine=None, rt=None):
         if ql:
             pool = [c for c in pool if ql in f"{c['store_id']} {c['name']} {c['city']} {c['state']}".lower()]
         return page(request, "locations", locs=locs, contracts=con, pool=pool[:1000], pool_n=len(pool), q=q, msg=msg, skipped=skipped,
-                    checked=datetime.fromtimestamp(checked, ZoneInfo(store.get('tz', 'America/New_York'))).strftime('%b %d %H:%M') if checked else None,
+                    checked=stamp(checked, ZoneInfo(store.get('tz', 'America/New_York'))) if checked else None,
                     loaded=store.get("locations_cache") is not None)
 
     @app.post("/locations/load")
@@ -447,11 +463,11 @@ def create_app(store, engine=None, rt=None):
     @app.get("/cleanup")
     def cleanup(request: Request, msg: str = ""):
         z = ZoneInfo(store.get("tz", "America/New_York"))
-        rows = [dict(r, when=datetime.fromtimestamp(r["created_at"], z).strftime("%a %b %d, %H:%M"))
+        rows = [dict(r, when=stamp(r["created_at"], z))
                 for r in db.execute("SELECT * FROM work_orders ORDER BY created_at DESC LIMIT 500")]
         prev = store.get("cleanup_preview")
         if prev:
-            prev = {**prev, "when": datetime.fromtimestamp(prev["at"], ZoneInfo(store.get("tz", "America/New_York"))).strftime("%b %d %H:%M")}
+            prev = {**prev, "when": stamp(prev["at"], z), "items": [dict(i, when=stamp(i["updated"], z)) for i in prev["items"]]}
         return page(request, "cleanup", rows=rows, msg=msg, cfg=cleanup_mod.settings(store), env=store.get("env"), prev=prev, runstate=store.get("cleanup_run"))
 
     @app.post("/cleanup/preview")
@@ -508,7 +524,7 @@ def create_app(store, engine=None, rt=None):
         return page(request, "settings", login=autostart.enabled(store.dir, store.get("env")),
                     awake_ui=awake.supported(), awake_on=store.get("keep_awake", True), check_on=store.get("status_check", True), pickup_on=pickup_mod.settings(store)["on"], checklist_on=store.get("checklists", {}).get("on", False),
                     policy=store.get("resume_policy", "catch_up"), msg=msg, al=al.cfg, token_set=bool(store.get("alerts_token")),
-                    backups=[(n, s // 1024, datetime.fromtimestamp(t).strftime("%b %d %H:%M")) for n, s, t in update.backups(store)],
+                    backups=[(n, s // 1024, stamp(t, ZoneInfo(store.get("tz", "America/New_York")))) for n, s, t in update.backups(store)],
                     events=EVENTS, alert_error=store.get("alert_error"), other_env="SB2" if store.get("env") == "prod" else "Production")
 
     @app.post("/check-update")

@@ -10,6 +10,7 @@ from .client import ScError
 from .engine import add_plan
 
 DEFAULT_DASHBOARD = 3151
+SAMPLE = 6   # issues compared per dashboard check (B-70)
 DEFAULT_AREA = 3          # SALES FLOOR: accepts every item of DOORS, HVAC and GENERAL MAINTENANCE on dashboard 3151
 RANK_TTL = 24 * 3600
 
@@ -68,6 +69,39 @@ class Creator:
             self.store.put("rank1", cache)
         return ours
 
+    def check_dashboard(self):
+        """B-70: WO creates use the Subscriber user's active dashboard, not the one selected here (api-notes, 2026-11-03). Sample a few issues of the
+        selected dashboard at the first enabled location and ask issuechoice, which follows the same active dashboard: an issue it cannot find, or
+        one with a different NTE, means the two dashboards differ. The result goes in store key dash_check; the console shows a banner while
+        `warn` is set. Runs when the selected dashboard changed, a day after the last check, or 10 minutes after a warning (a dashboard change on the
+        user can take a few minutes to reach issuechoice). Costs at most SAMPLE calls and never raises."""
+        dashboard = self.store.get("dashboard_id", DEFAULT_DASHBOARD)
+        last = self.store.get("dash_check") or {}
+        age = self.clock() - last.get("at", 0)
+        if last.get("dashboard") == dashboard and age < (600 if last.get("warn") else 86400):
+            return
+        loc = self.store.db.execute("SELECT * FROM locations WHERE enabled=1 ORDER BY store_id LIMIT 1").fetchone()
+        if not loc:
+            return
+        try:
+            pool = self._issues(loc, dashboard)
+            sample = self.rng.sample(pool, min(SAMPLE, len(pool)))
+            bad = 0
+            for i in sample:
+                try:
+                    r = self._get(loc, "/issuelist/issuechoice", {"problemType": i["problem_type"], "equipmentType": i["item"],
+                                                                  "problemCode": i["problem"], "locationId": loc["db_id"]}) or {}
+                    served = next((float(r[k]) for k in ("Nte", "NTE", "nte") if r.get(k) not in (None, "")), None)
+                    bad += served is not None and served != i["nte"]
+                except ScError as e:
+                    if e.status != 400:
+                        raise
+                    bad += 1
+        except (ScError, OSError):
+            return   # an unreachable API is not evidence of a mismatch; try again next tick
+        self.store.put("dash_check", {"dashboard": dashboard, "at": self.clock(), "location": loc["store_id"], "checked": len(sample),
+                                      "bad": bad, "warn": bool(sample) and bad * 3 >= len(sample)})
+
     def _resolves(self, loc, issue):
         """True if POST /workorders can resolve this issue. The POST looks the issue up on the location's own dashboard, not the
         IssueListHeaderId we send, and issuechoice without setupId does the same lookup read-only. A 400 here is the 502 a create would
@@ -104,6 +138,7 @@ class Creator:
         """Create at most one WO per call. Returns [(store_id, sc_id or error)]."""
         if self.store.get("paused_at") is not None:
             return []
+        self.check_dashboard()
         out = []
         for loc in self.store.db.execute("SELECT * FROM locations WHERE enabled=1"):
             slots = self._roll_day(loc)

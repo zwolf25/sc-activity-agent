@@ -40,6 +40,17 @@ def by_stage(db):
     return counts
 
 
+def in_stage(db, name):
+    """B-64: the active WOs in one stage, each with its next pending step (kind and due time, None when nothing is pending), soonest first."""
+    out = []
+    for w in db.execute("SELECT * FROM work_orders WHERE state='active'"):
+        rows = db.execute("SELECT kind,payload FROM steps WHERE wo_id=? AND state='done' ORDER BY seq", (w["id"],)).fetchall()
+        if stage([(r["kind"], json.loads(r["payload"])) for r in rows]) == name:
+            nxt = db.execute("SELECT kind,due_at FROM steps WHERE wo_id=? AND state='pending' ORDER BY seq LIMIT 1", (w["id"],)).fetchone()
+            out.append(dict(w, next_kind=nxt["kind"] if nxt else None, next_due=nxt["due_at"] if nxt else None))
+    return sorted(out, key=lambda r: (r["next_due"] is None, r["next_due"] or 0))
+
+
 NOTE = {"ack": "acknowledge", "eta": "ETA update", "onsite": "on site", "return": "return visit", "parts": "parts needed",
         "access": "access", "followup": "follow-up", "created": "WO created", "reschedule": "reschedule", "noshow": "no-show"}
 

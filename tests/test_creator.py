@@ -139,3 +139,35 @@ def test_asset_id_is_sent_only_when_the_slider_is_on_and_the_location_has_a_matc
         c.tick()
         post = next(b for m, p, b in app.calls if m == "POST")
         assert post.get("AssetId") == want
+
+
+def _check(tmp_path, issuechoice):
+    s, app, c = setup(tmp_path)
+    orig = app.call
+    app.call = lambda user, method, path, params=None, body=None, **kw: issuechoice(params) if path == "/issuelist/issuechoice" else orig(user, method, path, params, body, **kw)
+    c.check_dashboard()
+    return s, c
+
+
+def test_dashboard_check_warns_when_the_user_dashboard_serves_other_issues_or_ntes(tmp_path):
+    def missing(p):
+        raise ScError(400, "Cannot find issue choice", "/issuelist/issuechoice")
+    s, _ = _check(tmp_path / "a", missing)
+    assert s.get("dash_check")["warn"] is True
+    s, _ = _check(tmp_path / "b", lambda p: {"Nte": 999})
+    assert s.get("dash_check")["warn"] is True and s.get("dash_check")["bad"] == 2
+    s, _ = _check(tmp_path / "c", lambda p: {"Nte": 500} if p["equipmentType"] == "Automatic Door" else {"Nte": 100})
+    assert s.get("dash_check")["warn"] is False
+
+
+def test_dashboard_check_runs_again_only_when_due_and_never_raises(tmp_path):
+    asked = []
+    s, c = _check(tmp_path, lambda p: asked.append(p) or {})
+    n = len(asked)
+    c.check_dashboard()   # same dashboard, under a day old, no warning: no new calls
+    assert len(asked) == n
+    s.put("dashboard_id", 2751)
+    c.check_dashboard()   # the selected dashboard changed: checked again
+    assert len(asked) > n
+    s2, c2 = _check(tmp_path / "x", lambda p: (_ for _ in ()).throw(ScError(500, "down", "x")))
+    assert s2.get("dash_check") is None   # an API error is not a mismatch

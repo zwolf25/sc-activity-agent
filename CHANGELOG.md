@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v0.14.2 - 2026-11-03
+
+- New warning when the dashboard you select is not the one assigned to the Subscriber user. ServiceChannel creates work orders from the user's dashboard, so the issue and NTE can differ from what the agent planned. The agent checks a sample of issues when you change the dashboard, daily, and every 10 minutes while the warning shows, and a banner on every page says what to fix.
+- Dashboard stage tiles are links. Each opens a list of the work orders in that stage with their trade, location and next step.
+
+- Every date and time on every page now uses one format and the instance's time zone, for example "Tue Nov 03, 14:05": the Audit log Time column, Last activity in the clean-up preview, the Backups Saved column, "Last read" on Locations and "found" in the clean-up preview. Before, some showed a raw number, a bare date, or the computer's own time zone.
+- Audit log: only Time, User and Call wrap, so Role, WO, Action, HTTP and ms stay on one line, and the header lines up with the columns.
+
 ## v0.14.1 - 2026-11-03
 
 - Taking an update needs one press. The progress page no longer shows a second "Update now" button, and other pages show "Updating to vX" with a link to progress while an update runs. The progress page has a moving bar and says whether it is installing or restarting.

@@ -3,7 +3,7 @@
 {% for g in gaps %}<form class="banner warn" method="post" action="/gap/{{ g.i }}/dismiss">{{ g.text }} <button>Dismiss</button></form>{% endfor %}
 {% if gaps|length > 1 %}<form method="post" action="/gap/dismiss-all"><button>Dismiss all {{ gaps|length }} offline notices</button></form>{% endif %}
 {% if setup|rejectattr(1)|list %}<div class="banner warn">Setup is not finished. <a href="/setup">See the checklist</a>.</div>{% endif %}
-<div class="grid3">{% for s, n in stages.items() %}<div class="card stat"><span class="n">{{ n }}</span><span class="l">{{ s }}</span></div>{% endfor %}</div>
+<div class="grid3">{% for s, n in stages.items() %}<a class="card stat" href="/stage?s={{ s|urlencode }}" title="List the work orders in this stage"><span class="n">{{ n }}</span><span class="l">{{ s }}</span></a>{% endfor %}</div>
 <div class="card tbl"><div class="row"><h3>{{ 'Next week' if w == 'next' else 'This week' }} <small class="mono">{{ span }}</small></h3>
 <span class="seg"><a href="?w=this&f=1{{ '&hide_done=1' if hide_done }}{{ '&hide_skipped=1' if hide_skipped }}"><button type="button" class="sm{{ ' primary' if w != 'next' }}">This week</button></a><a href="?w=next&f=1{{ '&hide_done=1' if hide_done }}{{ '&hide_skipped=1' if hide_skipped }}"><button type="button" class="sm{{ ' primary' if w == 'next' }}">Next week</button></a></span>
 <form method="get" class="tog"><input type="hidden" name="f" value="1"><input type="hidden" name="w" value="{{ w }}">
