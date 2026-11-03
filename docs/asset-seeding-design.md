@@ -5,11 +5,11 @@ Status: draft for review, 2026-11-02. Nothing is built. Research and verified AP
 ## Scope
 
 In:
-- Trades that carry assets: HVAC, Electrical, Plumbing.
+- Trades that carry assets: HVAC, Electrical, Plumbing today, held in a setting so more can be added (see "When seeding runs").
 - Create assets at a location until it meets the target per trade.
 - Audit a location: counts per trade, and assets with empty fields.
 - Enrich: fill empty fields on existing assets.
-- A one-time load for existing Production locations, then on command for each new location.
+- Three triggers, one mechanism: the initial load of the existing Production locations, each location added later, and each trade added later. All three are the same `plan` and `seed` run; only the scope differs.
 
 Out:
 - Warranty (B-68). Seeded assets get no warranty.
@@ -21,7 +21,7 @@ Out:
 
 ## Commands
 
-All commands take `--location <store id>` (or `--all`). Writes go through the normal rate-limited client, so 50 assets take about 4 minutes at 15 calls a minute.
+All commands take `--location <store id>` (or `--all`) and an optional `--trade <trade>` (repeatable) to narrow the scope. Writes go through the normal rate-limited client, so 50 assets take about 4 minutes at 15 calls a minute.
 
 | Command | Writes | What it does |
 |---|---|---|
@@ -35,6 +35,29 @@ Rules shared by `seed` and `enrich`:
 - Production needs `--yes` and a one-time approval per location recorded in settings (`assets.approved_locations`). Zac sets it with `agent set`. Without it the command refuses on a Production instance. SB2 needs no approval.
 - `enrich` never overwrites a field that already has a value. It only fills empty fields. Condition counts as empty only when the asset has no install date to compare against.
 - Idempotent: an asset is identified by its tag. A tag already present at the location (found via `GET /assets?locationId=`) is skipped, whoever created it.
+
+## When seeding runs
+
+Seeding never starts on its own on Production. Every trigger below ends in a plan that Zac reviews, then `seed --yes`. Because the plan counts assets that already exist, running it again at any time only fills the gap, so the three triggers need no separate code paths.
+
+**Settings** (through `agent set`, per the standing rule):
+- `assets.trades`: the trades that carry assets. Default `HVAC,ELECTRICAL,PLUMBING`.
+- `assets.approved_locations`: Production approval, per location (above).
+- `assets.notify_new_locations`: default on. See trigger 2.
+
+**1. Initial load (existing locations).** `agent assets plan --all` lists every enabled location with a table of what each would get. Zac reviews one location first (HQ-NYC), approves it, seeds it, checks it in the ServiceChannel console, and then approves the rest in a batch. `--all` skips a location without approval and says so. Rate: 5 calls a minute while the engine runs, so a 60-asset location takes about 12 minutes; the run is resumable because it skips tags that exist.
+
+**2. A new location.** Adding a location (CLI or console) does not seed it. It prints one line, `Location X has no assets. Run: agent assets plan --location X`, and shows a Dashboard hint until the location has at least its minimum assets or Zac dismisses it (`assets.notify_new_locations` off). The notice is a read of the location's assets (one `GET`), never a write. The later Console button ("Seed assets") runs the same `plan`, then waits for approval.
+
+**3. A new trade.** Three steps, no code change unless the trade needs a new serial formatter:
+1. Add the trade's entries and a `targets` line to `assets_catalog.json` (data edit, same file, same schema). A trade with no catalog entries is refused with "no catalog entries for <trade>", never seeded empty.
+2. Run `agent set assets.trades ...` to add it.
+3. Run `agent assets plan --all --trade <trade>`. Only that trade's gap shows, for every location where it applies. Seed as in trigger 1. Asset types the account lacks are created in the same run (rule in "Asset types").
+`audit` reports both directions of drift: a trade in `assets.trades` with no catalog entries, and a catalog trade that is not enabled.
+
+**Which trades apply at a location.** Default: a trade is seeded at a location only if it is in `assets.trades` and our provider is the Rank 1 contract holder there (the same eligibility test the WO generator uses), because assets nobody can attach to a WO are noise. SB2 HQ-NYC is ranked for only Door/Lock, General Maintenance and HVAC, so a default plan there seeds only HVAC. `--trade <trade>` overrides the eligibility filter for testing (it still needs the trade in `assets.trades`).
+
+**Why attach needs this.** The attach call (B-24) requires the asset and the WO to share trade and location, so seeding only matters for the trades we create WOs in. A trade added to the WO generator should be added to `assets.trades` in the same step.
 
 ## Asset types
 
@@ -132,11 +155,12 @@ Why: `audit` and `enrich` must tell agent-created assets from real ones, and the
 
 ## Rollout
 
-1. Check the catalog (a person with facilities knowledge, or me with a second source). Fix gaps.
+1. Catalog check: Zac skipped the facilities review (2026-11-02). Every model carries a `source` label in the catalog instead, and `plan` prints it, so `unverified` models are visible in the table before any write.
 2. Build and release behind the CLI only (version number is Zac's call). SB2 first: seed HQ-NYC and read the results back in the SB2 console.
 3. Run the SB2 spike items that remain (below) before the Production run. Do not guess in Production.
-4. Production: `plan` for one location, Zac reviews the table, Zac sets the approval for that location, seed it, check it in the console. Then the rest of the locations.
-5. Ask before touching Production at every step. Reads in Production need Zac's go-ahead too.
+4. Production, initial load: `plan` for one location, Zac reviews the table, Zac sets the approval for that location, seed it, check it in the console. Then the rest of the locations (trigger 1).
+5. After that, new locations (trigger 2) and new trades (trigger 3) use the same commands.
+6. Ask before touching Production at every step. Reads in Production need Zac's go-ahead too.
 
 ## Answers to the earlier open questions (2026-11-02)
 
