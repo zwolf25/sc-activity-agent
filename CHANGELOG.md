@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.16.0 - 2026-11-03
+
+- The Daily limits card moved from Behavior to Settings.
+- Errors page: failed steps with the same error are one row with a count, the first and last time and the work orders, plus a hint for known causes (over the NTE, a second asset attach, rate limit). Retry all and Skip all act on the whole row.
+- Time zones: after a sleep gap, and when a rework plans the return visit, steps are placed in the work order's own store time zone, not the instance zone. A Denver instance no longer shifts New York visits two hours.
+- Housekeeping: the unused `roles` table is dropped by a migration (database version 4). The update needs the usual restart; nothing pauses.
+
 ## v0.15.0 - 2026-11-03
 
 - Daily limits: the agent pauses and sends an alert when it has created 40 work orders or made 3000 API calls in one day (instance time zone). Change or turn off (0) each limit under Behavior > Daily limits, which also shows today's usage and the expected work orders per day. A banner shows why the agent paused. After raising a limit, press Resume.

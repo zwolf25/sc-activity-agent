@@ -66,3 +66,13 @@ def test_get_masks_secrets(tmp_path, capsys):
     assert "123:abc" not in out and "plain" not in out and "mybot" in out and json.loads(out)["alerts_token"] == "***"
     cli.cmd_get(type("A", (), {"key": "alerts_token"})(), s)
     assert capsys.readouterr().out.strip() == '"***"'
+
+
+def test_settings_page_saves_the_limits(tmp_path):
+    from fastapi.testclient import TestClient
+    from sc_activity_agent.web.app import create_app
+    s = Store(tmp_path)
+    c = TestClient(create_app(s))
+    assert "Daily limits" in c.get("/settings").text and "Daily limits" not in c.get("/behavior").text
+    r = c.post("/caps", data={"wo_per_day": "55", "calls_per_day": "0"}, follow_redirects=False)
+    assert r.headers["location"] == "/settings" and s.get("caps") == {"wo_per_day": 55, "calls_per_day": 0}

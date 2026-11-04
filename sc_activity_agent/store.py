@@ -15,9 +15,6 @@ CREATE TABLE IF NOT EXISTS connections(
 CREATE TABLE IF NOT EXISTS users(
   id INTEGER PRIMARY KEY, conn_id INTEGER NOT NULL REFERENCES connections(id) ON DELETE CASCADE,
   username TEXT NOT NULL, password TEXT NOT NULL, label TEXT NOT NULL DEFAULT '', sc_user_id INTEGER);
-CREATE TABLE IF NOT EXISTS roles(
-  location TEXT NOT NULL, action TEXT NOT NULL, user_ids TEXT NOT NULL, pick TEXT NOT NULL DEFAULT 'single',
-  PRIMARY KEY(location, action));
 CREATE TABLE IF NOT EXISTS locations(
   store_id TEXT PRIMARY KEY, db_id INTEGER, subscriber_id INTEGER, name TEXT, enabled INTEGER NOT NULL DEFAULT 1,
   lat REAL, lon REAL, tz TEXT, overrides TEXT NOT NULL DEFAULT '{}');
@@ -40,8 +37,11 @@ CREATE INDEX IF NOT EXISTS api_log_ts ON api_log(ts);
 # Each entry upgrades the schema by one version (PRAGMA user_version). Append only; never edit a shipped entry.
 MIGRATIONS = [
     # 1 (v0.6.0): roles move onto the user. Only the '*' default rows convert; per-location overrides are dropped.
-    # The roles table stays for one release so a downgrade still finds it.
+    # The roles table is created here, not in SCHEMA, so migration 4 can drop it for good.
     """
+    CREATE TABLE IF NOT EXISTS roles(
+      location TEXT NOT NULL, action TEXT NOT NULL, user_ids TEXT NOT NULL, pick TEXT NOT NULL DEFAULT 'single',
+      PRIMARY KEY(location, action));
     ALTER TABLE users ADD COLUMN can_do TEXT NOT NULL DEFAULT '[]';
     UPDATE users SET can_do=(SELECT json_group_array(r.action) FROM roles r
                              WHERE r.location='*' AND EXISTS (SELECT 1 FROM json_each(r.user_ids) j WHERE j.value=users.id));
@@ -56,6 +56,9 @@ MIGRATIONS = [
     # 3 (B-63): the contracts table was never read; Rank 1 trades live in the `rank1` setting. An older build that
     # runs on this database again only ever created it with IF NOT EXISTS, so a downgrade is safe.
     "DROP TABLE IF EXISTS contracts;",
+    # 4 (B-76): roles was only read by migration 1. An older build that runs on this database again would create it empty
+    # and, since roles live on the user since 0.6.0, ignore it, so a downgrade is safe.
+    "DROP TABLE IF EXISTS roles;",
 ]
 
 

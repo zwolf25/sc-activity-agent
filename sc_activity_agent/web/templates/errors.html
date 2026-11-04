@@ -1,7 +1,9 @@
 {% extends "base.html" %}{% block body %}
-<div class="card tbl"><h3>Failed steps</h3><table data-page="20"><thead><tr><th>WO</th><th>Step</th><th>Error</th><th></th></tr></thead><tbody>
-{% for r in rows %}<tr><td class="mono"><a href="/audit?q={{ r.sc_id }}">{{ r.sc_id }}</a></td><td>{{ r.kind.replace('_', ' ') }}</td><td>{{ r.error }}</td><td class="row">
-<form method="post" action="/steps/{{ r.id }}/retry"><button class="sm primary">Retry</button></form><form method="post" action="/steps/{{ r.id }}/skip"><button class="sm">Skip</button></form></td></tr>{% else %}<tr><td colspan="4">No failed steps.</td></tr>{% endfor %}
+<div class="card tbl"><h3>Failed steps</h3><table data-page="20"><thead><tr><th>Step</th><th>Error</th><th>Count</th><th>WOs</th><th>First / last</th><th></th></tr></thead><tbody>
+{% for g in groups %}<tr><td>{{ g.kind.replace('_', ' ') }}</td><td>{{ g.error }}{% if g.hint %}<br><small>{{ g.hint }}</small>{% endif %}</td><td>{{ g.count }}</td>
+<td class="mono">{% for w in g.wos[:3] %}<a href="/audit?q={{ w }}">{{ w }}</a>{{ ', ' if not loop.last }}{% endfor %}{% if g.count > 3 %} and {{ g.count - 3 }} more{% endif %}</td>
+<td>{{ g.first }}{% if g.count > 1 %}<br>{{ g.last }}{% endif %}</td><td class="row">
+{% for act, label in (('retry', 'Retry'), ('skip', 'Skip')) %}<form method="post" action="/steps/group/{{ act }}">{% for i in g.ids %}<input type="hidden" name="id" value="{{ i }}">{% endfor %}<button class="sm{{ ' primary' if act == 'retry' }}">{{ label }}{{ ' all' if g.count > 1 }}</button></form>{% endfor %}</td></tr>{% else %}<tr><td colspan="6">No failed steps.</td></tr>{% endfor %}
 </tbody></table></div>
 {% if create_errors %}<div class="card tbl"><h3>Work order creation errors</h3><table data-page="20"><thead><tr><th>Time</th><th>Location</th><th>Error</th></tr></thead><tbody>
 {% for e in create_errors %}<tr><td class="mono">{{ e.when }}</td><td>{{ e.location }}</td><td>{{ e.error }}</td></tr>{% endfor %}</tbody></table>

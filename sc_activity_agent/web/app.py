@@ -85,6 +85,29 @@ def gap_text(g, z):
     return f"The agent was not running from {a.strftime(fmt)} to {b.strftime(fmt)} ({span}), for example while the computer slept or the app was updated. {moved}"
 
 
+# B-79: known causes, matched against the error text
+ERROR_HINTS = [(re.compile(r"\b1104\b"), "The invoice or proposal is over the NTE. Skip it, or raise the NTE on the WO in ServiceChannel."),
+               (re.compile(r"\b403\b.*\b100\b|\b100\b.*\b403\b"), "ServiceChannel refused a second attach on the same asset. Skip it."),
+               (re.compile(r"\b429\b"), "Rate limited. Retry later; lower the calls per minute if it repeats.")]
+
+
+def error_groups(rows, tz):
+    """B-79: failed steps with the same kind and the same error text (digits blurred) become one row with a count, the
+    first and last due time, the WO ids and a hint for known causes."""
+    groups = {}
+    for r in rows:
+        err = r["error"] or ""
+        g = groups.setdefault((r["kind"], re.sub(r"\d{4,}", "#", err)), dict(kind=r["kind"], error=err, rows=[]))
+        g["rows"].append(r)
+    out = []
+    for g in groups.values():
+        rs = g["rows"]
+        out.append(dict(kind=g["kind"], error=g["error"], count=len(rs), ids=[r["id"] for r in rs], wos=[r["sc_id"] for r in rs],
+                        first=stamp(rs[0]["due_at"], tz), last=stamp(rs[-1]["due_at"], tz),
+                        hint=next((h for rx, h in ERROR_HINTS if rx.search(g["error"])), "")))
+    return sorted(out, key=lambda g: -g["count"])
+
+
 def create_app(store, engine=None, rt=None):
     app = FastAPI(title="SC Activity Agent")
     app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
@@ -305,8 +328,21 @@ def create_app(store, engine=None, rt=None):
     @app.get("/errors")
     def errors(request: Request):
         rows = db.execute("SELECT s.*, w.sc_id FROM steps s JOIN work_orders w ON w.id=s.wo_id WHERE s.state='failed' ORDER BY s.due_at").fetchall()
-        return page(request, "errors", rows=rows, create_errors=[dict(e, when=stamp(e["at"], ZoneInfo(store.get("tz", "America/New_York"))))
+        tz = ZoneInfo(store.get("tz", "America/New_York"))
+        return page(request, "errors", groups=error_groups(rows, tz), create_errors=[dict(e, when=stamp(e["at"], ZoneInfo(store.get("tz", "America/New_York"))))
                                                     for e in store.get("create_errors", [])[::-1]])
+
+    @app.post("/steps/group/{action}")
+    async def group_action(action: str, request: Request):
+        ids = [int(i) for i in (await request.form()).getlist("id")]
+        if action in ("retry", "skip") and ids:
+            marks = ",".join("?" * len(ids))
+            if action == "retry":
+                db.execute(f"UPDATE steps SET state='pending', attempts=0, due_at=? WHERE state='failed' AND id IN ({marks})", (time.time(), *ids))
+            else:
+                db.execute(f"UPDATE steps SET state='skipped' WHERE state='failed' AND id IN ({marks})", ids)
+            db.commit()
+        return RedirectResponse("/errors", 303)
 
     @app.post("/steps/{sid}/{action}")
     def step_action(sid: int, action: str):
@@ -373,15 +409,13 @@ def create_app(store, engine=None, rt=None):
     @app.get("/behavior")
     def behavior(request: Request):
         cur = {**planner.DEFAULTS, **store.get("behavior", {})}
-        n = store.db.execute("SELECT COUNT(*) FROM locations WHERE enabled=1").fetchone()[0]
-        expected = cur["wo_per_month"] * n / (30 * len(cur["days"]) / 7)   # WOs on an activity day, all enabled locations
-        return page(request, "behavior", sliders=SLIDERS, cur=cur, caps=caps.limits(store), used=caps.used(store), expected=expected, locs=n)
+        return page(request, "behavior", sliders=SLIDERS, cur=cur)
 
     @app.post("/caps")
     async def save_caps(request: Request):
         form = await request.form()
         store.put("caps", {k: max(0, int(float(form.get(k) or 0))) for k in caps.DEFAULTS})
-        return RedirectResponse("/behavior", 303)
+        return RedirectResponse("/settings", 303)
 
     @app.post("/behavior")
     async def save_behavior(request: Request):
@@ -537,7 +571,10 @@ def create_app(store, engine=None, rt=None):
     @app.get("/settings")
     def settings(request: Request, msg: str = ""):
         al = Alerts(store)
-        return page(request, "settings", login=autostart.enabled(store.dir, store.get("env")),
+        cur = {**planner.DEFAULTS, **store.get("behavior", {})}
+        n = store.db.execute("SELECT COUNT(*) FROM locations WHERE enabled=1").fetchone()[0]
+        expected = cur["wo_per_month"] * n / (30 * len(cur["days"]) / 7)   # WOs on an activity day, all enabled locations
+        return page(request, "settings", caps=caps.limits(store), used=caps.used(store), expected=expected, locs=n, login=autostart.enabled(store.dir, store.get("env")),
                     awake_ui=awake.supported(), awake_on=store.get("keep_awake", True), check_on=store.get("status_check", True), pickup_on=pickup_mod.settings(store)["on"], checklist_on=store.get("checklists", {}).get("on", False),
                     policy=store.get("resume_policy", "catch_up"), msg=msg, al=al.cfg, token_set=bool(store.get("alerts_token")),
                     backups=[(n, s // 1024, stamp(t, ZoneInfo(store.get("tz", "America/New_York")))) for n, s, t in update.backups(store)],

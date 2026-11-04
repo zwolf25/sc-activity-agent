@@ -730,7 +730,7 @@ def _review(tmp_path, behavior, live=None):
         s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,payload) VALUES(?,?,?,?,?)", (wo["id"], seq, kind, 1000 + seq, json.dumps({"visit": 1})))
     s.db.commit()
     st = {"kind": "review", "seq": 3, "due_at": NOW, "payload": "{}"}
-    make_handlers(rt)["review"](SimpleNamespace(snap=lambda t: t), wo, st)
+    make_handlers(rt)["review"](SimpleNamespace(snap=lambda t, loc=None: t), wo, st)
     return s, wo, seen
 
 

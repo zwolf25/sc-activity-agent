@@ -43,5 +43,5 @@ def check(store, clock=time.time):
         return []
     store.put("paused_at", now)
     store.put("cap_hit", {"at": now, "why": why})
-    Alerts(store).send("cap", f"Paused by a daily limit: {why}. Raise the limit on the Behavior page or wait for tomorrow, then Resume.", event="cap_hit")
+    Alerts(store).send("cap", f"Paused by a daily limit: {why}. Raise the limit on the Settings page or wait for tomorrow, then Resume.", event="cap_hit")
     return [("limit", f"paused: {why}")]

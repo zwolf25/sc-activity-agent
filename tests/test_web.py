@@ -348,3 +348,19 @@ def test_unseeded_assets_banner_follows_seeding_and_can_be_dismissed(tmp_path):
     s.db.commit()
     c.post("/assets/dismiss", headers={"referer": "/dashboard"})
     assert "No assets seeded yet" not in c.get("/dashboard").text
+
+
+def test_errors_page_groups_repeats_and_acts_on_a_group(tmp_path):
+    from sc_activity_agent.engine import add_plan
+    s = Store(tmp_path)
+    for n in (111111, 222222):
+        add_plan(s, "HQ", "HVAC", n, [{"kind": "invoice", "due_at": 1.0, "payload": {}}], {}, 1.0)
+    add_plan(s, "HQ", "HVAC", 333333, [{"kind": "check_in", "due_at": 1.0, "payload": {}}], {}, 1.0)
+    s.db.execute("UPDATE steps SET state='failed', error=CASE kind WHEN 'invoice' THEN 'POST /invoices 400: error 1104 over NTE for WO ' || (SELECT sc_id FROM work_orders w WHERE w.id=wo_id) ELSE 'boom' END")
+    s.db.commit()
+    c = TestClient(create_app(s))
+    page = c.get("/errors").text
+    assert "over the NTE" in page and "Retry all" in page and page.count("<tr><td>invoice") == 1
+    ids = [r["id"] for r in s.db.execute("SELECT id FROM steps WHERE kind='invoice'")]
+    c.post("/steps/group/skip", data={"id": ids})
+    assert [r["state"] for r in s.db.execute("SELECT state FROM steps ORDER BY id")] == ["skipped", "skipped", "failed"]

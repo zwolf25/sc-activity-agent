@@ -61,6 +61,7 @@ def test_roles_convert_to_user_capabilities_on_open(tmp_path):
     from sc_activity_agent.store import SCHEMA, Store
     db = sqlite3.connect(tmp_path / "agent.db")
     db.executescript(SCHEMA)   # the pre-0.6.0 shape: no users.can_do
+    db.execute("CREATE TABLE roles(location TEXT NOT NULL, action TEXT NOT NULL, user_ids TEXT NOT NULL, pick TEXT NOT NULL DEFAULT 'single', PRIMARY KEY(location, action))")
     db.execute("INSERT INTO connections VALUES(1,'provider','P','c','x',7)")
     db.execute("INSERT INTO users(id,conn_id,username,password) VALUES(1,1,'a','x'),(2,1,'b','x')")
     db.execute("INSERT INTO roles VALUES('*','check_in','[1,2]','random'),('*','accept','[1]','single'),('HQ','accept','[2]','single')")
@@ -68,6 +69,7 @@ def test_roles_convert_to_user_capabilities_on_open(tmp_path):
     db.close()
     s = Store(tmp_path)
     can = {r["id"]: sorted(__import__("json").loads(r["can_do"])) for r in s.db.execute("SELECT id, can_do FROM users")}
+    assert not s.db.execute("SELECT 1 FROM sqlite_master WHERE name='roles'").fetchone()   # B-76
     assert can == {1: ["accept", "check_in"], 2: ["check_in"]}   # the per-location HQ override is dropped
 
 

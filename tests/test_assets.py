@@ -49,7 +49,7 @@ def test_migration_from_v1_db(tmp_path):
     c.commit()
     c.close()
     s = Store(tmp_path)
-    assert s.db.execute("PRAGMA user_version").fetchone()[0] == 3
+    assert s.db.execute("PRAGMA user_version").fetchone()[0] == 4
     s.db.execute("SELECT * FROM assets")
     assert not s.db.execute("SELECT 1 FROM sqlite_master WHERE name='contracts'").fetchone()
 
@@ -119,3 +119,16 @@ def test_missing_reads_the_list_once_and_gets_only_unlisted_ids(tmp_path):
     assert app.lists == 1 and app.gets == 1   # only the id the list does not hold
     assert [a["Id"] for a, _ in rows] == [11, 99]
     assert list(rows[0][1]) == ["ModelNo"]
+
+
+def test_migration_4_drops_the_roles_table_of_a_v3_db(tmp_path):
+    c = sqlite3.connect(tmp_path / "agent.db")
+    c.executescript(__import__("sc_activity_agent.store", fromlist=["x"]).SCHEMA)
+    c.execute("ALTER TABLE users ADD COLUMN can_do TEXT NOT NULL DEFAULT '[]'")
+    c.execute("CREATE TABLE roles(location TEXT NOT NULL, action TEXT NOT NULL, user_ids TEXT NOT NULL, pick TEXT NOT NULL DEFAULT 'single')")
+    c.execute("PRAGMA user_version=3")
+    c.commit()
+    c.close()
+    s = Store(tmp_path)
+    assert s.db.execute("PRAGMA user_version").fetchone()[0] == 4
+    assert not s.db.execute("SELECT 1 FROM sqlite_master WHERE name='roles'").fetchone()

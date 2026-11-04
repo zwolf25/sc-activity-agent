@@ -60,9 +60,15 @@ class Engine:
                                  AND (e.state='failed' OR (e.state='pending' AND e.due_at>?)))
                ORDER BY s.due_at LIMIT ?""", (now, now, self.per_tick)).fetchall()   # B-66: a step behind a failed or future one cannot run, so it must not take a slot
 
-    def snap(self, ts):
-        """Move ts to the next moment inside activity hours on an activity day (unchanged if already inside)."""
-        tz = ZoneInfo(self.store.get("tz", "America/New_York"))
+    def zone(self, location=None):
+        """B-74: the time zone of a location's store, else the instance zone."""
+        r = self.store.db.execute("SELECT tz FROM locations WHERE store_id=?", (location,)).fetchone() if location else None
+        return ZoneInfo((r and r["tz"]) or self.store.get("tz", "America/New_York"))
+
+    def snap(self, ts, location=None):
+        """Move ts to the next moment inside activity hours on an activity day (unchanged if already inside).
+        Hours and days are read in the location's time zone."""
+        tz = self.zone(location)
         h0, h1 = self.store.get("hours_start", 8), self.store.get("hours_end", 17)
         days = self.store.get("days", [0, 1, 2, 3, 4])
         d = dt.datetime.fromtimestamp(ts, tz)
@@ -81,10 +87,9 @@ class Engine:
         hours, order kept, check-out stays after and on the day of its check-in. catch_up: spread overdue steps over the next
         hour. skip_stale: skip overdue notes, then shift. Returns {step_id: old_due_at} so the choice can be undone."""
         db, undo = self.store.db, {}
-        rows = db.execute("SELECT s.*, w.id AS wid FROM steps s JOIN work_orders w ON w.id=s.wo_id "
+        rows = db.execute("SELECT s.*, w.id AS wid, w.location AS loc FROM steps s JOIN work_orders w ON w.id=s.wo_id "
                           "WHERE s.state='pending' AND w.state='active' ORDER BY s.wo_id, s.seq").fetchall()
         overdue_wos = {r["wid"] for r in rows if r["due_at"] <= end}
-        tz = ZoneInfo(self.store.get("tz", "America/New_York"))
         if policy == "skip_stale":
             for r in rows:
                 if r["due_at"] <= end and r["kind"] in ("prov_note", "sub_note"):
@@ -99,12 +104,12 @@ class Engine:
             if policy == "catch_up":
                 new = end + self.rng.uniform(0, 3600) if old <= end else old
             else:
-                new = self.snap(old + (end - start))
+                new = self.snap(old + (end - start), r["loc"])
                 if r["kind"] == "check_in":
                     ci[r["wid"]] = (old, new)
                 elif r["kind"] == "check_out" and r["wid"] in ci:
                     o, n = ci[r["wid"]]
-                    day_end = dt.datetime.fromtimestamp(n, tz).replace(hour=self.store.get("hours_end", 17), minute=0, second=0).timestamp()
+                    day_end = dt.datetime.fromtimestamp(n, self.zone(r["loc"])).replace(hour=self.store.get("hours_end", 17), minute=0, second=0).timestamp()
                     new = min(n + (old - o), day_end)
                 new = max(new, wo_last.get(r["wid"], 0))
             wo_last[r["wid"]] = new

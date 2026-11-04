@@ -93,3 +93,15 @@ def test_repeated_sleep_wake_cycles_make_one_notice(tmp_path):
         e.tick()
     gaps = s.get("gaps")
     assert len(gaps) == 1 and gaps[0]["end"] - gaps[0]["start"] >= 48 * 60
+
+
+def test_snap_reads_hours_in_the_location_zone_not_the_instance_zone(tmp_path):
+    s = Store(tmp_path)
+    s.put("tz", "America/Denver")
+    s.db.execute("INSERT INTO locations(store_id, name, tz) VALUES('HQ','HQ','America/New_York'),('LA','LA',NULL)")
+    s.db.commit()
+    e = Engine(s, {}, clock=lambda: T0)
+    assert e.snap(T0, "HQ") == T0 + 3600                       # 07:00 Eastern -> 08:00 Eastern
+    assert e.snap(T0 + 3 * 3600, "HQ") == T0 + 3 * 3600        # 10:00 Eastern is inside the window
+    mt = dt.datetime(2026, 10, 26, 7, 0, tzinfo=ZoneInfo("America/Denver")).timestamp()
+    assert e.snap(mt, "LA") == mt + 3600 and e.snap(mt) == mt + 3600   # no zone on the row, none given: instance zone

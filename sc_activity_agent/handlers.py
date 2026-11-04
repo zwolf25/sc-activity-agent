@@ -384,7 +384,7 @@ def make_handlers(rt):
         length of the rework, so the invoice still follows the last review."""
         rows = rt.store.db.execute("SELECT payload FROM steps WHERE wo_id=? AND kind='check_in'", (wo["id"],)).fetchall()
         visit = max([json.loads(r["payload"]).get("visit", 1) for r in rows] + [1]) + 1
-        t_in = engine.snap(step["due_at"] + 86400)
+        t_in = engine.snap(step["due_at"] + 86400, wo["location"])
         t_out = t_in + int(rt.rng.uniform(1.5, 3) * 3600)
         t_rev = t_out + rt.rng.randint(3600, 86400)
         rt.store.db.execute("UPDATE steps SET payload=? WHERE wo_id=? AND seq=?", (json.dumps({**json.loads(step["payload"]), "unsatisfactory": True}), wo["id"], step["seq"]))
