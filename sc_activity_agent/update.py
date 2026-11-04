@@ -2,6 +2,7 @@
 import json
 import os
 import shutil
+import sqlite3
 import signal
 import subprocess
 import sys
@@ -63,10 +64,23 @@ def backup(store):
     dest = store.dir / "backups"
     dest.mkdir(exist_ok=True)
     f = dest / f"agent-{__version__}-{int(time.time())}.db"
-    shutil.copy2(store.dir / "agent.db", f)
+    dst = sqlite3.connect(f)
+    store.db.backup(dst)   # a file copy would miss pages still in the WAL
+    dst.close()
     for old in sorted(dest.glob("agent-*.db"), key=lambda p: p.stat().st_mtime)[:-KEEP]:
         old.unlink()
     return f
+
+
+def put_db(store, src):
+    """Replace agent.db with a backup file; stale WAL files from the old database must go with it."""
+    c = getattr(store._tl, "c", None)
+    if c is not None:   # close first: deleting WAL files under an open connection corrupts it
+        c.close()
+        store._tl.c = None
+    for ext in ("-wal", "-shm"):
+        (store.dir / f"agent.db{ext}").unlink(missing_ok=True)
+    shutil.copy2(src, store.dir / "agent.db")
 
 
 def backups(store):
@@ -89,7 +103,7 @@ def restore(store, name):
         except (OSError, ValueError):
             pass
     keep = backup(store)
-    shutil.copy2(src, store.dir / "agent.db")
+    put_db(store, src)
     return keep
 
 
@@ -164,7 +178,7 @@ def _apply(store, tag, run=subprocess.run, pip=_pip, restart=_restart, stop=_sto
     if not was_paused:
         args[-1] = "resume"
     if run(args, capture_output=True).returncode:
-        shutil.copy2(saved, store.dir / "agent.db")
+        put_db(store, saved)
         back = pip(_spec(r, f"v{__version__}"))
         what = "Previous version put back" if not back.returncode else f"Could not reinstall v{__version__}, run agent update"
         return False, f"New version failed to start. Database restored from {saved.name}. {what}. Run agent resume to continue."

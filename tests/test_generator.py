@@ -57,3 +57,9 @@ def test_daily_count_follows_the_activity_days():
     assert g.daily_count(r, 120, mon, (5, 6)) == 0
     avg = sum(g.daily_count(r, 120, sat, (5, 6)) for _ in range(2000)) / 2000
     assert 12 < avg < 15   # 120 a month over 2 days a week, 4.2 weeks
+
+
+def test_issue_without_category_id_is_skipped():
+    prob = {"Name": "P", "Trade": "HVAC", "TradeId": 1, "Priority": "Normal", "Category": {"Default": "Repair"}, "Nte": 50}
+    il = {"ProblemTypes": [{"Name": "T", "Items": [{"Name": "I", "Problems": [prob, {**prob, "Name": "Q", "CategoryId": 7}]}]}]}
+    assert [i["problem"] for i in g.issues(il)] == ["Q"]

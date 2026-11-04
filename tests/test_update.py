@@ -52,6 +52,7 @@ def test_backup_keeps_last_ten_and_restore_swaps_the_database(tmp_path):
     s.put("marker", 2)
     update.backup(s)
     assert len(update.backups(s)) == update.KEEP
+    s.db.close()   # restore runs with the agent stopped: no other connection may be open
     update.restore(Store(tmp_path), first.name)
     assert Store(tmp_path).get("marker") == 1
 

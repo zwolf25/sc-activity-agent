@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.17.2 - 2026-11-04
+
+- Fixed `database is locked` errors, seen when "Refresh now" on the Locations page ran while the agent was busy. The database now uses SQLite WAL mode, so the web page, the clean-up sweep and the Telegram poller no longer wait on the step loop. The data folder gains `agent.db-wal` and `agent.db-shm` files; that is normal.
+- Backups and restore now work with WAL mode (the backup uses SQLite's own copy, restore removes the old WAL files).
+- Fixed `create loop error: KeyError: 'CategoryId'` on dashboards whose issue list has problems with no `CategoryId`. The agent now skips those problems instead of failing.
+- Update needs a restart and pauses nothing. No migration.
+
 ## v0.17.1 - 2026-11-04
 
 - Fixed an Internal Server Error on the Settings page when a setting had been cleared and stored as empty. An empty stored setting now falls back to its default. No migration; the update needs a restart and pauses nothing.

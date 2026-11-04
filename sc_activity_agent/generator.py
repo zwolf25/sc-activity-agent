@@ -3,11 +3,11 @@ import datetime as dt
 
 
 def issues(issue_list):
-    """Flatten the dashboard issue list (GET .../storedashboards/{id}/issuelist) to one dict per problem."""
+    """Flatten the dashboard issue list (problems with no trade or no CategoryId are skipped, since a create needs both; GET .../storedashboards/{id}/issuelist) to one dict per problem."""
     return [{"problem_type": pt["Name"], "item": it["Name"], "problem": p["Name"], "trade": p["Trade"],
              "trade_id": p["TradeId"], "priority": p["Priority"], "category": p["Category"]["Default"],
              "category_id": p["CategoryId"], "nte": float(p["Nte"] or 0)}
-            for pt in issue_list["ProblemTypes"] for it in pt["Items"] for p in it["Problems"] if p["Trade"]]
+            for pt in issue_list["ProblemTypes"] for it in pt["Items"] for p in it["Problems"] if p["Trade"] and p.get("CategoryId")]
 
 
 def rank_one_trades(get, subscriber_id, provider_id, location_id):

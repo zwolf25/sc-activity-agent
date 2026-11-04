@@ -87,6 +87,7 @@ class Store:
             c = self._tl.c = sqlite3.connect(self.dir / "agent.db", timeout=30)
             c.row_factory = sqlite3.Row
             c.execute("PRAGMA foreign_keys=ON")
+            c.execute("PRAGMA journal_mode=WAL")   # readers (web, sweep, alerts threads) never wait on the step loop's write lock
         return c
 
     # secrets are encrypted at rest and only decrypted when used
