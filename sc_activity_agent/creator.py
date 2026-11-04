@@ -200,13 +200,14 @@ class Creator:
         if pid:
             ctx["provider_id"] = pid
         if self.rng.random() * 100 < b["photo_before"]:
-            self._attach_before(app, user, r["id"], issue["trade"], ctx)
+            self._attach_before(app, user, r["id"], issue["trade"], ctx, loc["store_id"])
         add_plan(self.store, loc["store_id"], issue["trade"], r["id"], plan, ctx, now)
         return r["id"]
 
-    def _attach_before(self, app, user, wo_id, trade, ctx):
+    def _attach_before(self, app, user, wo_id, trade, ctx, location):
         """B-52: a before photo on the new WO. The WO already exists, so any refusal (even a pause) is skipped rather than lose its plan."""
-        pic = photos.pick(trade, "before", self.rng, issue=f"{ctx.get('equipment', '')} {ctx.get('issue', '')}")
+        pic = photos.pick(trade, "before", self.rng, issue=f"{ctx.get('equipment', '')} {ctx.get('issue', '')}",
+                          avoid=photos.recent(self.store, location))
         if not pic:
             return
         try:

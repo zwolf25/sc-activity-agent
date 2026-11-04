@@ -50,3 +50,19 @@ def test_issue_rules_name_real_sets_and_pick_a_matching_scene():
     assert photos.pick("PLUMBING", "before", rng, issue="Backflow Preventer leaking")[0] == "backflow-preventer-spraying"
     assert photos.pick("DOOR/LOCK", "before", rng, issue="Overhead Door off track")[0] in ("overhead-door-off-track", "door-sweep-worn", "door-kick-plate")
     assert photos.pick("GENERAL MAINTENANCE", "before", rng, issue="Flag pole halyard broken")[0] == "flagpole-halyard-frayed"
+
+
+def test_pick_avoids_recent_sets_while_another_fits_and_recent_reads_the_last_wos(tmp_path):
+    import random
+    from sc_activity_agent.store import Store
+    fits = sorted(i for i, x in photos.sets().items() if "hvac" in x["trades"])
+    rng = random.Random(1)
+    for _ in range(20):
+        assert photos.pick("HVAC", "before", rng, avoid=fits[:-1])[0] == fits[-1]
+    assert photos.pick("HVAC", "before", rng, avoid=fits)[0] in fits   # all recent: still picks one
+    s = Store(tmp_path)
+    for i, sid in enumerate(["a", "b", None]):
+        s.db.execute("INSERT INTO work_orders(sc_id, location, trade, state, created_at, ctx) VALUES(?,?,?,?,?,?)",
+                     (i + 1, "HQ-NYC", "HVAC", "active", 0, '{"photo_set": "%s"}' % sid if sid else "{}"))
+    s.db.commit()
+    assert photos.recent(s, "HQ-NYC") == ["b", "a"] and photos.recent(s, "ZW123") == []

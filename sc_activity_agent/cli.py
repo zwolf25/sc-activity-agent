@@ -139,7 +139,7 @@ def cmd_run(args, store):
         threading.Thread(target=uvicorn.run, args=(create_app(store, engine, rt),),
                          kwargs={"host": "127.0.0.1", "port": port, "log_level": "warning"}, daemon=True).start()
         print(f"Console: http://127.0.0.1:{port}")
-    from . import pickup, update
+    from . import caps, pickup, update
     from . import cleanup
     from .creator import Creator
     creator = Creator(store, rt, rt.rng)
@@ -153,7 +153,7 @@ def cmd_run(args, store):
             caffeinate = awake.sync(store, caffeinate)
             engine.paused_at = store.get("paused_at")
             # one failing piece must not stop the others, or the whole agent
-            for name, fn in (("step", engine.tick), ("update", lambda: (update.check(store), [])[1]),
+            for name, fn in (("limits", lambda: caps.check(store)), ("step", engine.tick), ("update", lambda: (update.check(store), [])[1]),
                              ("create", creator.tick), ("watch", lambda: watch(store, rt)), ("pickup", lambda: pickup.tick(store, rt, creator)),
                              ("cleanup", lambda: sweep_in_thread(store, rt))):
                 try:
@@ -225,18 +225,28 @@ def _change(store, what):
     store.put("changes", log)
 
 
+def masked(v, key=""):
+    """B-72: secrets never print. An encrypted value (Fernet text) or a key named token, secret or password shows as ***."""
+    import re
+    if isinstance(v, dict):
+        return {k: masked(x, k) for k, x in v.items()}
+    if isinstance(v, list):
+        return [masked(x, key) for x in v]
+    return "***" if isinstance(v, str) and v and (v.startswith("gAAAA") or re.search("token|secret|password", key, re.I)) else v
+
+
 def cmd_get(args, store):
     """agent get [key[.path]]: show settings."""
     import json
     if not args.key:
         rows = {r["key"]: json.loads(r["value"]) for r in store.db.execute("SELECT * FROM settings ORDER BY key")}
         rows = {k: v for k, v in rows.items() if k not in ("create_slots", "gaps", "header_ids", "changes", "rank1")}
-        return print(json.dumps(rows, indent=1))
+        return print(json.dumps(masked(rows), indent=1))
     top, *path = args.key.split(".")
     v = store.get(top)
     for k in path:
         v = v[k]
-    print(json.dumps(v, indent=1))
+    print(json.dumps(masked(v, top), indent=1))
 
 
 def cmd_set(args, store):

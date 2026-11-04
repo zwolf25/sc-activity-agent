@@ -1,4 +1,9 @@
 {% extends "base.html" %}{% block body %}
+<form method="post" action="/caps" class="card">
+<div class="sl"><div>Daily limits<small>The agent pauses when either is reached today, and sends an alert. 0 turns a limit off. At these sliders, {{ locs }} location{{ '' if locs == 1 else 's' }} make about {{ expected|round(1) }} work orders on an activity day.</small></div>
+<div class="hours"><label>Work orders <input type="number" min="0" name="wo_per_day" value="{{ caps.wo_per_day }}" style="width:6em"></label>
+<label>API calls <input type="number" min="0" name="calls_per_day" value="{{ caps.calls_per_day }}" style="width:6em"></label></div><span></span></div>
+<div class="row"><small>Today so far: {{ used.wo_per_day }} work orders, {{ used.calls_per_day }} API calls.</small><button>Save limits</button></div></form>
 <form method="post" class="card">
 {% for k, label, hint, lo, hi, step in sliders if not k.startswith('hours_') %}<div class="sl"><div>{{ label }}<small>{{ hint }}</small></div>
 <input type="range" name="{{ k }}" min="{{ lo }}" max="{{ hi }}" step="{{ step }}" value="{{ cur[k] }}" oninput="this.nextElementSibling.value=this.value"><output>{{ cur[k] }}</output></div>{% endfor %}

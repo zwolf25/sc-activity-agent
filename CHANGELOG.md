@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v0.15.0 - 2026-11-03
+
+- Daily limits: the agent pauses and sends an alert when it has created 40 work orders or made 3000 API calls in one day (instance time zone). Change or turn off (0) each limit under Behavior > Daily limits, which also shows today's usage and the expected work orders per day. A banner shows why the agent paused. After raising a limit, press Resume.
+- `agent get` no longer prints tokens, secrets or passwords; it shows `***`.
+- New photos avoid the sets used on the last 10 work orders at the same location, so the same image repeats less.
+- CI and release workflows use newer GitHub Actions (Node 24).
+- The update needs the usual restart. No database change; nothing pauses.
+
 ## v0.14.3 - 2026-11-03
 
 - Twelve new photo sets with no cable clutter (generator battery, pylon sign, lifted floor, dock threshold, flagpole, overhead door, backflow preventer, flushometer, water heater pilot, burnt contactor, fence, roof drain). The library has 64 sets.

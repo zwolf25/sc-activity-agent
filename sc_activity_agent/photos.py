@@ -76,9 +76,19 @@ def attach_parts(pic, description, as_list):
             ("file", name, "image/jpeg", img)]
 
 
-def pick(trade, kind, rng, set_id=None, issue=""):
+RECENT = 10   # B-75: a new pick avoids the sets of the last RECENT WOs at the same location
+
+
+def recent(store, location, n=RECENT):
+    """Photo set ids on the last `n` WOs at a location, newest first."""
+    rows = store.db.execute("SELECT json_extract(ctx, '$.photo_set') AS s FROM work_orders WHERE location=? ORDER BY id DESC LIMIT ?", (location, n))
+    return [r["s"] for r in rows if r["s"]]
+
+
+def pick(trade, kind, rng, set_id=None, issue="", avoid=()):
     """(set id, file name, jpeg bytes) of one `kind` image, or None when no set fits the trade. With set_id, that set is used whatever the
-    trade. Otherwise sets that show the `issue` text (BY_ISSUE, only those tagged with the trade) are preferred over any set of the trade."""
+    trade. Otherwise sets that show the `issue` text (BY_ISSUE, only those tagged with the trade) are preferred over any set of the trade, and sets in
+    `avoid` (recently used) are left out while another fits."""
     s = sets().get(set_id) if set_id else None
     if s is None:
         slug = trade_slug(trade)
@@ -86,6 +96,7 @@ def pick(trade, kind, rng, set_id=None, issue=""):
         text = (issue or "").lower()
         hit = next((ids for pat, ids in BY_ISSUE if re.search(pat, text)), [])
         fits = [i for i in hit if i in fits] or fits
+        fits = [i for i in fits if i not in avoid] or fits
         if not fits:
             return None
         s = sets()[rng.choice(fits)]

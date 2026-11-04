@@ -16,7 +16,7 @@ from fastapi.responses import PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from .. import assets
+from .. import assets, caps
 from .. import cleanup as cleanup_mod
 from .. import pickup as pickup_mod
 from .. import __version__, autostart, awake, planner, status, update
@@ -98,7 +98,7 @@ def create_app(store, engine=None, rt=None):
         failed = db.execute("SELECT COUNT(*) FROM steps WHERE state='failed'").fetchone()[0]
         base = dict(request=request, nav=NAV, here=name, env=store.get("env"), version=__version__,
                     paused=store.get("paused_at") is not None, failed=failed,
-                    port=store.get("port"), twin_port=store.get("twin_port"), setup=setup_checks(), update=update.pending(store), update_busy=bool(update.in_progress(store)), dash_warn=(store.get("dash_check") or {}) if (store.get("dash_check") or {}).get("warn") else None, asset_todo=assets.unseeded(store))
+                    port=store.get("port"), twin_port=store.get("twin_port"), setup=setup_checks(), update=update.pending(store), update_busy=bool(update.in_progress(store)), dash_warn=(store.get("dash_check") or {}) if (store.get("dash_check") or {}).get("warn") else None, asset_todo=assets.unseeded(store), cap_hit=store.get("cap_hit") if store.get("paused_at") is not None else None)
         return tpl.TemplateResponse(request, f"{name}.html", {**base, **ctx})
 
     def missing_actions():
@@ -373,7 +373,15 @@ def create_app(store, engine=None, rt=None):
     @app.get("/behavior")
     def behavior(request: Request):
         cur = {**planner.DEFAULTS, **store.get("behavior", {})}
-        return page(request, "behavior", sliders=SLIDERS, cur=cur)
+        n = store.db.execute("SELECT COUNT(*) FROM locations WHERE enabled=1").fetchone()[0]
+        expected = cur["wo_per_month"] * n / (30 * len(cur["days"]) / 7)   # WOs on an activity day, all enabled locations
+        return page(request, "behavior", sliders=SLIDERS, cur=cur, caps=caps.limits(store), used=caps.used(store), expected=expected, locs=n)
+
+    @app.post("/caps")
+    async def save_caps(request: Request):
+        form = await request.form()
+        store.put("caps", {k: max(0, int(float(form.get(k) or 0))) for k in caps.DEFAULTS})
+        return RedirectResponse("/behavior", 303)
 
     @app.post("/behavior")
     async def save_behavior(request: Request):
