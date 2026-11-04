@@ -98,7 +98,8 @@ class Store:
 
     def get(self, key, default=None):
         r = self.db.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
-        return json.loads(r["value"]) if r else default
+        v = json.loads(r["value"]) if r else None
+        return default if v is None else v   # a stored null (cleared setting) means "use the default", not None
 
     def put(self, key, value):
         self.db.execute("INSERT INTO settings VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",

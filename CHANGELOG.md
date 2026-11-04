@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v0.17.1 - 2026-11-04
+
+- Fixed an Internal Server Error on the Settings page when a setting had been cleared and stored as empty. An empty stored setting now falls back to its default. No migration; the update needs a restart and pauses nothing.
+
 ## v0.17.0 - 2026-11-04
 
 - SB2 smoke run: a test (SB2) instance can run one full work order every 7 days (photos, checklists and a rework on) and send the pass or fail result as an alert. Turn it on under Settings > SB2 smoke run, where Run now starts one at once and the last result is shown. The agent does nothing else for the few minutes a run takes. Production instances never show or run it.

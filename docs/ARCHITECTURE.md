@@ -17,7 +17,7 @@ One Python process runs two things: an engine loop and a localhost web console. 
 
 | Module | Job |
 |---|---|
-| `store.py` | SQLite schema, encrypted secrets, settings, versioned migrations; one SQLite connection per thread (engine, web and sweep threads run at once, and one shared connection raises InterfaceError on overlap) |
+| `store.py` | SQLite schema, encrypted secrets, settings, versioned migrations; `get` returns the default for a stored null so a cleared setting never reaches callers as None; one SQLite connection per thread (engine, web and sweep threads run at once, and one shared connection raises InterfaceError on overlap) |
 | `client.py` | OAuth password grant per user, token cache, rate limiter, audit log, pause guard |
 | `planner.py` | Builds the whole plan for one WO, with times, before the WO exists |
 | `engine.py` | Runs due steps in order, retries with backoff, handles pauses and sleep gaps |
