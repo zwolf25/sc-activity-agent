@@ -539,5 +539,129 @@
   "before": "entry-mat-stained_before.jpg",
   "after": "entry-mat-stained_after.jpg",
   "both": "entry-mat-stained_both.jpg"
+ },
+ {
+  "id": "generator-battery-corroded",
+  "trades": [
+   "electrical"
+  ],
+  "scene": "Standby generator cabinet with a corroded, leaking battery and fault light, then a new battery and ready display",
+  "before": "generator-battery-corroded_before.jpg",
+  "after": "generator-battery-corroded_after.jpg",
+  "both": "generator-battery-corroded_both.jpg"
+ },
+ {
+  "id": "pylon-sign-panels-dark",
+  "trades": [
+   "electrical",
+   "general-maintenance"
+  ],
+  "scene": "Pylon sign with dark and flickering tenant panels at dusk, then every panel lit",
+  "before": "pylon-sign-panels-dark_before.jpg",
+  "after": "pylon-sign-panels-dark_after.jpg",
+  "both": "pylon-sign-panels-dark_both.jpg"
+ },
+ {
+  "id": "floor-vinyl-tile-lifted",
+  "trades": [
+   "general-maintenance",
+   "janitorial"
+  ],
+  "scene": "Lifted, cracked vinyl plank floor in a store, then the floor repaired flush",
+  "before": "floor-vinyl-tile-lifted_before.jpg",
+  "after": "floor-vinyl-tile-lifted_after.jpg",
+  "both": "floor-vinyl-tile-lifted_both.jpg"
+ },
+ {
+  "id": "dock-floor-transition-strip",
+  "trades": [
+   "general-maintenance",
+   "doors"
+  ],
+  "scene": "Broken concrete at the dock door threshold, then a new metal transition strip",
+  "before": "dock-floor-transition-strip_before.jpg",
+  "after": "dock-floor-transition-strip_after.jpg",
+  "both": "dock-floor-transition-strip_both.jpg"
+ },
+ {
+  "id": "flagpole-halyard-frayed",
+  "trades": [
+   "general-maintenance"
+  ],
+  "scene": "Flag tangled with a frayed halyard on a pole, then a new halyard and the flag flying",
+  "before": "flagpole-halyard-frayed_before.jpg",
+  "after": "flagpole-halyard-frayed_after.jpg",
+  "both": "flagpole-halyard-frayed_both.jpg"
+ },
+ {
+  "id": "overhead-door-off-track",
+  "trades": [
+   "doors"
+  ],
+  "scene": "Dock overhead door bent and off its track, then a repaired door closed",
+  "before": "overhead-door-off-track_before.jpg",
+  "after": "overhead-door-off-track_after.jpg",
+  "both": "overhead-door-off-track_both.jpg"
+ },
+ {
+  "id": "backflow-preventer-spraying",
+  "trades": [
+   "plumbing"
+  ],
+  "scene": "Backflow preventer spraying water at the body, then repaired with a test tag",
+  "before": "backflow-preventer-spraying_before.jpg",
+  "after": "backflow-preventer-spraying_after.jpg",
+  "both": "backflow-preventer-spraying_both.jpg"
+ },
+ {
+  "id": "flushometer-valve-leaking",
+  "trades": [
+   "plumbing"
+  ],
+  "scene": "Flushometer valve leaking onto a restroom floor, then a new valve and dry floor",
+  "before": "flushometer-valve-leaking_before.jpg",
+  "after": "flushometer-valve-leaking_after.jpg",
+  "both": "flushometer-valve-leaking_both.jpg"
+ },
+ {
+  "id": "water-heater-pilot-out",
+  "trades": [
+   "plumbing"
+  ],
+  "scene": "Gas water heater with the pilot out and the cover off, then relit with the cover on",
+  "before": "water-heater-pilot-out_before.jpg",
+  "after": "water-heater-pilot-out_after.jpg",
+  "both": "water-heater-pilot-out_both.jpg"
+ },
+ {
+  "id": "rtu-contactor-burnt",
+  "trades": [
+   "hvac",
+   "electrical"
+  ],
+  "scene": "Rooftop unit with a burnt contactor and loose wiring, then a new contactor",
+  "before": "rtu-contactor-burnt_before.jpg",
+  "after": "rtu-contactor-burnt_after.jpg",
+  "both": "rtu-contactor-burnt_both.jpg"
+ },
+ {
+  "id": "fence-bent-post",
+  "trades": [
+   "general-maintenance"
+  ],
+  "scene": "Chain-link fence with a bent post and sagging fabric, then a straight post and tight fence",
+  "before": "fence-bent-post_before.jpg",
+  "after": "fence-bent-post_after.jpg",
+  "both": "fence-bent-post_both.jpg"
+ },
+ {
+  "id": "roof-drain-clogged",
+  "trades": [
+   "general-maintenance"
+  ],
+  "scene": "Roof drain buried in debris with standing water, then a clean drain with a new dome",
+  "before": "roof-drain-clogged_before.jpg",
+  "after": "roof-drain-clogged_after.jpg",
+  "both": "roof-drain-clogged_both.jpg"
  }
 ]

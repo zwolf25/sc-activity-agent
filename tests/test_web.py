@@ -333,3 +333,18 @@ def test_stage_page_and_dashboard_warning(tmp_path):
     assert "Dashboard mismatch: 4 of 6" in c.get("/audit").text
     s.put("dash_check", {"dashboard": 2751, "at": 0, "location": "HQ-NYC", "checked": 6, "bad": 0, "warn": False})
     assert "Dashboard mismatch" not in c.get("/audit").text
+
+
+def test_unseeded_assets_banner_follows_seeding_and_can_be_dismissed(tmp_path):
+    s, c = client(tmp_path)
+    s.db.execute("INSERT INTO locations(store_id, db_id, subscriber_id, name) VALUES('HQ-NYC', 1, 2, 'HQ')")
+    s.put("rank1", {"HQ-NYC": {"at": 0, "trades": ["HVAC", "DOORS"], "owners": {}}})
+    assert "No assets seeded yet: HQ-NYC (HVAC)" in c.get("/dashboard").text   # DOORS carries no assets
+    assert "No assets seeded yet" not in c.get("/audit").text                    # only Dashboard and Locations show it
+    s.db.execute("INSERT INTO assets(id, location, tag, trade, type, created_at) VALUES(1,'HQ-NYC','T','HVAC','RTU',0)")
+    s.db.commit()
+    assert "No assets seeded yet" not in c.get("/dashboard").text
+    s.db.execute("DELETE FROM assets")
+    s.db.commit()
+    c.post("/assets/dismiss", headers={"referer": "/dashboard"})
+    assert "No assets seeded yet" not in c.get("/dashboard").text

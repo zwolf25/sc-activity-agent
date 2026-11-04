@@ -44,12 +44,14 @@ def test_migration_from_v1_db(tmp_path):
     c = sqlite3.connect(tmp_path / "agent.db")
     c.executescript(__import__("sc_activity_agent.store", fromlist=["x"]).SCHEMA)
     c.execute("ALTER TABLE users ADD COLUMN can_do TEXT NOT NULL DEFAULT '[]'")
+    c.execute("CREATE TABLE contracts(location TEXT)")   # shipped before B-63 dropped it
     c.execute("PRAGMA user_version=1")
     c.commit()
     c.close()
     s = Store(tmp_path)
-    assert s.db.execute("PRAGMA user_version").fetchone()[0] == 2
+    assert s.db.execute("PRAGMA user_version").fetchone()[0] == 3
     s.db.execute("SELECT * FROM assets")
+    assert not s.db.execute("SELECT 1 FROM sqlite_master WHERE name='contracts'").fetchone()
 
 
 class FakeApp:
@@ -60,6 +62,12 @@ class FakeApp:
         if method == "GET" and path == "/assettypes":
             return [{"Id": 1, "Name": n, "PrimaryTrade": t, "TradeId": 9} for n, t in
                     {(e["type"], e["trade"]) for e in CAT["entries"]}]
+        if method == "GET" and path == "/assets":
+            self.lists = getattr(self, "lists", 0) + 1
+            return {"Assets": getattr(self, "listed", [])}
+        if method == "GET" and path.startswith("/assets/"):
+            self.gets = getattr(self, "gets", 0) + 1
+            return {"Id": int(path.split("/")[-1]), "Tag": "ONE-OFF", "ModelNo": "x"}
         if method == "POST":
             if body["Tag"] in self.fail:
                 raise ScError(400, "bad asset", path)
@@ -98,3 +106,16 @@ def test_value_follows_model_and_batch():
                 m = next(m for e in CAT["entries"] if e["code"] == i["code"] for m in e["models"] if m["model"] == i["model"])
                 lo, hi = m.get("value", next(e["value"] for e in CAT["entries"] if e["code"] == i["code"]))
                 assert lo * 0.94 <= i["value"] <= hi * 1.06 + 50
+
+
+def test_missing_reads_the_list_once_and_gets_only_unlisted_ids(tmp_path):
+    first = bp()[0]
+    app = FakeApp()
+    app.listed = [{"Id": 11, "Tag": first["tag"], "ModelNo": "", "SerialNo": "S", "InstallDate": "d", "PurchaseDate": "d",
+                   "OriginalValue": 5, "Condition": 50, "Area": "Roof", "Description": "d"}]
+    s, sd = seeder(tmp_path, app)
+    s.db.execute("INSERT INTO assets(id, location, tag, trade, type, created_at) VALUES(11,'HQ-NYC',?,'PLUMBING','t',0)", (first["tag"],))
+    rows = sd.missing({"store_id": "HQ-NYC", "db_id": 5}, ids=[99])
+    assert app.lists == 1 and app.gets == 1   # only the id the list does not hold
+    assert [a["Id"] for a, _ in rows] == [11, 99]
+    assert list(rows[0][1]) == ["ModelNo"]

@@ -295,7 +295,7 @@ def make_handlers(rt):
             return False
         parts = [("CheckListResponseRequest", None, "application/json", json.dumps(req).encode())]
         if q.get("PictureFlag"):
-            pic = photos.pick(wo["trade"], "both", rt.rng, c.get("photo_set"))
+            pic = photos.pick(wo["trade"], "both", rt.rng, c.get("photo_set"), f'{c.get("equipment", "")} {c.get("issue", "")}')
             if pic:
                 c["photo_set"] = pic[0]
                 rt.save_ctx(wo, photo_set=pic[0])
@@ -328,7 +328,7 @@ def make_handlers(rt):
         if rt.rng.random() * 100 >= {**planner.DEFAULTS, **rt.store.get("behavior", {})}["photo_after"]:
             return
         c = ctx_of(wo)
-        pic = photos.pick(wo["trade"], "after", rt.rng, c.get("photo_set"))
+        pic = photos.pick(wo["trade"], "after", rt.rng, c.get("photo_set"), f'{c.get("equipment", "")} {c.get("issue", "")}')
         if not pic:
             return
         try:

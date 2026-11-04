@@ -206,7 +206,7 @@ class Creator:
 
     def _attach_before(self, app, user, wo_id, trade, ctx):
         """B-52: a before photo on the new WO. The WO already exists, so any refusal (even a pause) is skipped rather than lose its plan."""
-        pic = photos.pick(trade, "before", self.rng)
+        pic = photos.pick(trade, "before", self.rng, issue=f"{ctx.get('equipment', '')} {ctx.get('issue', '')}")
         if not pic:
             return
         try:

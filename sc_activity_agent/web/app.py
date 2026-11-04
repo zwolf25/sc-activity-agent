@@ -16,6 +16,7 @@ from fastapi.responses import PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from .. import assets
 from .. import cleanup as cleanup_mod
 from .. import pickup as pickup_mod
 from .. import __version__, autostart, awake, planner, status, update
@@ -97,7 +98,7 @@ def create_app(store, engine=None, rt=None):
         failed = db.execute("SELECT COUNT(*) FROM steps WHERE state='failed'").fetchone()[0]
         base = dict(request=request, nav=NAV, here=name, env=store.get("env"), version=__version__,
                     paused=store.get("paused_at") is not None, failed=failed,
-                    port=store.get("port"), twin_port=store.get("twin_port"), setup=setup_checks(), update=update.pending(store), update_busy=bool(update.in_progress(store)), dash_warn=(store.get("dash_check") or {}) if (store.get("dash_check") or {}).get("warn") else None)
+                    port=store.get("port"), twin_port=store.get("twin_port"), setup=setup_checks(), update=update.pending(store), update_busy=bool(update.in_progress(store)), dash_warn=(store.get("dash_check") or {}) if (store.get("dash_check") or {}).get("warn") else None, asset_todo=assets.unseeded(store))
         return tpl.TemplateResponse(request, f"{name}.html", {**base, **ctx})
 
     def missing_actions():
@@ -315,6 +316,13 @@ def create_app(store, engine=None, rt=None):
             db.execute("UPDATE steps SET state='skipped' WHERE id=?", (sid,))
         db.commit()
         return RedirectResponse("/errors", 303)
+
+    @app.post("/assets/dismiss")
+    def assets_dismiss(request: Request):
+        cfg = store.get("assets", {})
+        cfg["dismissed"] = sorted({*cfg.get("dismissed", []), *(f"{sid}:{t}" for sid, ts in assets.unseeded(store) for t in ts)})
+        store.put("assets", cfg)
+        return RedirectResponse(request.headers.get("referer") or "/dashboard", 303)
 
     @app.post("/update")
     def run_update():

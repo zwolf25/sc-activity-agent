@@ -21,9 +21,6 @@ CREATE TABLE IF NOT EXISTS roles(
 CREATE TABLE IF NOT EXISTS locations(
   store_id TEXT PRIMARY KEY, db_id INTEGER, subscriber_id INTEGER, name TEXT, enabled INTEGER NOT NULL DEFAULT 1,
   lat REAL, lon REAL, tz TEXT, overrides TEXT NOT NULL DEFAULT '{}');
-CREATE TABLE IF NOT EXISTS contracts(
-  location TEXT NOT NULL, trade_id INTEGER NOT NULL, trade TEXT, provider_id INTEGER, rank INTEGER, synced_at REAL,
-  PRIMARY KEY(location, trade_id));
 CREATE TABLE IF NOT EXISTS work_orders(
   id INTEGER PRIMARY KEY, sc_id INTEGER UNIQUE, location TEXT NOT NULL, trade TEXT, state TEXT NOT NULL,
   created_at REAL NOT NULL, ctx TEXT NOT NULL DEFAULT '{}');
@@ -56,6 +53,9 @@ MIGRATIONS = [
       UNIQUE(location, tag));
     CREATE TABLE IF NOT EXISTS asset_types(id INTEGER PRIMARY KEY, name TEXT NOT NULL, trade TEXT, created_at REAL NOT NULL);
     """,
+    # 3 (B-63): the contracts table was never read; Rank 1 trades live in the `rank1` setting. An older build that
+    # runs on this database again only ever created it with IF NOT EXISTS, so a downgrade is safe.
+    "DROP TABLE IF EXISTS contracts;",
 ]
 
 

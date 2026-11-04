@@ -34,3 +34,19 @@ def test_multipart_body_carries_a_json_part_and_a_file_part():
     body, ctype = multipart([("meta", None, "application/json", b"{}"), ("file", "a.jpg", "image/jpeg", b"\xff\xd8")])
     boundary = ctype.split("boundary=")[1].encode()
     assert body.count(b"--" + boundary) == 3 and b'name="file"; filename="a.jpg"' in body and body.endswith(b"--" + boundary + b"--\r\n")
+
+
+def test_issue_rules_name_real_sets_and_pick_a_matching_scene():
+    import random
+    assert {i for _, ids in photos.BY_ISSUE for i in ids} <= set(photos.sets())
+    rng = random.Random(1)
+    assert photos.pick("HVAC", "before", rng, issue="HVAC RTU Filter change")[0] == "hvac-rooftop-filter"
+    assert photos.pick("PLUMBING", "before", rng, issue="Water Heater Leaking")[0] == "plumbing-water-heater-valve"
+    assert photos.pick("ELECTRICAL", "before", rng, issue="Exit Signs, Emergency Lights Battery backup failed")[0] in ("electrical-exit-sign", "electrical-emergency-light")
+    # a rule whose sets are not tagged with the WO's trade is ignored: the trade still decides
+    assert "plumbing" in photos.sets()[photos.pick("PLUMBING", "before", rng, issue="Automatic Door stuck")[0]]["trades"]
+    assert "hvac" in photos.sets()[photos.pick("HVAC", "before", rng, issue="no rule matches xyz")[0]]["trades"]
+    assert photos.pick("PLUMBING", "before", rng, issue="Water Heater Pilot light out")[0] in ("plumbing-water-heater-valve", "water-heater-pilot-out")
+    assert photos.pick("PLUMBING", "before", rng, issue="Backflow Preventer leaking")[0] == "backflow-preventer-spraying"
+    assert photos.pick("DOOR/LOCK", "before", rng, issue="Overhead Door off track")[0] in ("overhead-door-off-track", "door-sweep-worn", "door-kick-plate")
+    assert photos.pick("GENERAL MAINTENANCE", "before", rng, issue="Flag pole halyard broken")[0] == "flagpole-halyard-frayed"

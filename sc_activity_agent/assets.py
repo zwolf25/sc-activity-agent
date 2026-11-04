@@ -2,6 +2,7 @@
 Commands: `agent assets plan | seed | audit | enrich`. The plan is deterministic per (store id, trade), so a rerun plans the same assets
 and only the gap is created. Design and sources: docs/asset-seeding-design.md, docs/asset-seeding-research.md."""
 import datetime as dt
+import functools
 import json
 import random
 import sys
@@ -36,6 +37,28 @@ def pick(store, rng, store_id, item, trade=None):
 
 def load_catalog():
     return json.loads(CATALOG.read_text())
+
+
+@functools.cache
+def _targets():
+    return set(load_catalog()["targets"])
+
+
+def unseeded(store):
+    """B-67 prompt: [(store id, [trade, ...])] for enabled locations where we hold Rank 1 in a trade that carries assets, the trade is
+    switched on for seeding, and the agent has seeded none there yet. Reads only local state (the `rank1` cache and the `assets` table),
+    so it is cheap enough for every page. Pairs listed in `assets.dismissed` ("STORE:TRADE") are left out."""
+    cfg = store.get("assets", {})
+    on = {t.upper() for t in cfg.get("trades", DEFAULT_TRADES)} & _targets()
+    skip, rank1 = set(cfg.get("dismissed", [])), store.get("rank1", {})
+    have = {(r["location"], (r["trade"] or "").upper()) for r in store.db.execute("SELECT DISTINCT location, trade FROM assets")}
+    out = []
+    for loc in store.db.execute("SELECT store_id FROM locations WHERE enabled=1 ORDER BY store_id"):
+        sid = loc["store_id"]
+        todo = sorted(t for t in {x.upper() for x in rank1.get(sid, {}).get("trades", [])} & on if (sid, t) not in have and f"{sid}:{t}" not in skip)
+        if todo:
+            out.append((sid, todo))
+    return out
 
 
 # --- serial formatters: (manufacture date, sequence, batch letter) -> serial. Formats: docs/asset-seeding-research.md ---
@@ -219,9 +242,10 @@ class Seeder:
         app, user = self.who(loc)
         ids = {r["id"] for r in self.store.db.execute("SELECT id FROM assets WHERE location=?", (loc["store_id"],))} | set(ids or ())
         bp = {b["tag"]: b for t in self.cat["targets"] for b in blueprint(self.cat, loc["store_id"], t, self.today)}
+        listed = {a["Id"]: a for a in self.existing(loc)}   # one call: list items carry every field enrich needs (checked on SB2, 2026-11-03)
         out = []
         for i in sorted(ids):
-            a = app.call(user, "GET", f"/assets/{i}", write=False)
+            a = listed.get(i) or app.call(user, "GET", f"/assets/{i}", write=False)
             empty = {f: bp[a["Tag"]][k] for f, k in EMPTY_FIELDS.items() if a.get(f) in (None, "", 0) and f != "Condition" or a.get(f) is None and f == "Condition"
                      if a["Tag"] in bp}
             out.append((a, empty))

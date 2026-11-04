@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v0.14.3 - 2026-11-03
+
+- Twelve new photo sets with no cable clutter (generator battery, pylon sign, lifted floor, dock threshold, flagpole, overhead door, backflow preventer, flushometer, water heater pilot, burnt contactor, fence, roof drain). The library has 64 sets.
+- Before, after and checklist photos now match the issue, not only the trade (a water heater leak gets the water heater photo, a clogged filter gets the filter photo). Issues with no matching scene still get a photo of the trade.
+- `agent assets audit` and `enrich` read the asset list once instead of one request per asset.
+- The Dashboard and Locations pages show a banner when a location has a trade we hold Rank 1 for but no seeded assets, with the command to run. Dismiss hides it for those locations and trades.
+- Housekeeping: the unused `contracts` table is dropped by a migration (database version 3). The update needs the usual restart; nothing pauses.
+
 ## v0.14.2 - 2026-11-03
 
 - New warning when the dashboard you select is not the one assigned to the Subscriber user. ServiceChannel creates work orders from the user's dashboard, so the issue and NTE can differ from what the agent planned. The agent checks a sample of issues when you change the dashboard, daily, and every 10 minutes while the warning shows, and a banner on every page says what to fix.
