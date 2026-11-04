@@ -105,3 +105,13 @@ def test_snap_reads_hours_in_the_location_zone_not_the_instance_zone(tmp_path):
     assert e.snap(T0 + 3 * 3600, "HQ") == T0 + 3 * 3600        # 10:00 Eastern is inside the window
     mt = dt.datetime(2026, 10, 26, 7, 0, tzinfo=ZoneInfo("America/Denver")).timestamp()
     assert e.snap(mt, "LA") == mt + 3600 and e.snap(mt) == mt + 3600   # no zone on the row, none given: instance zone
+
+
+def test_only_wo_limits_which_steps_are_due(tmp_path):
+    s = Store(tmp_path)
+    for n in (1, 2):
+        add_plan(s, "HQ", "HVAC", n, [{"kind": "check_in", "due_at": T0, "payload": {}}], {}, T0)
+    e = Engine(s, {}, clock=lambda: T0 + 10)
+    assert len(e.due(T0 + 10)) == 2
+    e.only_wo = s.db.execute("SELECT id FROM work_orders WHERE sc_id=2").fetchone()["id"]
+    assert [r["sc_id"] for r in e.due(T0 + 10)] == [2]

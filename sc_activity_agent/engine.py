@@ -27,6 +27,7 @@ class Engine:
         self.store, self.handlers, self.clock, self.per_tick = store, handlers, clock, per_tick
         self.paused_at = store.get("paused_at")
         self.rng = random.Random()
+        self.only_wo = None   # smoke run: tick only this WO so older overdue steps do not take its slots
         self.rotate = None   # fn(wo, step) -> bool, set by the CLI: pick another user for a step
 
     @property
@@ -55,10 +56,10 @@ class Engine:
     def due(self, now):
         return self.store.db.execute(
             """SELECT s.*, w.sc_id, w.location, w.state AS wo_state FROM steps s JOIN work_orders w ON w.id=s.wo_id
-               WHERE s.state='pending' AND s.due_at<=? AND w.state NOT IN ('cancelled','closed')
+               WHERE s.state='pending' AND s.due_at<=? AND w.state NOT IN ('cancelled','closed') AND (? IS NULL OR s.wo_id=?)
                  AND NOT EXISTS (SELECT 1 FROM steps e WHERE e.wo_id=s.wo_id AND e.seq<s.seq
                                  AND (e.state='failed' OR (e.state='pending' AND e.due_at>?)))
-               ORDER BY s.due_at LIMIT ?""", (now, now, self.per_tick)).fetchall()   # B-66: a step behind a failed or future one cannot run, so it must not take a slot
+               ORDER BY s.due_at LIMIT ?""", (now, self.only_wo, self.only_wo, now, self.per_tick)).fetchall()   # B-66: a step behind a failed or future one cannot run, so it must not take a slot
 
     def zone(self, location=None):
         """B-74: the time zone of a location's store, else the instance zone."""

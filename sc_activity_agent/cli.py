@@ -139,7 +139,7 @@ def cmd_run(args, store):
         threading.Thread(target=uvicorn.run, args=(create_app(store, engine, rt),),
                          kwargs={"host": "127.0.0.1", "port": port, "log_level": "warning"}, daemon=True).start()
         print(f"Console: http://127.0.0.1:{port}")
-    from . import caps, pickup, update
+    from . import caps, pickup, smoke, update
     from . import cleanup
     from .creator import Creator
     creator = Creator(store, rt, rt.rng)
@@ -155,7 +155,7 @@ def cmd_run(args, store):
             # one failing piece must not stop the others, or the whole agent
             for name, fn in (("limits", lambda: caps.check(store)), ("step", engine.tick), ("update", lambda: (update.check(store), [])[1]),
                              ("create", creator.tick), ("watch", lambda: watch(store, rt)), ("pickup", lambda: pickup.tick(store, rt, creator)),
-                             ("cleanup", lambda: sweep_in_thread(store, rt))):
+                             ("cleanup", lambda: sweep_in_thread(store, rt)), ("smoke", lambda: smoke.tick(store, engine, rt))):
                 try:
                     for key, outcome in fn():
                         print(time.strftime("%H:%M:%S"), f"{name} {key}: {outcome}")

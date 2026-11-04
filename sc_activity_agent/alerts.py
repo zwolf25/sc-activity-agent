@@ -22,7 +22,8 @@ EVENTS = {"step_failed": "A step failed after its retries",
           "checkin_blocked": "Check-in is blocked for a Provider (error 804)",
           "connection": "A connection or login failed",
           "offline": "The agent was not running for over an hour",
-          "cap_hit": "A daily limit paused the agent"}
+          "cap_hit": "A daily limit paused the agent",
+          "smoke": "The SB2 smoke run finished (SB2 instances only)"}
 
 
 class AlertError(Exception):

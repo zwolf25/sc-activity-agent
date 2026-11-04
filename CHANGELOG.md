@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.17.0 - 2026-11-04
+
+- SB2 smoke run: a test (SB2) instance can run one full work order every 7 days (photos, checklists and a rework on) and send the pass or fail result as an alert. Turn it on under Settings > SB2 smoke run, where Run now starts one at once and the last result is shown. The agent does nothing else for the few minutes a run takes. Production instances never show or run it.
+- `scripts/live_sb2.py` uses the same code.
+- The update needs the usual restart. No database change; nothing pauses.
+
 ## v0.16.0 - 2026-11-03
 
 - The Daily limits card moved from Behavior to Settings.

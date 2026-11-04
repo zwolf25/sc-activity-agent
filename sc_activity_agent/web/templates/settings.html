@@ -15,6 +15,10 @@
 <div class="hours"><label>Work orders <input type="number" min="0" name="wo_per_day" value="{{ caps.wo_per_day }}" style="width:6em"></label>
 <label>API calls <input type="number" min="0" name="calls_per_day" value="{{ caps.calls_per_day }}" style="width:6em"></label></div><span></span></div>
 <div class="row"><small>Today so far: {{ used.wo_per_day }} work orders, {{ used.calls_per_day }} API calls.</small><button>Save limits</button></div></form>
+{% if smoke_ui %}<form method="post" action="/smoke" class="card"><h3>SB2 smoke run</h3>
+<div class="sl set"><div>Run a full work order every {{ smoke.days }} days<small>Creates one work order at the first enabled location and runs every step now (photos, checklists and a rework on), then sends the result as a Telegram alert. It blocks the agent for a few minutes while it runs. Test instances only.</small></div>
+<input type="hidden" name="on" value="off"><input type="checkbox" name="on" value="on" {{ 'checked' if smoke.on }}></div>
+<div class="row"><small>{% if smoke_last %}Last run: {{ 'passed' if smoke_last.ok else 'FAILED' }}. {{ smoke_last.text }}{% else %}No run yet.{% endif %}{% if smoke.run_now %} A run starts on the next pass.{% endif %}</small><span><button name="now" value="1">Run now</button> <button class="primary">Save</button></span></div></form>{% endif %}
 <div class="card"><h3>Updates and support</h3>
 <p>Version {{ version }}. The agent checks for a new release every hour and shows a banner. Updating pauses the agent, saves a backup, installs the release and restarts. If the new version does not start, the old version and your database are put back.</p>
 <div class="row" style="justify-content:flex-start"><form method="post" action="/check-update"><button>Check for updates</button></form>

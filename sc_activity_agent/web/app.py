@@ -16,7 +16,7 @@ from fastapi.responses import PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from .. import assets, caps
+from .. import assets, caps, smoke
 from .. import cleanup as cleanup_mod
 from .. import pickup as pickup_mod
 from .. import __version__, autostart, awake, planner, status, update
@@ -332,6 +332,12 @@ def create_app(store, engine=None, rt=None):
         return page(request, "errors", groups=error_groups(rows, tz), create_errors=[dict(e, when=stamp(e["at"], ZoneInfo(store.get("tz", "America/New_York"))))
                                                     for e in store.get("create_errors", [])[::-1]])
 
+    @app.post("/smoke")
+    def save_smoke(on: str = Form("off"), now: str = Form("")):
+        if store.get("env") == "sb2":   # the run creates a real WO: never on Production
+            store.put("smoke", {**smoke.settings(store), "on": on == "on" or bool(now), "run_now": bool(now)})
+        return RedirectResponse("/settings", 303)
+
     @app.post("/steps/group/{action}")
     async def group_action(action: str, request: Request):
         ids = [int(i) for i in (await request.form()).getlist("id")]
@@ -574,7 +580,8 @@ def create_app(store, engine=None, rt=None):
         cur = {**planner.DEFAULTS, **store.get("behavior", {})}
         n = store.db.execute("SELECT COUNT(*) FROM locations WHERE enabled=1").fetchone()[0]
         expected = cur["wo_per_month"] * n / (30 * len(cur["days"]) / 7)   # WOs on an activity day, all enabled locations
-        return page(request, "settings", caps=caps.limits(store), used=caps.used(store), expected=expected, locs=n, login=autostart.enabled(store.dir, store.get("env")),
+        return page(request, "settings", caps=caps.limits(store), used=caps.used(store), expected=expected, locs=n,
+                    smoke_ui=store.get("env") == "sb2", smoke=smoke.settings(store), smoke_last=store.get("smoke_last"), login=autostart.enabled(store.dir, store.get("env")),
                     awake_ui=awake.supported(), awake_on=store.get("keep_awake", True), check_on=store.get("status_check", True), pickup_on=pickup_mod.settings(store)["on"], checklist_on=store.get("checklists", {}).get("on", False),
                     policy=store.get("resume_policy", "catch_up"), msg=msg, al=al.cfg, token_set=bool(store.get("alerts_token")),
                     backups=[(n, s // 1024, stamp(t, ZoneInfo(store.get("tz", "America/New_York")))) for n, s, t in update.backups(store)],
