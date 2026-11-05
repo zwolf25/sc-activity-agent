@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v0.18.0 - 2026-11-05
+
+- New: Settings > Danger zone > Factory reset. It clears all connections, users, locations, tracked work orders, the audit log and every setting, so the agent starts setup from scratch without a reinstall. It saves a database backup first, keeps the environment, port and secret key, and needs the typed word RESET plus a tick box. Work orders already in ServiceChannel are not deleted (run Clean-up first to cancel them). It refuses while a clean-up or update is running.
+- The Setup checklist now says what to do for each open step, and has new steps: every Provider needs its numeric Provider ID, at least one enabled location, and a Provider you control must be Rank 1 at a location (confirmed by the first creation pass; it does not hold back the Dashboard). The Dashboard banner names the next step.
+- Provider connections now require a numeric Provider ID (before, a missing one made creation fail later with "no eligible trade").
+- Clearer errors with the fix: login failures, unreachable ServiceChannel (internet, VPN, proxy), dashboard and location load failures, and the Errors page now shows a hint under each work order creation error (no Rank 1 provider, dashboard not assigned, billing 1145, check-in 804). Deleting a connection also forgets its cached login.
+- Restart the agent to update. Nothing pauses.
+
 ## v0.17.5 - 2026-11-05
 
 - The Setup page and the Dashboard banner said a Subscriber and Provider pair needed linking after any 403 on check-in. They now say so only for error 804. Any other refusal shows as "Last check-in failed" with ServiceChannel's reason, and no link request is offered.

@@ -1,8 +1,8 @@
 {% extends "base.html" %}{% block body %}
 <div class="card"><h2>Set up this instance</h2>
 <p>Finish these steps, then the agent starts creating activity. You can come back to any step.</p>
-<table><tbody>{% for label, ok, href in setup %}<tr><td>{{ label }}</td><td><span class="pill {{ 'good' if ok else 'warn' }}">{{ 'Done' if ok else 'To do' }}</span></td><td><a href="{{ href }}">Open</a></td></tr>{% endfor %}</tbody></table>
-<div class="row">{% set nxt = setup|rejectattr(1)|list %}{% if nxt %}<a href="{{ nxt[0][2] }}"><button class="primary" type="button">Next: {{ nxt[0][0] }}</button></a>{% else %}<a href="/dashboard"><button class="primary" type="button">All set. Open Dashboard</button></a>{% endif %}
+<table><tbody>{% for label, ok, href, help, req in setup %}<tr><td>{{ label }}{% if not ok and help %}<br><small>{{ help }}</small>{% endif %}</td><td><span class="pill {{ 'good' if ok else 'warn' }}">{{ 'Done' if ok else 'To do' if req else 'Not confirmed yet' }}</span></td><td><a href="{{ href }}">Open</a></td></tr>{% endfor %}</tbody></table>
+<div class="row">{% set nxt = setup|selectattr(4)|rejectattr(1)|list %}{% if nxt %}<a href="{{ nxt[0][2] }}"><button class="primary" type="button">Next: {{ nxt[0][0] }}</button></a>{% else %}<a href="/dashboard"><button class="primary" type="button">All set. Open Dashboard</button></a>{% endif %}
 <a href="/dashboard"><button type="button">Skip to Dashboard</button></a></div></div>
 {% if pairs %}<div class="card"><h2>Check-in permission</h2>
 <p>ServiceChannel support must enable check-in/out for each Subscriber and Provider pair. Without it, check-ins fail with error 804. This does not block setup. Send the request below, and the status turns to Confirmed after the first check-in succeeds.</p>

@@ -45,6 +45,10 @@ Work order creation only runs while the agent runs. If the machine sleeps, the a
 Production and SB2 are two separate instances with their own data, keys and ports (8080 and 8081). Nothing switches between them. On a Production instance, Connections has an **Open SB2 test instance** button that starts the SB2 copy. The SB2 copy lives in a folder beside the Production data folder, with `-sb2` added to its name. Integration apps are registered per environment, so the SB2 copy needs SB2 apps.
 
 
+## Factory reset
+
+Settings > Danger zone > Factory reset clears all data and settings and starts setup again, without a reinstall. It saves a backup first, keeps the environment, port and secret key, and does not delete work orders already in ServiceChannel (run Clean-up first for that). You must type RESET to confirm.
+
 ## Telegram alerts (optional)
 
 Settings > Telegram alerts walks you through it, with a check at each step:

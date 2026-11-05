@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% block body %}
+<div class="card"><h2>Factory reset</h2>
+<div class="banner warn"><b>This cannot be undone from the app.</b> It deletes everything you set up and everything the agent tracks.</div>
+{% if busy %}<p><b>{{ busy }}</b> Reset is unavailable until then.</p>{% endif %}
+<h3>What is deleted</h3>
+<ul><li>{{ counts.connections }} connection(s) and {{ counts.users }} user(s), including saved Client IDs, secrets and passwords</li>
+<li>{{ counts.locations }} location(s) and their settings</li>
+<li>{{ counts.wos }} tracked work order(s) and {{ counts.steps }} planned step(s). Pending steps never run.</li>
+<li>The audit log ({{ counts.log }} row(s)), the error lists and alert history</li>
+<li>All settings: behavior, caps, dashboard choice, Telegram token, schedules, caches</li></ul>
+<h3>What is kept</h3>
+<ul><li>The environment ({{ env|upper }}), the port and the secret key chosen at install</li>
+<li>The backups folder, with a new backup of the current database made right before the reset</li></ul>
+<h3>What is not touched</h3>
+<p><b>Work orders already created in ServiceChannel stay there.</b> After a reset the agent forgets them and cannot cancel them. If you want them cancelled, run <a href="/cleanup">Clean-up</a> first.</p>
+<p>To undo a reset, stop the agent and run <code>agent backup &lt;name&gt;</code> with the backup named in the confirmation message.</p>
+<form method="post" action="/reset" class="grp">
+<label class="chk"><input type="checkbox" name="understood" value="1"> <span>I understand this deletes all data and settings on this {{ env|upper }} instance and that work orders already in ServiceChannel are not deleted.</span></label>
+<label>Type <b>RESET</b> to confirm <input name="confirm" autocomplete="off" placeholder="RESET"></label>
+<div class="row"><button class="kill" {{ 'disabled' if busy }}>Erase everything and start over</button> <a href="/settings"><button type="button">Cancel</button></a></div></form></div>
+{% endblock %}

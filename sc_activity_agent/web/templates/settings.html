@@ -48,4 +48,6 @@
 <button class="primary">Save</button></form></li></ol>
 <p class="muted">Limits: the same alert is not repeated within 6 hours, and at most 10 are sent per hour. Alerts only go out while the agent is running. {% if alert_error %}Last send problem: {{ alert_error }}{% endif %}</p>
 {% if token_set %}<form method="post" action="/alerts/remove"><button>Remove Telegram alerts</button></form>{% endif %}</div>
+<div class="card"><h3>Danger zone</h3><p>Factory reset clears all data and settings so the agent starts setup from scratch, without a reinstall. A backup of the database is saved first.</p>
+<a href="/reset"><button type="button" class="kill">Factory reset...</button></a></div>
 {% endblock %}

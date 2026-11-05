@@ -21,6 +21,7 @@ One Python process runs two things: an engine loop and a localhost web console. 
 | `client.py` | OAuth password grant per user, token cache, rate limiter, audit log, pause guard |
 | `planner.py` | Builds the whole plan for one WO, with times, before the WO exists |
 | `engine.py` | Runs due steps in order, retries with backoff, handles pauses and sleep gaps |
+| `reset.py` | Factory reset: `update.backup`, delete every row of every table, delete all settings except `env`, `port`, `twin_port`, remove cached issue-list/brand files, clear `rt.apps` and engine pause state. `busy()` refuses during a clean-up or update. Why: setup state spans tables, settings and files, so deleting the data dir by hand is error-prone; keeping `env`/`port` keeps the install's lock on its environment and the secret key keeps nothing readable. Work orders already in ServiceChannel are not touched (the agent cannot undo them without Clean-up) |
 | `handlers/` | One executor per step kind; picks the mapped user and calls the API. Split by area (B-62): `runtime.py` (Runtime, user pick), `common.py` (ACTION map, `Skip`, `insert_steps`, `end_plan`, `cancel_wo`), `guard.py` (`preflight`, `follow`, `guarded`, `watch`), `notes.py`, `field.py` (accept, decline, reassign, reschedule, check-in/out), `checklists.py`, `review.py` (review and rework), `invoices.py`, `proposals.py`; `__init__.py` composes them in `make_handlers`. Why: one 700-line closure was the hardest file to review; each module's `build(rt, call, ctx_of)` returns its handlers, so the closure stays small and the tests still call `make_handlers` |
 | `creator.py` | Rolls daily WO counts, picks issues, creates WOs, saves their plans |
 | `generator.py` | Pure helpers: issue flattening, Rank 1 trades, picking, payloads |
@@ -107,6 +108,8 @@ Why outbound only: the agent runs on a user's laptop with no public address, so 
 
 ## Data model
 `connections` and `users` hold integration apps and their users. `users.can_do` is a JSON list of actions the user may do (set with the Can do checkboxes on Connections). The old `roles` table is gone (migration 4, B-76); migration 1 creates it only to convert old rows. `locations` describes where the agent works. `work_orders` and `steps` hold each WO and its plan. `api_log` is the audit trail. `settings` holds everything else as JSON.
+
+**Setup guidance.** `setup_checks()` returns `(label, done, link, help, required)`. Setup lists the help text for every open step. The Rank 1 step is not required because the `rank1` cache is only filled by the first creation pass. `ERROR_HINTS` + `hint()` map known error text to the fix and are used on the Errors page (failed steps and creation errors) and in connection-flow messages.
 
 ## Known limits
 - **Checklists:** the agent cannot create a checklist (no endpoint); a person sets one up in ServiceChannel, and with none for the trade and location the agent does nothing. `TechnicianID` is a fixed 1 because our users store no ServiceChannel user id. Whether a check-out is blocked by unanswered required questions is unknown, because the agent answers all of them. Not run on Production.

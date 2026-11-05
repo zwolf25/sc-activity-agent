@@ -46,6 +46,7 @@ None yet. Zac's new ideas go here first, then get sized and ranked.
 ## Done
 | ID | Item | Version |
 |----|------|---------|
+| B-85 | Setup audit: guided checklist with help per step (Provider ID, enabled location, Rank 1), actionable error hints, validated connection flows; Factory reset in Settings with backup, typed confirmation and warnings | 0.18.0 |
 | B-82 | Open transactions outside the loop are committed: the Telegram poller after each pass, clean-up threads when they end, and web request threads by a middleware once no request is in flight. Each logs which one leaked | 0.17.5 |
 | B-84 | Smoke run no longer stores a setting as null: a key that did not exist is deleted after the run (`Store.drop`) | 0.17.4 |
 | B-62 | Split `handlers.py` into the `handlers/` package by area (runtime, common, guard, notes, field, checklists, review, invoices, proposals). Behavior unchanged | 0.17.4 |

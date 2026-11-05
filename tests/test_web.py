@@ -367,3 +367,28 @@ def test_errors_page_groups_repeats_and_acts_on_a_group(tmp_path):
     ids = [r["id"] for r in s.db.execute("SELECT id FROM steps WHERE kind='invoice'")]
     c.post("/steps/group/skip", data={"id": ids})
     assert [r["state"] for r in s.db.execute("SELECT state FROM steps ORDER BY id")] == ["skipped", "skipped", "failed"]
+
+
+def test_factory_reset_needs_confirmation_and_clears(tmp_path):
+    store, c = client(tmp_path)
+    store.put("subscriber_id", 1)
+    store.put("env", "sb2")
+    assert "RESET" in c.get("/reset").text
+    c.post("/reset", data={"confirm": "no", "understood": "1"}, follow_redirects=False)
+    assert store.get("subscriber_id") == 1
+    r = c.post("/reset", data={"confirm": "RESET", "understood": "1"}, follow_redirects=False)
+    assert r.headers["location"].startswith("/setup")
+    assert store.get("subscriber_id") is None and store.get("env") == "sb2"
+    assert list((store.dir / "backups").glob("*"))
+
+
+def test_provider_needs_numeric_id(tmp_path):
+    store, c = client(tmp_path)
+    r = c.post("/connections/add", data=dict(side="provider", name="P", client_id="a", client_secret="b", provider_id=""), follow_redirects=False)
+    assert "Provider ID" in r.headers["location"] or "Provider%20ID" in r.headers["location"]
+    assert not store.db.execute("SELECT 1 FROM connections").fetchone()
+
+
+def test_create_error_hint():
+    from sc_activity_agent.web.app import hint
+    assert "Rank 1" in hint("409 no eligible trade at ZW123 (no Rank 1 provider connection)")

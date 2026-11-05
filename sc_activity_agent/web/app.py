@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .. import assets, caps, smoke
+from .. import reset as reset_mod
 from .. import cleanup as cleanup_mod
 from .. import pickup as pickup_mod
 from .. import __version__, autostart, awake, planner, status, update
@@ -88,7 +89,18 @@ def gap_text(g, z):
 # B-79: known causes, matched against the error text
 ERROR_HINTS = [(re.compile(r"\b1104\b"), "The invoice or proposal is over the NTE. Skip it, or raise the NTE on the WO in ServiceChannel."),
                (re.compile(r"\b403\b.*\b100\b|\b100\b.*\b403\b"), "ServiceChannel refused a second attach on the same asset. Skip it."),
-               (re.compile(r"\b429\b"), "Rate limited. Retry later; lower the calls per minute if it repeats.")]
+               (re.compile(r"\b429\b"), "Rate limited. Retry later; lower the calls per minute if it repeats."),
+               (re.compile(r"\b804\b"), "Check-in is not enabled for this Subscriber and Provider pair. Open Setup, copy the request under Check-in permission and send it to ServiceChannel support."),
+               (re.compile(r"\b1145\b"), "ServiceChannel blocks this Provider on billing. Fix the Provider's billing in Fixxbook (CSA Billing), then retry."),
+               (re.compile(r"no eligible trade at"), "No Provider you control is Rank 1 for any trade at this location. In ServiceChannel Contracts, rank one of your Providers 1 for a trade there, or use another location. Then press 'Re-read contracts' on Locations. Also check that each Provider connection has its Provider ID."),
+               (re.compile(r"no issue resolves on the dashboard"), "The issue list dashboard has no problem for this location's trades. In ServiceChannel, assign the dashboard to the Subscriber user, then reload dashboards on Connections."),
+               (re.compile(r"Client ID or secret rejected"), "ServiceChannel does not accept this integration app. Check the Client ID and secret, and that the app is registered in this environment (SB2 apps do not work in Production). Delete the connection on Connections and add it again."),
+               (re.compile(r"Username or password rejected"), "ServiceChannel does not accept this user's login. Delete the user on Connections and add it again with the current password."),
+               (re.compile(r"Could not reach ServiceChannel"), "The computer cannot reach ServiceChannel. Check the internet connection, VPN or proxy, then retry.")]
+
+
+def hint(text):
+    return next((h for rx, h in ERROR_HINTS if rx.search(text or "")), "")
 
 
 def error_groups(rows, tz):
@@ -104,7 +116,7 @@ def error_groups(rows, tz):
         rs = g["rows"]
         out.append(dict(kind=g["kind"], error=g["error"], count=len(rs), ids=[r["id"] for r in rs], wos=[r["sc_id"] for r in rs],
                         first=stamp(rs[0]["due_at"], tz), last=stamp(rs[-1]["due_at"], tz),
-                        hint=next((h for rx, h in ERROR_HINTS if rx.search(g["error"])), "")))
+                        hint=hint(g["error"])))
     return sorted(out, key=lambda g: -g["count"])
 
 
@@ -156,15 +168,31 @@ def create_app(store, engine=None, rt=None):
                 if not db.execute("SELECT 1 FROM users WHERE conn_id=? AND EXISTS (SELECT 1 FROM json_each(can_do) WHERE value='check_in')", (c["id"],)).fetchone()]
 
     def setup_checks():
+        """(label, done, link, help, required). help says what to do when the step is open. A step that is not required
+        (it can only be confirmed by the first creation pass) shows on the checklist but does not hold back the Dashboard."""
         n = lambda sql: db.execute(sql).fetchone()[0]
         has = lambda side: n(f"SELECT COUNT(*) FROM connections c WHERE side='{side}' AND EXISTS(SELECT 1 FROM users u WHERE u.conn_id=c.id)") > 0
-        return [("Subscriber connection with a user", has("subscriber"), "/connections"),
-                ("Subscriber ID and issue list dashboard chosen", bool(store.get("subscriber_id")) and bool(store.get("dashboard_chosen")), "/connections"),
-                ("Provider connection with a user", has("provider"), "/connections"),
-                ("At least one location", n("SELECT COUNT(*) FROM locations") > 0, "/locations"),
-                ("Every action has a user", not missing_actions(), "/connections"),
-                ("Every Provider has a check-in tech", not no_tech(), "/connections"),
-                ("Behavior reviewed", bool(store.get("behavior")), "/behavior")]
+        no_pid = [r[0] for r in db.execute("SELECT name FROM connections WHERE side='provider' AND provider_id IS NULL")]
+        r1 = store.get("rank1", {})
+        ranked = any(r1.get(r[0], {}).get("trades") for r in db.execute("SELECT store_id FROM locations WHERE enabled=1"))
+        return [("Subscriber connection with a user", has("subscriber"), "/connections",
+                 "Add the Subscriber integration app (Client ID and secret) and a Subscriber user. Both come from ServiceChannel; the app must be registered in this environment.", True),
+                ("Subscriber ID and issue list dashboard chosen", bool(store.get("subscriber_id")) and bool(store.get("dashboard_chosen")), "/connections",
+                 "On Connections, enter the numeric Subscriber ID and load the dashboards, then pick the issue list dashboard the agent draws problems from.", True),
+                ("Provider connection with a user", has("provider"), "/connections",
+                 "Add a Provider integration app and a Provider user. A Provider that is Rank 1 for a trade at your location receives the Work Orders.", True),
+                ("Every Provider has its numeric Provider ID", not no_pid, "/connections",
+                 "Delete and re-add " + ", ".join(no_pid) + " with its Provider ID. Without it the agent cannot read the Provider's Rank 1 trades, so it creates nothing." if no_pid else "", True),
+                ("At least one enabled location", n("SELECT COUNT(*) FROM locations WHERE enabled=1") > 0, "/locations",
+                 "On Locations, add a store ID and keep it enabled.", True),
+                ("Every action has a user", not missing_actions(), "/connections",
+                 "On Connections, tick every action on at least one user: " + ", ".join(missing_actions()) + "." if missing_actions() else "", True),
+                ("Every Provider has a check-in tech", not no_tech(), "/connections",
+                 "On Connections, give a user of " + ", ".join(no_tech()) + " the check-in action." if no_tech() else "", True),
+                ("Behavior reviewed", bool(store.get("behavior")), "/behavior",
+                 "Open Behavior, review the rates and press Save.", True),
+                ("A Provider you control is Rank 1 at an enabled location", ranked, "/locations",
+                 "Confirmed by the first creation pass. If it stays open: in ServiceChannel Contracts, rank one of your Providers 1 for a trade at the location, or add a location where it is Rank 1, then press 'Re-read contracts' on Locations. Until then every create fails with 'no eligible trade'.", False)]
 
     def pair_status():
         """Check-in permission per Provider: ok after a successful check-in, blocked after a 403 with error 804 (no pair permission),
@@ -193,7 +221,7 @@ def create_app(store, engine=None, rt=None):
 
     @app.get("/")
     def home(request: Request):
-        if not all(c[1] for c in setup_checks()):
+        if not all(c[1] for c in setup_checks() if c[4]):
             return RedirectResponse("/setup", 303)
         return RedirectResponse("/dashboard", 303)
 
@@ -257,8 +285,9 @@ def create_app(store, engine=None, rt=None):
             return RedirectResponse("/connections?msg=Add a Subscriber user first", 303)
         try:
             heads = sa[0].call(sa[1], "GET", f"/api/subscribers/{subscriber_id}/issuelist/headers", action="dashboards")["Headers"]
-        except ScError as e:
-            return RedirectResponse(f"/connections?msg={e.body or e}", 303)
+        except (ScError, OSError) as e:
+            why = "Could not reach ServiceChannel: " + str(e) if isinstance(e, OSError) else str(e.body or e)
+            return RedirectResponse("/connections?msg=" + quote(f"Could not load dashboards: {why}. Check the Subscriber ID and that the Subscriber user can see issue lists. {hint(why)}".strip()), 303)
         store.put("dashboards_cache", [{"id": h["DashboardId"], "name": h["Name"]} for h in heads])
         return RedirectResponse("/connections?msg=Dashboards loaded", 303)
 
@@ -273,8 +302,13 @@ def create_app(store, engine=None, rt=None):
                        provider_id: str = Form("")):
         if side == "subscriber" and db.execute("SELECT 1 FROM connections WHERE side='subscriber'").fetchone():
             return RedirectResponse("/connections?msg=Only one Subscriber connection is allowed", 303)
+        pid = provider_id.strip()
+        if side == "provider" and not pid.isdigit():
+            return RedirectResponse("/connections?msg=" + quote("Enter the Provider ID as a number (find it in ServiceChannel under the Provider's profile). The agent needs it to read which trades this Provider is Rank 1 for."), 303)
+        if pid and not pid.isdigit():
+            return RedirectResponse("/connections?msg=" + quote("The Provider ID must be a number."), 303)
         db.execute("INSERT INTO connections(side,name,client_id,client_secret,provider_id) VALUES(?,?,?,?,?)",
-                   (side, name, client_id.strip(), store.enc(client_secret.strip()), int(provider_id) if provider_id.strip() else None))
+                   (side, name, client_id.strip(), store.enc(client_secret.strip()), int(pid) if pid else None))
         db.commit()
         store.put("rank1", {})   # a new provider can be Rank 1 somewhere; re-read at the next creation pass
         return RedirectResponse("/connections", 303)
@@ -285,7 +319,8 @@ def create_app(store, engine=None, rt=None):
         try:   # log in first: a user that cannot sign in is not saved
             ScApp(store.get("env"), c["client_id"], store.dec(c["client_secret"])).token(username.strip(), password)
         except (ScError, OSError) as e:
-            return RedirectResponse("/connections?msg=" + quote(f"{username.strip()} was not added: {getattr(e, 'body', None) or e}"), 303)
+            why = f"Could not reach ServiceChannel: {e}" if isinstance(e, OSError) else str(getattr(e, "body", None) or e)
+            return RedirectResponse("/connections?msg=" + quote(f"{username.strip()} was not added: {why}. {hint(why)}".strip()), 303)
         side = db.execute("SELECT side FROM connections WHERE id=?", (cid,)).fetchone()["side"]
         first = not db.execute("SELECT 1 FROM users WHERE conn_id=?", (cid,)).fetchone()   # the first user on a connection can do everything
         db.execute("INSERT INTO users(conn_id,username,password,label,can_do) VALUES(?,?,?,?,?)",
@@ -312,6 +347,8 @@ def create_app(store, engine=None, rt=None):
     def del_connection(cid: int):
         db.execute("DELETE FROM connections WHERE id=?", (cid,))
         db.commit()
+        if rt is not None:
+            rt.apps.pop(cid, None)
         store.put("rank1", {})
         return RedirectResponse("/connections", 303)
 
@@ -321,9 +358,10 @@ def create_app(store, engine=None, rt=None):
         try:
             ScApp(store.get("env"), u["client_id"], store.dec(u["client_secret"])).token(u["username"], store.dec(u["password"]))
             msg = f"{u['username']}: connection OK"
-        except ScError as e:
-            msg = f"{u['username']}: {e.body if e.body else e}"
-        return RedirectResponse(f"/connections?msg={msg}", 303)
+        except (ScError, OSError) as e:
+            why = f"Could not reach ServiceChannel: {e}" if isinstance(e, OSError) else str(getattr(e, "body", None) or e)
+            msg = f"{u['username']}: {why}. {hint(why)}".strip()
+        return RedirectResponse("/connections?msg=" + quote(msg), 303)
 
     @app.post("/users/{uid}/delete")
     def del_user(uid: int):
@@ -351,7 +389,7 @@ def create_app(store, engine=None, rt=None):
     def errors(request: Request):
         rows = db.execute("SELECT s.*, w.sc_id FROM steps s JOIN work_orders w ON w.id=s.wo_id WHERE s.state='failed' ORDER BY s.due_at").fetchall()
         tz = ZoneInfo(store.get("tz", "America/New_York"))
-        return page(request, "errors", groups=error_groups(rows, tz), create_errors=[dict(e, when=stamp(e["at"], ZoneInfo(store.get("tz", "America/New_York"))))
+        return page(request, "errors", groups=error_groups(rows, tz), create_errors=[dict(e, hint=hint(e["error"]), when=stamp(e["at"], tz))
                                                     for e in store.get("create_errors", [])[::-1]])
 
     @app.post("/smoke")
@@ -485,7 +523,7 @@ def create_app(store, engine=None, rt=None):
             rows = locations_mod.fetch(lambda path, params: sa[0].call(sa[1], "GET", path, params, action="locations"),
                                        store.get("subscriber_id"))
         except ScError as e:
-            return RedirectResponse(f"/locations?msg=Could not load locations: {e.body or e}", 303)
+            return RedirectResponse("/locations?msg=" + quote(f"Could not load locations: {e.body or e}. Check the Subscriber ID on Connections."), 303)
         store.put("locations_cache", rows)
         return RedirectResponse(f"/locations?msg=Loaded {len(rows)} locations", 303)
 
@@ -626,6 +664,23 @@ def create_app(store, engine=None, rt=None):
     def backup_now():
         update.backup(store)
         return RedirectResponse("/settings?msg=Backed+up+the+database.", 303)
+
+    @app.get("/reset")
+    def reset_page(request: Request):
+        n = lambda t: db.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+        counts = dict(connections=n("connections"), users=n("users"), locations=n("locations"), wos=n("work_orders"), steps=n("steps"), log=n("api_log"))
+        return page(request, "reset", counts=counts, busy=reset_mod.busy(store))
+
+    @app.post("/reset")
+    def reset_do(confirm: str = Form(""), understood: str = Form("")):
+        """Factory reset. Needs the typed word and the tick box, so a stray click or a replayed request does nothing."""
+        if confirm.strip() != "RESET" or not understood:
+            return RedirectResponse("/reset?msg=" + quote("Nothing was reset. Type RESET and tick the box to confirm."), 303)
+        why = reset_mod.busy(store)
+        if why:
+            return RedirectResponse("/reset?msg=" + quote("Nothing was reset. " + why), 303)
+        path = reset_mod.factory_reset(store, rt, engine)
+        return RedirectResponse("/setup?msg=" + quote(f"Factory reset done. The old database is saved at {path}. Set up again below."), 303)
 
     @app.post("/alerts/token")
     def alerts_token(token: str = Form(...)):
