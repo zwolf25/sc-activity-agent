@@ -110,6 +110,26 @@ def error_groups(rows, tz):
 
 def create_app(store, engine=None, rt=None):
     app = FastAPI(title="SC Activity Agent")
+    busy = [0]   # requests in flight; only touched on the event loop thread
+
+    @app.middleware("http")
+    async def settle_after(request, call_next):
+        """B-82: a request thread that leaves a transaction open blocks every writer. Commit it once no request is running."""
+        busy[0] += 1
+        try:
+            return await call_next(request)
+        finally:
+            busy[0] -= 1
+            if not busy[0]:
+                store.settle_idle("AnyIO worker thread", "web request")
+
+    def background(fn, *a):
+        def go():
+            try:
+                fn(*a)
+            finally:
+                store.settle("clean-up thread")
+        threading.Thread(target=go, daemon=True).start()
     app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
     tpl = Jinja2Templates(directory=HERE / "templates")
     class _Db:   # request threads differ; resolve the calling thread's connection on every use
@@ -147,15 +167,17 @@ def create_app(store, engine=None, rt=None):
                 ("Behavior reviewed", bool(store.get("behavior")), "/behavior")]
 
     def pair_status():
-        """Check-in permission per Provider: ok after a successful check-in, blocked after a 403 (error 804), else not tried yet."""
+        """Check-in permission per Provider: ok after a successful check-in, blocked after a 403 with error 804 (no pair permission),
+        failed after any other refusal (its reason is shown, the pair may be fine), else not tried yet."""
         sub, env = store.get("subscriber_id") or "<Subscriber ID>", "Production" if store.get("env") == "prod" else "SB2"
         out = []
         for c in db.execute("SELECT id,name,provider_id FROM connections WHERE side='provider' ORDER BY id"):
-            last = db.execute("SELECT http FROM api_log WHERE role='provider' AND path LIKE '%universalCheckIn' AND user IN "
+            last = db.execute("SELECT http, detail FROM api_log WHERE role='provider' AND path LIKE '%universalCheckIn' AND user IN "
                               "(SELECT username FROM users WHERE conn_id=?) ORDER BY id DESC LIMIT 1", (c["id"],)).fetchone()
-            state = "pending" if not last else "ok" if 200 <= (last[0] or 0) < 300 else "blocked" if last[0] == 403 else "pending"
+            http, why = (last[0] or 0, last[1] or "") if last else (0, "")
+            state = "ok" if 200 <= http < 300 else "blocked" if http == 403 and "804" in why else "failed" if http >= 400 else "pending"
             pid = c["provider_id"] or "<Provider ID>"
-            out.append(dict(name=c["name"], state=state, request=(
+            out.append(dict(name=c["name"], state=state, why=why[:200], request=(
                 f"Please link Subscriber ID {sub} with Provider ID {pid} ({c['name']}) for API work in {env} and enable XML check-in/out "
                 "(and GPS check-in/out if a radius is wanted) for this pair.")))
         return out
@@ -551,7 +573,7 @@ def create_app(store, engine=None, rt=None):
     def cleanup_now(confirm: str = Form("")):
         if not (rt and confirm) or (store.get("cleanup_run") or {}).get("running"):
             return RedirectResponse("/cleanup?msg=Tick the box to confirm (or a clean-up is already running)", 303)
-        threading.Thread(target=cleanup_mod.now, args=(store, rt), daemon=True).start()
+        background(cleanup_mod.now, store, rt)
         return RedirectResponse("/cleanup?msg=Clean-up started. Refresh this page for progress", 303)
 
     @app.post("/cleanup/run")
@@ -561,7 +583,7 @@ def create_app(store, engine=None, rt=None):
             return RedirectResponse("/cleanup?msg=Tick the box to confirm, after a preview that found work orders", 303)
         if run.get("running"):
             return RedirectResponse("/cleanup?msg=A clean-up is already running", 303)
-        threading.Thread(target=cleanup_mod.run, args=(store, rt), daemon=True).start()
+        background(cleanup_mod.run, store, rt)
         return RedirectResponse("/cleanup?msg=Clean-up started. Refresh this page for progress", 303)
 
     @app.post("/cleanup/{wid}/cancel")

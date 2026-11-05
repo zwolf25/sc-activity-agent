@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.17.5 - 2026-11-05
+
+- The Setup page and the Dashboard banner said a Subscriber and Provider pair needed linking after any 403 on check-in. They now say so only for error 804. Any other refusal shows as "Last check-in failed" with ServiceChannel's reason, and no link request is offered.
+- A database transaction left open by a web page, the clean-up thread or the Telegram poller is now committed as soon as that work ends, and the log says which one did it. An open transaction blocks every other write, which is how `database is locked` happens.
+- Restart the agent after updating. Nothing pauses. No migration.
+
 ## v0.17.4 - 2026-11-04
 
 - The scheduled SB2 smoke run no longer leaves a Behavior or checklist setting stored as empty (null) when it did not exist before; it deletes the setting again. This was the likely cause of the v0.17.1 Settings crash.

@@ -207,4 +207,6 @@ class Alerts:
                     continue
             except Exception as e:  # noqa: BLE001
                 self.store.put("alert_error", f"{time.strftime('%b %d %H:%M')} {e}")
+            finally:
+                self.store.settle("Telegram poller")
             time.sleep(15)

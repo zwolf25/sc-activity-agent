@@ -129,6 +129,19 @@ class Store:
             if where:
                 print(time.strftime("%H:%M:%S"), f"{where} left a database transaction open; committed it")
 
+    def settle_idle(self, prefix, where=""):
+        """Commit open transactions on the connections of threads named `prefix...`. Only call it when none of those threads is
+        working (the web middleware calls it with no request in flight), because it commits from another thread."""
+        names = {t.ident: t.name for t in threading.enumerate()}
+        for ident, c in list(self._conns.items()):
+            try:
+                if c.in_transaction and names.get(ident, "").startswith(prefix):
+                    c.commit()
+                    if where:
+                        print(time.strftime("%H:%M:%S"), f"{where} left a database transaction open; committed it")
+            except sqlite3.ProgrammingError:
+                self._conns.pop(ident, None)   # that thread's connection is closed
+
     def report_lock(self):
         """Log which threads hold a transaction open and where they are, at most once a minute."""
         if time.time() - self._reported < 60:

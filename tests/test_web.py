@@ -219,7 +219,10 @@ def test_setup_shows_checkin_permission_request_and_status(tmp_path):
     c.post("/connections/1/users", data={"username": "pu", "password": "pw"})
     t = c.get("/setup").text
     assert "Not confirmed yet" in t and "Subscriber ID 2014917582 with Provider ID 2000078685 (SydeTech)" in t and "SB2" in t
-    s.log(ts=1, role="provider", user="pu", action="check_in", method="POST", path="/workorders/1/universalCheckIn", http=403)
+    s.log(ts=1, role="provider", user="pu", action="check_in", method="POST", path="/workorders/1/universalCheckIn", http=403, detail='{"ErrorCode":901,"Message":"WO not assigned"}')
+    t = c.get("/setup").text   # a 403 that is not error 804 does not say the pair needs linking
+    assert "Blocked (error 804)" not in t and "Please link" not in t and "WO not assigned" in t and "Check-in is blocked" not in c.get("/dashboard").text
+    s.log(ts=1.5, role="provider", user="pu", action="check_in", method="POST", path="/workorders/1/universalCheckIn", http=403, detail='{"ErrorCode":804}')
     assert "Blocked (error 804)" in c.get("/setup").text and "Check-in is blocked for SydeTech" in c.get("/dashboard").text
     s.log(ts=2, role="provider", user="pu", action="check_in", method="POST", path="/workorders/2/universalCheckIn", http=200)
     t = c.get("/setup").text

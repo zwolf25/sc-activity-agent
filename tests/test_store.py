@@ -64,3 +64,24 @@ def test_drop_removes_a_setting_instead_of_storing_null(tmp_path):
     s.put("checklists", {"on": True})
     s.drop("checklists")
     assert s.db.execute("SELECT 1 FROM settings WHERE key='checklists'").fetchone() is None
+
+
+def test_settle_idle_commits_only_threads_with_the_prefix(tmp_path, capsys):
+    import threading
+    s = Store(tmp_path)
+    ready, go = threading.Event(), threading.Event()
+
+    def leak():
+        s.db.execute("INSERT INTO settings VALUES('w','1')")
+        ready.set()
+        go.wait(5)
+
+    web = threading.Thread(target=leak, name="AnyIO worker thread")
+    web.start()
+    ready.wait(5)
+    s.settle_idle("other")
+    assert s._conns[web.ident].in_transaction   # wrong prefix: left alone
+    s.settle_idle("AnyIO worker thread", "web request")
+    assert not s._conns[web.ident].in_transaction and "web request left a database transaction open" in capsys.readouterr().out
+    go.set()
+    web.join()
