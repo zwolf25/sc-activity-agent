@@ -57,3 +57,10 @@ def test_lock_error_names_the_thread_holding_a_transaction(tmp_path, monkeypatch
     t.join()
     out = capsys.readouterr().out
     assert "database is locked" in out and "holder:" in out and "hold" in out
+
+
+def test_drop_removes_a_setting_instead_of_storing_null(tmp_path):
+    s = Store(tmp_path)
+    s.put("checklists", {"on": True})
+    s.drop("checklists")
+    assert s.db.execute("SELECT 1 FROM settings WHERE key='checklists'").fetchone() is None

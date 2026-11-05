@@ -51,7 +51,7 @@ def run(store, engine, rt, store_id=None, trade="DOOR", photos=True, checklists=
         engine.only_wo = None
         generator.pick = pick
         for k, v in saved.items():
-            store.put(k, v)
+            store.drop(k) if v is None else store.put(k, v)   # B-84: a key that did not exist is deleted, never stored as null
     steps = [tuple(r) for r in store.db.execute("SELECT seq,kind,state,error FROM steps WHERE wo_id=? ORDER BY seq", (wo["id"],))]
     calls = [tuple(r) for r in store.db.execute("SELECT http,method,path,action FROM api_log WHERE sc_wo=? ORDER BY id", (sc_id,))]
     return dict(ok=all(s[2] in ("done", "skipped") for s in steps), wo=sc_id, steps=steps, calls=calls, error="")

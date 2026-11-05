@@ -161,6 +161,10 @@ class Store:
                         (key, json.dumps(value)))
         self.db.commit()
 
+    def drop(self, key):
+        self.db.execute("DELETE FROM settings WHERE key=?", (key,))
+        self.db.commit()
+
     def log(self, **kw):
         kw.setdefault("ts", time.time())
         cols = ",".join(kw)

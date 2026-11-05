@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.17.4 - 2026-11-04
+
+- The scheduled SB2 smoke run no longer leaves a Behavior or checklist setting stored as empty (null) when it did not exist before; it deletes the setting again. This was the likely cause of the v0.17.1 Settings crash.
+- Internal: the step executors moved from one `handlers.py` into a `handlers/` package, split by area. Behavior is unchanged.
+- Restart the agent after updating. Nothing pauses and plans keep running.
+
 ## v0.17.3 - 2026-11-04
 
 - When the database reports `database is locked`, the agent log now names the threads that hold a transaction open and where they are (at most once a minute). This is to find what still locks the database on one machine.
