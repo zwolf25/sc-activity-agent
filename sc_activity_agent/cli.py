@@ -35,12 +35,28 @@ def cmd_status(args, store):
           f"calls last hour={store.count_calls_since(now - 3600)}")
 
 
+_sweep = None
+
+
 def sweep_in_thread(store, rt):
-    """The daily sweep makes two API calls per work order at ~15 calls/min, so it must not block the step loop."""
+    """The daily sweep makes two API calls per work order at ~15 calls/min, so it must not block the step loop.
+    One at a time: a slow sweep must not pile up a thread and a connection on every loop pass."""
+    global _sweep
     import threading
 
     from . import cleanup
-    threading.Thread(target=lambda: print(time.strftime("%H:%M:%S"), "cleanup sweep:", cleanup.sweep(store, rt)), daemon=True).start()
+    if _sweep is not None and _sweep.is_alive():
+        return []
+
+    def go():
+        try:
+            print(time.strftime("%H:%M:%S"), "cleanup sweep:", cleanup.sweep(store, rt))
+        except Exception as e:  # noqa: BLE001
+            print(time.strftime("%H:%M:%S"), f"cleanup sweep error: {type(e).__name__}: {e}")
+        finally:
+            store.settle("cleanup sweep")
+    _sweep = threading.Thread(target=go, daemon=True)
+    _sweep.start()
     return []
 
 
@@ -161,6 +177,8 @@ def cmd_run(args, store):
                         print(time.strftime("%H:%M:%S"), f"{name} {key}: {outcome}")
                 except Exception as e:  # noqa: BLE001
                     print(time.strftime("%H:%M:%S"), f"{name} loop error: {type(e).__name__}: {e}")
+                finally:
+                    store.settle(f"loop piece {name}")
             time.sleep(args.interval)
     except KeyboardInterrupt:
         pass

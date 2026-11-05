@@ -1,8 +1,10 @@
 """SQLite state for one instance: settings, encrypted secrets, connections/users/roles, WOs, plan steps, audit log."""
 import json
 import sqlite3
+import sys
 import threading
 import time
+import traceback
 from pathlib import Path
 
 from cryptography.fernet import Fernet
@@ -62,6 +64,30 @@ MIGRATIONS = [
 ]
 
 
+TIMEOUT = 30   # seconds a statement waits on another connection's lock
+
+
+class _Conn(sqlite3.Connection):
+    """Reports who holds the lock when a statement gives up on `database is locked`, then re-raises."""
+    report = None
+
+    def execute(self, *a, **k):
+        try:
+            return super().execute(*a, **k)
+        except sqlite3.OperationalError as e:
+            if "locked" in str(e) and self.report:
+                self.report()
+            raise
+
+    def commit(self):
+        try:
+            return super().commit()
+        except sqlite3.OperationalError as e:
+            if "locked" in str(e) and self.report:
+                self.report()
+            raise
+
+
 class Store:
     def __init__(self, data_dir):
         self.dir = Path(data_dir)
@@ -72,6 +98,8 @@ class Store:
             key_file.chmod(0o600)
         self.fernet = Fernet(key_file.read_bytes())
         self._tl = threading.local()
+        self._conns = {}   # thread id -> its connection, only so a lock error can name the thread holding a transaction open
+        self._reported = 0
         self.db.executescript(SCHEMA)
         v = self.db.execute("PRAGMA user_version").fetchone()[0]
         for n in range(v, len(MIGRATIONS)):
@@ -84,11 +112,37 @@ class Store:
         """One connection per thread: the engine, web and sweep threads must not share one (sqlite3 raises InterfaceError on overlap)."""
         c = getattr(self._tl, "c", None)
         if c is None:
-            c = self._tl.c = sqlite3.connect(self.dir / "agent.db", timeout=30)
+            c = self._tl.c = sqlite3.connect(self.dir / "agent.db", timeout=TIMEOUT, factory=_Conn, check_same_thread=False)
+            c.report = self.report_lock
+            self._conns[threading.get_ident()] = c
             c.row_factory = sqlite3.Row
             c.execute("PRAGMA foreign_keys=ON")
             c.execute("PRAGMA journal_mode=WAL")   # readers (web, sweep, alerts threads) never wait on the step loop's write lock
         return c
+
+    def settle(self, where=""):
+        """Commit a transaction the calling thread left open, and say so: an open write transaction blocks every other writer.
+        Call it when a loop piece or background thread finishes."""
+        c = getattr(self._tl, "c", None)
+        if c is not None and c.in_transaction:
+            c.commit()
+            if where:
+                print(time.strftime("%H:%M:%S"), f"{where} left a database transaction open; committed it")
+
+    def report_lock(self):
+        """Log which threads hold a transaction open and where they are, at most once a minute."""
+        if time.time() - self._reported < 60:
+            return
+        self._reported = time.time()
+        frames, names = sys._current_frames(), {t.ident: t.name for t in threading.enumerate()}
+        print(time.strftime("%H:%M:%S"), "database is locked. Threads with a transaction open:")
+        for ident, c in list(self._conns.items()):
+            try:
+                if c.in_transaction and ident in frames:
+                    where = " <- ".join(f.strip().splitlines()[0] for f in reversed(traceback.format_stack(frames[ident])[-4:]))
+                    print(f"  {names.get(ident, ident)}: {where}")
+            except sqlite3.ProgrammingError:
+                self._conns.pop(ident, None)   # that thread's connection is closed
 
     # secrets are encrypted at rest and only decrypted when used
     def enc(self, plain):

@@ -19,3 +19,41 @@ def test_reader_is_not_blocked_by_an_open_write(tmp_path):
     t.start()
     t.join(5)
     assert out == [1]
+
+
+def test_settle_commits_a_leaked_transaction(tmp_path, capsys):
+    s = Store(tmp_path)
+    s.db.execute("INSERT INTO settings VALUES('k','1')")
+    assert s.db.in_transaction
+    s.settle("piece")
+    assert not s.db.in_transaction and "piece left a database transaction open" in capsys.readouterr().out
+    s.settle("piece")   # nothing open: silent
+    assert capsys.readouterr().out == ""
+
+
+def test_lock_error_names_the_thread_holding_a_transaction(tmp_path, monkeypatch, capsys):
+    import sqlite3
+    import threading
+
+    import pytest
+
+    from sc_activity_agent import store as store_mod
+    monkeypatch.setattr(store_mod, "TIMEOUT", 0.2)
+    s = Store(tmp_path)
+    held, release = threading.Event(), threading.Event()
+
+    def hold():
+        s.db.execute("UPDATE settings SET value='x' WHERE key='nope'")
+        s.db.execute("INSERT INTO settings VALUES('h','1')")
+        held.set()
+        release.wait(5)
+        s.db.rollback()
+    t = threading.Thread(target=hold, name="holder")
+    t.start()
+    held.wait(5)
+    with pytest.raises(sqlite3.OperationalError):
+        s.put("other", 2)
+    release.set()
+    t.join()
+    out = capsys.readouterr().out
+    assert "database is locked" in out and "holder:" in out and "hold" in out

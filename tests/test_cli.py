@@ -81,3 +81,24 @@ def test_second_agent_on_the_same_data_folder_is_refused(tmp_path):
     assert lock_data_dir(tmp_path) is None   # a second agent (launcher plus login job) must not run
     first.close()
     assert lock_data_dir(tmp_path) is not None
+
+
+def test_sweep_in_thread_runs_one_at_a_time_and_logs_errors(tmp_path, monkeypatch, capsys):
+    import threading
+
+    from sc_activity_agent import cleanup, cli
+    from sc_activity_agent.store import Store
+    s = Store(tmp_path)
+    gate, calls = threading.Event(), []
+
+    def slow(store, rt):
+        calls.append(1)
+        gate.wait(5)
+        raise RuntimeError("boom")
+    monkeypatch.setattr(cleanup, "sweep", slow)
+    cli._sweep = None
+    cli.sweep_in_thread(s, None)
+    cli.sweep_in_thread(s, None)   # first one still running: no second thread
+    gate.set()
+    cli._sweep.join(5)
+    assert calls == [1] and "cleanup sweep error: RuntimeError: boom" in capsys.readouterr().out

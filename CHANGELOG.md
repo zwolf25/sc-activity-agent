@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.17.3 - 2026-11-04
+
+- When the database reports `database is locked`, the agent log now names the threads that hold a transaction open and where they are (at most once a minute). This is to find what still locks the database on one machine.
+- The agent commits a transaction that a loop step or the clean-up sweep leaves open, and logs a line saying which one did. An open transaction blocks every other write.
+- The clean-up sweep runs one at a time, where before it started a new thread on every 30-second loop pass. An error in it is logged as one line instead of a traceback.
+- Update needs a restart and pauses nothing. No migration.
+
 ## v0.17.2 - 2026-11-04
 
 - Fixed `database is locked` errors, seen when "Refresh now" on the Locations page ran while the agent was busy. The database now uses SQLite WAL mode, so the web page, the clean-up sweep and the Telegram poller no longer wait on the step loop. The data folder gains `agent.db-wal` and `agent.db-shm` files; that is normal.
