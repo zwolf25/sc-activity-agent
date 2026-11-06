@@ -18,6 +18,8 @@ class FakeApp:
 
     def call(self, user, method, path, params=None, body=None, **kw):
         self.calls.append((method, path, body))
+        if path == "/users/current/profile":
+            return {"UserProfile": {"DefaultScUserSetupId": 3151, "Dashboards": [{"SetupId": 3151, "Name": "Asset Dashboard"}]}}
         if path.endswith("/headers"):
             return {"Headers": [{"Id": 110058, "DashboardId": 3151}]}
         if path.endswith("/issuelist"):
@@ -141,36 +143,23 @@ def test_asset_id_is_sent_only_when_the_slider_is_on_and_the_location_has_a_matc
         assert post.get("AssetId") == want
 
 
-def _check(tmp_path, issuechoice):
+def test_creates_from_the_user_dashboard_and_reads_it_once_an_hour(tmp_path):
     s, app, c = setup(tmp_path)
+    assert c.dashboard(c.store.db.execute("SELECT * FROM locations").fetchone()) == 3151
+    c.tick()
+    c.dashboard(c.store.db.execute("SELECT * FROM locations").fetchone())
+    assert sum(p == "/users/current/profile" for m, p, b in app.calls) == 1
+    assert s.get("user_dashboard")["sub"]["id"] == 3151
+
+
+def test_dashboard_falls_back_to_last_known_when_profile_fails(tmp_path):
+    s, app, c = setup(tmp_path)
+    loc = s.db.execute("SELECT * FROM locations").fetchone()
+    c.dashboard(loc)
+    s.put("user_dashboard", {"sub": {**s.get("user_dashboard")["sub"], "at": 0}})   # expired
     orig = app.call
-    app.call = lambda user, method, path, params=None, body=None, **kw: issuechoice(params) if path == "/issuelist/issuechoice" else orig(user, method, path, params, body, **kw)
-    c.check_dashboard()
-    return s, c
-
-
-def test_dashboard_check_warns_when_the_user_dashboard_serves_other_issues_or_ntes(tmp_path):
-    def missing(p):
-        raise ScError(400, "Cannot find issue choice", "/issuelist/issuechoice")
-    s, _ = _check(tmp_path / "a", missing)
-    assert s.get("dash_check")["warn"] is True
-    s, _ = _check(tmp_path / "b", lambda p: {"Nte": 999})
-    assert s.get("dash_check")["warn"] is True and s.get("dash_check")["bad"] == 2
-    s, _ = _check(tmp_path / "c", lambda p: {"Nte": 500} if p["equipmentType"] == "Automatic Door" else {"Nte": 100})
-    assert s.get("dash_check")["warn"] is False
-
-
-def test_dashboard_check_runs_again_only_when_due_and_never_raises(tmp_path):
-    asked = []
-    s, c = _check(tmp_path, lambda p: asked.append(p) or {})
-    n = len(asked)
-    c.check_dashboard()   # same dashboard, under a day old, no warning: no new calls
-    assert len(asked) == n
-    s.put("dashboard_id", 2751)
-    c.check_dashboard()   # the selected dashboard changed: checked again
-    assert len(asked) > n
-    s2, c2 = _check(tmp_path / "x", lambda p: (_ for _ in ()).throw(ScError(500, "down", "x")))
-    assert s2.get("dash_check") is None   # an API error is not a mismatch
+    app.call = lambda user, method, path, *a, **kw: (_ for _ in ()).throw(ScError(500, "down", path)) if path.endswith("/profile") else orig(user, method, path, *a, **kw)
+    assert c.dashboard(loc) == 3151
 
 
 def test_alert_after_three_failed_creates_in_a_row(tmp_path, monkeypatch):

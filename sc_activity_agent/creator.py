@@ -10,10 +10,26 @@ from .alerts import Alerts
 from .client import ScError
 from .engine import add_plan
 
-DEFAULT_DASHBOARD = 3151
-SAMPLE = 6   # issues compared per dashboard check (B-70)
+DASH_TTL = 3600   # B-91: how long the user's dashboard is trusted before the profile is read again
 DEFAULT_AREA = 3          # SALES FLOOR: accepts every item of DOORS, HVAC and GENERAL MAINTENANCE on dashboard 3151
 RANK_TTL = 24 * 3600
+
+
+def user_dashboard(store, app, user, now, force=False):
+    """Read the user's default dashboard from GET /users/current/profile (api-notes 2026-11-05). Cached per user for DASH_TTL.
+    Returns {"id", "name", "at"}; raises ScError(409) when the profile names none."""
+    cache = store.get("user_dashboard") or {}
+    hit = cache.get(user[0])
+    if hit and not force and now - hit["at"] < DASH_TTL:
+        return hit
+    prof = (app.call(user, "GET", "/users/current/profile", None, action="dashboard") or {}).get("UserProfile") or {}
+    did = prof.get("DefaultScUserSetupId")
+    if not did:
+        raise ScError(409, f"{user[0]} has no dashboard assigned in ServiceChannel", "/users/current/profile")
+    name = next((d.get("Name", "") for d in prof.get("Dashboards") or [] if d.get("SetupId") == did), "")
+    cache[user[0]] = {"id": did, "name": name, "at": now}
+    store.put("user_dashboard", cache)
+    return cache[user[0]]
 
 
 FAIL_ALERT = 3   # B-86: failed creates in a row before an alert is sent
@@ -31,6 +47,18 @@ class Creator:
     def _get(self, loc, path, params=None):
         app, user = self._sub(loc)
         return app.call(user, "GET", path, params, action="create_lookup")
+
+    def dashboard(self, loc):
+        """B-91: the dashboard of the Subscriber user that creates WOs. POST /workorders resolves issues on that user's own dashboard, so the
+        agent draws from it instead of a dashboard chosen here. Falls back to the last known value when the profile cannot be read."""
+        app, user = self._sub(loc)
+        try:
+            return user_dashboard(self.store, app, user, self.clock())["id"]
+        except (ScError, OSError):
+            hit = (self.store.get("user_dashboard") or {}).get(user[0])
+            if hit:
+                return hit["id"]
+            raise
 
     def _header_id(self, loc, dashboard):
         known = self.store.get("header_ids", {})
@@ -66,45 +94,12 @@ class Creator:
     def resync(self, loc):
         """Re-read Rank 1 now and record which trades on the location's issue list are skipped because another provider is Rank 1."""
         ours = self.our_trades(loc, force=True)
-        listed = {i["trade"] for i in self._issues(loc, self.store.get("dashboard_id", DEFAULT_DASHBOARD))}
+        listed = {i["trade"] for i in self._issues(loc, self.dashboard(loc))}
         cache = self.store.get("rank1", {})
         if loc["store_id"] in cache:
             cache[loc["store_id"]]["skipped"] = sorted(listed - ours)
             self.store.put("rank1", cache)
         return ours
-
-    def check_dashboard(self):
-        """B-70: WO creates use the Subscriber user's active dashboard, not the one selected here (api-notes, 2026-11-03). Sample a few issues of the
-        selected dashboard at the first enabled location and ask issuechoice, which follows the same active dashboard: an issue it cannot find, or
-        one with a different NTE, means the two dashboards differ. The result goes in store key dash_check; the console shows a banner while
-        `warn` is set. Runs when the selected dashboard changed, a day after the last check, or 10 minutes after a warning (a dashboard change on the
-        user can take a few minutes to reach issuechoice). Costs at most SAMPLE calls and never raises."""
-        dashboard = self.store.get("dashboard_id", DEFAULT_DASHBOARD)
-        last = self.store.get("dash_check") or {}
-        age = self.clock() - last.get("at", 0)
-        if last.get("dashboard") == dashboard and age < (600 if last.get("warn") else 86400):
-            return
-        loc = self.store.db.execute("SELECT * FROM locations WHERE enabled=1 ORDER BY store_id LIMIT 1").fetchone()
-        if not loc:
-            return
-        try:
-            pool = self._issues(loc, dashboard)
-            sample = self.rng.sample(pool, min(SAMPLE, len(pool)))
-            bad = 0
-            for i in sample:
-                try:
-                    r = self._get(loc, "/issuelist/issuechoice", {"problemType": i["problem_type"], "equipmentType": i["item"],
-                                                                  "problemCode": i["problem"], "locationId": loc["db_id"]}) or {}
-                    served = next((float(r[k]) for k in ("Nte", "NTE", "nte") if r.get(k) not in (None, "")), None)
-                    bad += served is not None and served != i["nte"]
-                except ScError as e:
-                    if e.status != 400:
-                        raise
-                    bad += 1
-        except (ScError, OSError):
-            return   # an unreachable API is not evidence of a mismatch; try again next tick
-        self.store.put("dash_check", {"dashboard": dashboard, "at": self.clock(), "location": loc["store_id"], "checked": len(sample),
-                                      "bad": bad, "warn": bool(sample) and bad * 3 >= len(sample)})
 
     def _resolves(self, loc, issue):
         """True if POST /workorders can resolve this issue. The POST looks the issue up on the location's own dashboard, not the
@@ -142,7 +137,6 @@ class Creator:
         """Create at most one WO per call. Returns [(store_id, sc_id or error)]."""
         if self.store.get("paused_at") is not None:
             return []
-        self.check_dashboard()
         out = []
         for loc in self.store.db.execute("SELECT * FROM locations WHERE enabled=1"):
             slots = self._roll_day(loc)
@@ -167,7 +161,7 @@ class Creator:
 
     def create(self, loc):
         now = self.clock()
-        dashboard = self.store.get("dashboard_id", DEFAULT_DASHBOARD)
+        dashboard = self.dashboard(loc)
         area = self.store.get("area_id", DEFAULT_AREA)
         ours = self.our_trades(loc)
         pool = generator.eligible(self._issues(loc, dashboard), ours)

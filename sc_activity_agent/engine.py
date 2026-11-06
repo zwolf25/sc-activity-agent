@@ -28,6 +28,7 @@ class Engine:
         self.paused_at = store.get("paused_at")
         self.rng = random.Random()
         self.only_wo = None   # smoke run: tick only this WO so older overdue steps do not take its slots
+        self.running = False   # a tick is in progress; reset and restore wait for it to end
         self.rotate = None   # fn(wo, step) -> bool, set by the CLI: pick another user for a step
 
     @property
@@ -148,6 +149,13 @@ class Engine:
         self.store.put("gaps", gaps)
 
     def tick(self):
+        self.running = True
+        try:
+            return self._tick()
+        finally:
+            self.running = False
+
+    def _tick(self):
         """Run up to per_tick due steps in order. Returns list of (step_id, outcome)."""
         if self.paused:
             self.store.put("last_tick", self.clock())

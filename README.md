@@ -26,7 +26,7 @@ It creates a launcher named SC Activity Agent (in `~/Applications` on macOS, the
 **Setup.** The console walks you through:
 
 1. Add one **Subscriber** connection (an integration app: client ID and secret) and a Subscriber user.
-2. Enter the Subscriber ID, load your dashboards and choose the issue list dashboard. The dashboard must be assigned to that Subscriber user in ServiceChannel: a work order is created from the dashboard assigned to the user, not from the one you select here. The agent compares the two a few times a day and shows a warning on every page when they differ.
+2. Enter the Subscriber ID and press Check dashboard. The agent shows the Subscriber user's own dashboard and its issue list, and draws problems from that list. To use another list, assign another dashboard to that user in ServiceChannel and check again.
 3. Add one **Provider** connection per provider you play, with its Provider ID and users.
 4. Add your locations: on the Locations page click Load, search the list, tick several rows (or paste store IDs as a list or CSV) and click Add selected. Ids, coordinates and time zone come from ServiceChannel. The Locations page also shows the trades the agent can create, the trades it skips because another provider is Rank 1, and a Refresh now button that re-reads Rank 1 straight away (otherwise it refreshes daily).
 5. On Connections, tick **Can do** for each user. The first user on a connection starts with every action; later users start empty. Each action needs at least one user, and every Provider needs a user who can check in. Add several Provider users to look like a real crew: the agent picks randomly among the users who can do an action and belong to the WO's provider, and a check-out is done by the tech who checked in.
@@ -47,7 +47,7 @@ Production and SB2 are two separate instances with their own data, keys and port
 
 ## Factory reset
 
-Settings > Danger zone > Factory reset clears all data and settings and starts setup again, without a reinstall. It saves a backup first, keeps the environment, port and secret key, and does not delete work orders already in ServiceChannel (run Clean-up first for that). You must type RESET to confirm.
+Settings > Danger zone > Factory reset clears all data and settings and starts setup again, without a reinstall. It saves a backup first, keeps the environment, port and secret key, and does not delete work orders already in ServiceChannel (run Clean-up first for that). You must type RESET to confirm. Settings > Backups > Restore brings a backup back while the agent runs.
 
 ## Telegram alerts (optional)
 

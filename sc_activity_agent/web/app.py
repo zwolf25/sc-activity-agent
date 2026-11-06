@@ -24,6 +24,7 @@ from .. import __version__, autostart, awake, planner, status, update
 from .. import locations as locations_mod
 from ..alerts import EVENTS, Alerts, AlertError
 from ..client import ScApp, ScError
+from ..creator import user_dashboard
 from ..hints import ERROR_HINTS, hint
 from .. import setupcheck
 from ..handlers import ACTION, cancel_wo
@@ -138,7 +139,7 @@ def create_app(store, engine=None, rt=None):
         failed = db.execute("SELECT COUNT(*) FROM steps WHERE state='failed'").fetchone()[0]
         base = dict(request=request, nav=NAV, here=name, env=store.get("env"), version=__version__,
                     paused=store.get("paused_at") is not None, failed=failed,
-                    port=store.get("port"), twin_port=store.get("twin_port"), setup=setup_checks(), update=update.pending(store), update_busy=bool(update.in_progress(store)), dash_warn=(store.get("dash_check") or {}) if (store.get("dash_check") or {}).get("warn") else None, asset_todo=assets.unseeded(store), cap_hit=store.get("cap_hit") if store.get("paused_at") is not None else None)
+                    port=store.get("port"), twin_port=store.get("twin_port"), setup=setup_checks(), update=update.pending(store), update_busy=bool(update.in_progress(store)), asset_todo=assets.unseeded(store), cap_hit=store.get("cap_hit") if store.get("paused_at") is not None else None)
         return tpl.TemplateResponse(request, f"{name}.html", {**base, **ctx})
 
     def missing_actions():
@@ -162,8 +163,8 @@ def create_app(store, engine=None, rt=None):
         ranked = any(r1.get(r[0], {}).get("trades") for r in db.execute("SELECT store_id FROM locations WHERE enabled=1"))
         return [("Subscriber connection with a user", has("subscriber"), "/connections",
                  "Add the Subscriber integration app (Client ID and secret) and a Subscriber user. Both come from ServiceChannel; the app must be registered in this environment.", True),
-                ("Subscriber ID and issue list dashboard chosen", bool(store.get("subscriber_id")) and bool(store.get("dashboard_chosen")), "/connections",
-                 "On Connections, enter the numeric Subscriber ID and load the dashboards, then pick the issue list dashboard the agent draws problems from.", True),
+                ("Subscriber ID and dashboard checked", bool(store.get("subscriber_id")) and bool(store.get("dashboard_info")), "/connections",
+                 "On Connections, enter the numeric Subscriber ID and press Check dashboard. The agent draws problems from the issue list of the Subscriber user's own dashboard.", True),
                 ("Provider connection with a user", has("provider"), "/connections",
                  "Add a Provider integration app and a Provider user. A Provider that is Rank 1 for a trade at your location receives the Work Orders.", True),
                 ("Every Provider has its numeric Provider ID", not no_pid, "/connections",
@@ -260,8 +261,8 @@ def create_app(store, engine=None, rt=None):
             for u in c["users"]:
                 u["can_do"] = json.loads(u["can_do"])
             c["actions"] = CAN_DO[c["side"]]
-        return page(request, "connections", conns=conns, idle=[a for a in missing_actions()], techless=no_tech(), msg=msg, dashboards=store.get("dashboards_cache", []),
-                    dashboard=store.get("dashboard_id", 3151), subscriber_id=store.get("subscriber_id", ""))
+        return page(request, "connections", conns=conns, idle=[a for a in missing_actions()], techless=no_tech(), msg=msg, dashboard=store.get("dashboard_info"),
+                    subscriber_id=store.get("subscriber_id", ""))
 
     @app.post("/dashboards/load")
     def load_dashboards(subscriber_id: int = Form(...)):
@@ -270,18 +271,16 @@ def create_app(store, engine=None, rt=None):
         if not sa:
             return RedirectResponse("/connections?msg=Add a Subscriber user first", 303)
         try:
+            d = user_dashboard(store, sa[0], sa[1], time.time(), force=True)
             heads = sa[0].call(sa[1], "GET", f"/api/subscribers/{subscriber_id}/issuelist/headers", action="dashboards")["Headers"]
         except (ScError, OSError) as e:
             why = "Could not reach ServiceChannel: " + str(e) if isinstance(e, OSError) else str(e.body or e)
-            return RedirectResponse("/connections?msg=" + quote(f"Could not load dashboards: {why}. Check the Subscriber ID and that the Subscriber user can see issue lists. {hint(why)}".strip()), 303)
-        store.put("dashboards_cache", [{"id": h["DashboardId"], "name": h["Name"]} for h in heads])
-        return RedirectResponse("/connections?msg=Dashboards loaded", 303)
-
-    @app.post("/dashboards/select")
-    def select_dashboard(dashboard_id: int = Form(...)):
-        store.put("dashboard_id", dashboard_id)
-        store.put("dashboard_chosen", True)
-        return RedirectResponse("/connections?msg=Dashboard saved", 303)
+            return RedirectResponse("/connections?msg=" + quote(f"Could not read the dashboard: {why}. Check the Subscriber ID and that the Subscriber user has a dashboard. {hint(why)}".strip()), 303)
+        lst = next((h["Name"] for h in heads if h["DashboardId"] == d["id"]), "")
+        store.put("dashboard_info", {"id": d["id"], "name": d["name"], "list": lst})
+        if not lst:
+            return RedirectResponse("/connections?msg=" + quote(f"Dashboard {d['id']} has no issue list for this Subscriber ID."), 303)
+        return RedirectResponse("/connections?msg=Dashboard checked", 303)
 
     @app.post("/connections/add")
     def add_connection(side: str = Form(...), name: str = Form(...), client_id: str = Form(...), client_secret: str = Form(...),
@@ -665,8 +664,38 @@ def create_app(store, engine=None, rt=None):
         why = reset_mod.busy(store)
         if why:
             return RedirectResponse("/reset?msg=" + quote("Nothing was reset. " + why), 303)
-        path = reset_mod.factory_reset(store, rt, engine)
+        try:
+            with reset_mod.quiesced(engine):
+                path = reset_mod.factory_reset(store, rt, engine)
+        except reset_mod.Busy as e:
+            return RedirectResponse("/reset?msg=" + quote("Nothing was reset. " + str(e)), 303)
         return RedirectResponse("/setup?msg=" + quote(f"Factory reset done. The old database is saved at {path}. Set up again below."), 303)
+
+    @app.get("/restore/{name}")
+    def restore_page(request: Request, name: str):
+        known = {n: (s_, t) for n, s_, t in update.backups(store)}
+        if name not in known:
+            return RedirectResponse("/settings?msg=" + quote("That backup no longer exists."), 303)
+        return page(request, "restore", file=name, when=stamp(known[name][1], ZoneInfo(store.get("tz", "America/New_York"))),
+                    busy=reset_mod.busy(store))
+
+    @app.post("/restore/{name}")
+    def restore_do(name: str, confirm: str = Form(""), understood: str = Form("")):
+        """B-89: restore a backup while the agent runs. Same guard as the factory reset: typed word and tick box."""
+        back = f"/restore/{quote(name)}?msg="
+        if confirm.strip() != "RESTORE" or not understood:
+            return RedirectResponse(back + quote("Nothing was restored. Type RESTORE and tick the box to confirm."), 303)
+        why = reset_mod.busy(store)
+        if why:
+            return RedirectResponse(back + quote("Nothing was restored. " + why), 303)
+        try:
+            with reset_mod.quiesced(engine):
+                keep = reset_mod.restore_live(store, name, rt, engine)
+        except reset_mod.Busy as e:
+            return RedirectResponse(back + quote("Nothing was restored. " + str(e)), 303)
+        except FileNotFoundError:
+            return RedirectResponse("/settings?msg=" + quote("That backup no longer exists."), 303)
+        return RedirectResponse("/settings?msg=" + quote(f"Restored {name}. The database it replaced is saved at {keep}. Check the Dashboard, then resume the agent if it is paused."), 303)
 
     @app.post("/setup/check")
     def setup_check():

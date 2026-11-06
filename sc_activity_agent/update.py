@@ -64,6 +64,10 @@ def backup(store):
     dest = store.dir / "backups"
     dest.mkdir(exist_ok=True)
     f = dest / f"agent-{__version__}-{int(time.time())}.db"
+    n = 0
+    while f.exists():   # two backups in one second (a restore saves the current database first) must not overwrite each other
+        n += 1
+        f = dest / f"agent-{__version__}-{int(time.time())}-{n}.db"
     dst = sqlite3.connect(f)
     store.db.backup(dst)   # a file copy would miss pages still in the WAL
     dst.close()

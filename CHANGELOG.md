@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v0.20.0 - 2026-11-05
+
+- Factory reset now pauses the agent and waits for the step in progress to finish before it deletes anything. If the step does not finish within a minute, nothing is reset and the pause is undone.
+- New: Settings > Backups > Restore. It restores a backup while the agent runs: it pauses, waits for the current step, saves the current database, then loads the backup. You type RESTORE and tick a box to confirm. The environment and port stay as they are. Before, restoring needed a terminal with the agent stopped (that command still works).
+- Fixed: two backups made in the same second overwrote each other. A restore saves the current database first, so the backup you were restoring could be replaced by the current data. Backup names now get a suffix when they collide.
+- Connections: the dashboard dropdown is gone. The agent now uses the issue list of the Subscriber user's own dashboard, which is the one ServiceChannel applies when it creates a WO, and shows it next to the Subscriber ID. Press Check dashboard after you change the user's dashboard in ServiceChannel. Any issue list works. The old dashboard mismatch banner is gone because the mismatch can no longer happen.
+- Restart the agent to update. Nothing pauses.
+
 ## v0.19.0 - 2026-11-05
 
 - New alert: "Work order creation failed several times in a row". After 3 failed creates in a row the Telegram alert names the location, the error and the fix. Before, a creation problem (no Rank 1 provider, dashboard not assigned) only showed on the Errors page, and nothing alerted you while the agent made no activity. It follows the alert settings and the 6 hour repeat limit; switch it off under Settings > Telegram alerts.

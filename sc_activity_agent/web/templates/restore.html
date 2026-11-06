@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block body %}
+<div class="card"><h2>Restore a backup</h2>
+<div class="banner warn"><b>This replaces everything the agent knows with the backup from {{ when }}.</b></div>
+{% if busy %}<p><b>{{ busy }}</b> Restore is unavailable until then.</p>{% endif %}
+<ul><li>Connections, users, locations, settings and tracked work orders go back to how they were in <code>{{ file }}</code>.</li>
+<li>Work orders the agent created after that backup are forgotten by the agent. They stay in ServiceChannel and their planned steps are gone.</li>
+<li>The agent pauses, finishes its current step, and saves the current database first. The environment ({{ env|upper }}) and port stay as they are.</li>
+<li>Use backups made by this instance only: logins in a backup from another instance cannot be read.</li></ul>
+<form method="post" action="/restore/{{ file }}" class="grp">
+<label class="chk"><input type="checkbox" name="understood" value="1"> <span>I understand the agent will forget everything after this backup.</span></label>
+<label>Type <b>RESTORE</b> to confirm <input name="confirm" autocomplete="off" placeholder="RESTORE"></label>
+<div class="row"><button class="kill" {{ 'disabled' if busy }}>Restore this backup</button> <a href="/settings"><button type="button">Cancel</button></a></div></form></div>
+{% endblock %}

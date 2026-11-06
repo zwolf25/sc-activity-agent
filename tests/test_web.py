@@ -66,11 +66,9 @@ def test_new_pages_render_and_save(tmp_path):
     assert "u1" in c.get("/connections").text and "HQ" in c.get("/locations").text
 
 
-def test_wizard_points_to_next_step_and_dashboard_select(tmp_path):
+def test_wizard_points_to_next_step_and_dashboard_check(tmp_path):
     s, c = client(tmp_path)
     assert "Next: Subscriber connection with a user" in c.get("/setup").text
-    c.post("/dashboards/select", data={"dashboard_id": "3498"})
-    assert s.get("dashboard_id") == 3498 and s.get("dashboard_chosen")
     r = c.post("/dashboards/load", data={"subscriber_id": "5"}, follow_redirects=False)
     assert "Add%20a%20Subscriber%20user%20first" in r.headers["location"]
     assert s.get("subscriber_id") == 5
@@ -328,14 +326,10 @@ def test_dashboard_switches_to_next_week_remembers_it_and_resets_with_the_new_we
     assert "<td>accept</td>" in c.get("/dashboard").text   # a new week starts on this week
 
 
-def test_stage_page_and_dashboard_warning(tmp_path):
+def test_stage_page(tmp_path):
     s, c = client(tmp_path)
     assert c.get("/stage?s=Awaiting+review").status_code == 200
     assert "Unknown stage" in c.get("/stage?s=Nope").text
-    s.put("dash_check", {"dashboard": 2751, "at": 0, "location": "HQ-NYC", "checked": 6, "bad": 4, "warn": True})
-    assert "Dashboard mismatch: 4 of 6" in c.get("/audit").text
-    s.put("dash_check", {"dashboard": 2751, "at": 0, "location": "HQ-NYC", "checked": 6, "bad": 0, "warn": False})
-    assert "Dashboard mismatch" not in c.get("/audit").text
 
 
 def test_unseeded_assets_banner_follows_seeding_and_can_be_dismissed(tmp_path):
@@ -413,3 +407,52 @@ def test_setup_check_reports_each_problem(tmp_path, monkeypatch):
     assert not labels["Issue list dashboards readable"]["ok"]
     assert not labels["Locations"]["ok"]
     assert "Run check" in c.get("/setup").text
+
+
+def test_restore_live_brings_back_rows_and_keeps_environment(tmp_path):
+    from sc_activity_agent import reset, update
+    store, c = client(tmp_path)
+    store.put("env", "prod")
+    store.put("subscriber_id", 7)
+    store.db.execute("INSERT INTO connections VALUES(1,'subscriber','S','c',?,NULL)", (store.enc("x"),))
+    store.db.commit()
+    update.backup(store)
+    name = update.backups(store)[0][0]
+    store.put("subscriber_id", 9)
+    store.put("env", "sb2")
+    store.db.execute("DELETE FROM connections")
+    store.db.commit()
+    assert "RESTORE" in c.get(f"/restore/{name}").text
+    c.post(f"/restore/{name}", data={"confirm": "no", "understood": "1"})
+    assert store.get("subscriber_id") == 9
+    r = c.post(f"/restore/{name}", data={"confirm": "RESTORE", "understood": "1"}, follow_redirects=False)
+    assert "Restored" in r.headers["location"]
+    assert store.get("subscriber_id") == 7 and store.get("env") == "sb2"
+    assert store.db.execute("SELECT COUNT(*) FROM connections").fetchone()[0] == 1
+
+
+def test_quiesced_refuses_while_a_pass_runs_and_unpauses():
+    from sc_activity_agent import reset
+    class E:
+        paused, running = False, True
+        def pause(self): self.paused = True
+        def resume(self, p): self.paused = False
+    e = E()
+    with pytest.raises(reset.Busy):
+        with reset.quiesced(e, wait=0.3):
+            pass
+    assert not e.paused
+
+
+def test_dashboard_check_shows_the_users_dashboard(tmp_path, monkeypatch):
+    from sc_activity_agent.client import ScApp
+    s, c = client(tmp_path)
+    s.db.execute("INSERT INTO connections VALUES(1,'subscriber','S','c',?,NULL)", (s.enc("x"),))
+    s.db.execute("INSERT INTO users(id,conn_id,username,password,can_do) VALUES(1,1,'sub',?,'[]')", (s.enc("pw"),))
+    s.db.commit()
+    monkeypatch.setattr(ScApp, "call", lambda self, user, method, path, *a, **k:
+                        {"UserProfile": {"DefaultScUserSetupId": 2752, "Dashboards": [{"SetupId": 2752, "Name": "PM Expert Dashboard"}]}}
+                        if path.endswith("/profile") else {"Headers": [{"Id": 1, "DashboardId": 2752, "Name": "Mine.xlsx"}]})
+    c.post("/dashboards/load", data={"subscriber_id": "5"})
+    assert s.get("dashboard_info") == {"id": 2752, "name": "PM Expert Dashboard", "list": "Mine.xlsx"}
+    assert "PM Expert Dashboard" in c.get("/connections").text and "Mine.xlsx" in c.get("/connections").text
