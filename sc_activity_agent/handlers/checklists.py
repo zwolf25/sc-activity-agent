@@ -5,6 +5,10 @@ from .. import content, photos
 from ..client import ScError
 
 
+class NoChecklist(Exception):
+    """The WO has no active checklist for the question just answered."""
+
+
 def build(rt, call, ctx_of):
     def answer_checklists(wo, step):
         """B-22: before the primary tech checks out, answer every checklist the location has for the WO's trade (Settings toggle, off by
@@ -21,10 +25,15 @@ def build(rt, call, ctx_of):
                              params={"tradeName": wo["trade"], "storeId": loc["store_id"], "subscriberId": loc["subscriber_id"]}) or {}
             qs = [q for lst in found.get("CheckListDetails", []) for q in lst.get("Questions", [])]
             uid = sc_user_id(app, user, wo) if qs else None
-            left = [q["Id"] for q in qs if not answer_question(app, user, wo, c, visit, q, uid) and q.get("AnswerRequired")]
+            left = []
+            for q in qs:
+                if not answer_question(app, user, wo, c, visit, q, uid) and q.get("AnswerRequired"):
+                    left.append(q["Id"])
             if left:   # ServiceChannel will not submit the checklist while a required question is open: leave a trace instead of a silent gap
                 rt.store.log(role="provider", user=user[0], sc_wo=wo["sc_id"], action="checklist_required_open", method=None, path="/checklists",
                              http=0, ms=0, detail=f"required questions not answered: {left}")
+        except NoChecklist:
+            pass
         except ScError as e:
             if e.status == 0:
                 raise   # paused: leave the visit unmarked so the step answers once it resumes
@@ -83,6 +92,8 @@ def build(rt, call, ctx_of):
         except ScError as e:
             if e.status == 0:
                 raise   # paused: stop answering
+            if '"ErrorCode":503' in str(getattr(e, "body", "")):
+                raise NoChecklist   # the checklist is not active on this WO: every other question gets the same 503 (11 audit rows on Prod, 2026-11-06)
         return True
 
     return answer_checklists

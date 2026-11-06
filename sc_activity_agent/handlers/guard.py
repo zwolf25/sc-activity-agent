@@ -86,8 +86,10 @@ def watch(store, rt, clock=time.time):
         try:
             app, user = rt.user_for(wo["location"], "sub_note", wo)
             st = (app.call(user, "GET", f"/workorders/{wo['sc_id']}", action="watch", wo=wo["sc_id"]) or {}).get("Status", {})
-        except ScError:
-            continue   # a failed read changes nothing; the next pass tries again
+        except ScError as e:
+            if e.status != 0:
+                rt.save_ctx(wo, watched=clock())   # least-recently-read goes first: a WO that always fails to read (404) must not block every other WO
+            continue   # a failed read changes nothing else; the next pass tries again
         rt.save_ctx(wo, watched=clock())
         if st.get("Extended") == "CANCELED":
             end_plan(rt, wo)

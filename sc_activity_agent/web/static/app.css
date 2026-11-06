@@ -110,6 +110,11 @@ tr[hidden]{display:none}
 .call{word-break:break-all;min-width:240px}
 .users td{vertical-align:middle}
 .users .acts{display:flex;gap:6px}
+.users tr.pair td{border-bottom:0}
+.users tr.dash td{padding-top:0}
+.dashrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}
+.dashrow button{margin-left:auto}
+.bad-text{color:var(--bad,#b42318)}
 .users .lbl{display:flex;gap:6px;align-items:center}
 .users .lbl input{min-width:160px}
 details.ms{position:relative}

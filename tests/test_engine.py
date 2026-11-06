@@ -139,3 +139,13 @@ def test_non_user_bound_failure_never_switches(tmp_path):
     from sc_activity_agent.engine import user_bound
     assert user_bound(ScError(403, '{"ErrorCode":100}')) and user_bound(ScError(400, '{"ErrorCode":921}')) and user_bound(ScError(500, '{"ErrorCode":501,"ErrorMessage":"Unspecified error"}'))
     assert not user_bound(ScError(500, '{"ErrorCode":501,"ErrorMessage":"Invalid WorkOrder status"}')) and not user_bound(ScError(500, "boom")) and not user_bound(ValueError("x"))
+
+
+def test_a_wo_waiting_for_refrigerant_usage_fails_at_once_without_retries(tmp_path):
+    def held(*a):
+        raise ScError(400, '{"ErrorCode":904,"ErrorMessage":"Invalid State (COMPLETED/PENDING REFRIGERANT USE)"}', "/invoices")
+    t = [NOW + 10 ** 7]
+    s, e, plan = setup(tmp_path, {"accept": held}, lambda: t[0])
+    e.tick()
+    row = s.db.execute("SELECT state, attempts FROM steps WHERE kind='accept'").fetchone()
+    assert row["state"] == "failed" and row["attempts"] == 3   # a retry cannot clear it, only a person in ServiceChannel

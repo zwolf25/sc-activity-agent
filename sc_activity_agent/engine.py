@@ -21,6 +21,11 @@ def user_bound(e):
     return isinstance(e, ScError) and (e.status == 403 or '"ErrorCode":921' in b or ('"ErrorCode":501' in b and "Invalid WorkOrder status" not in b))
 
 
+def refrigerant_hold(e):
+    """The WO waits for refrigerant usage to be recorded (error 904 on an invoice, 940 on a review): only a person in ServiceChannel can clear it."""
+    return isinstance(e, ScError) and ("REFRIGERANT" in str(e).upper())
+
+
 class Engine:
     def __init__(self, store, handlers, clock=time.time, per_tick=10):
         """handlers: {step_kind: fn(engine, wo_row, step_row) -> None}. Raise ScError to fail a step."""
@@ -183,7 +188,7 @@ class Engine:
             except Exception as e:  # a handler bug must fail its step, not loop forever on it
                 if isinstance(e, ScError) and e.status == 0:  # paused mid-tick
                     break
-                n = MAX_ATTEMPTS if isinstance(e, Park) else st["attempts"] + 1
+                n = MAX_ATTEMPTS if isinstance(e, Park) or refrigerant_hold(e) else st["attempts"] + 1   # retrying cannot clear it
                 if n >= MAX_ATTEMPTS and self.rotate and user_bound(e) and self.rotate(wo, st):
                     self.store.db.execute("UPDATE steps SET attempts=0, error=?, due_at=? WHERE id=?", (f"{e} (switching to another user after {n} failures)", now, st["id"]))
                     out.append((st["id"], "switch"))

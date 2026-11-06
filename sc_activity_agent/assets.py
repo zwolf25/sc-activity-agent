@@ -30,9 +30,16 @@ ISSUE_ASSET = {"HVAC RTU": "RTU", "Electrical Panel": "Electrical Panel", "Gener
 def pick(store, rng, store_id, item, trade=None):
     """The id of a seeded asset at the location for this issue's equipment, or of any seeded asset in `trade` when `trade` is given and the
     equipment has no match. None when there is none. Only assets the agent created are used (the `assets` table)."""
-    rows = store.db.execute("SELECT id, type, trade FROM assets WHERE location=?", (store_id,)).fetchall()
+    skip = _refrigerant_types()
+    rows = [r for r in store.db.execute("SELECT id, type, trade FROM assets WHERE location=?", (store_id,)).fetchall() if r["type"] not in skip]
     own = [r["id"] for r in rows if r["type"] == ISSUE_ASSET.get(item.strip())]
     return rng.choice(own) if own else rng.choice([r["id"] for r in rows if trade and r["trade"] == trade.upper()] or [None])
+
+
+def _refrigerant_types():
+    """A WO that checks out with a refrigerant asset stops at COMPLETED / PENDING REFRIGERANT USE, which blocks the review and the invoice,
+    and no API call to answer it is known (seen on Prod 2026-11-06 and SB2). Those assets are not attached until one is found."""
+    return {e["type"] for e in load_catalog()["entries"] if e.get("refrigerant")}
 
 
 def load_catalog():

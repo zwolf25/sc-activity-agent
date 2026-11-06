@@ -6,6 +6,7 @@ ERROR_HINTS = [(re.compile(r"\b1104\b"), "The invoice or proposal is over the NT
                (re.compile(r"\b403\b.*\b100\b|\b100\b.*\b403\b"), "ServiceChannel refused a second attach on the same asset. Skip it."),
                (re.compile(r"\b429\b"), "Rate limited. Retry later; lower the calls per minute if it repeats."),
                (re.compile(r"\b804\b"), "Check-in is not enabled for this Subscriber and Provider pair. Open Setup, copy the request under Check-in permission and send it to ServiceChannel support."),
+               (re.compile(r"(?i)refrigerant"), "The WO is waiting for refrigerant usage (it has a refrigerant asset). Record the usage in ServiceChannel (Provider Automation), then retry the step."),
                (re.compile(r"\b1145\b"), "ServiceChannel blocks this Provider on billing. Fix the Provider's billing in Fixxbook (CSA Billing), then retry."),
                (re.compile(r"no eligible trade at"), "No Provider you control is Rank 1 for any trade at this location. In ServiceChannel Contracts, rank one of your Providers 1 for a trade there, or use another location. Then press 'Re-read contracts' on Locations. Also check that each Provider connection has its Provider ID."),
                (re.compile(r"no issue resolves on the dashboard"), "The issue list dashboard has no problem for this location's trades. In ServiceChannel, assign a dashboard whose issue list covers this location's trades to the Subscriber user, then press Check dashboard on Connections."),

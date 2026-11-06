@@ -364,6 +364,29 @@ def test_watch_ends_the_plan_of_a_wo_cancelled_by_a_user(tmp_path):
     assert watch(s, rt, lambda: 10 ** 6) == []   # the Settings toggle turns it off
 
 
+def test_watch_moves_on_from_a_wo_that_cannot_be_read(tmp_path):
+    from sc_activity_agent.client import ScError
+    from sc_activity_agent.handlers import watch
+    s = setup(tmp_path)
+    plan = planner.build_plan(random.Random(4), NOW, {})
+    add_plan(s, "HQ-NYC", "HVAC", 5001, plan, {**CTX}, NOW)
+    add_plan(s, "HQ-NYC", "HVAC", 5002, plan, {**CTX}, NOW)
+    read = []
+
+    class App(FakeApp):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            if method == "GET" and path.startswith("/workorders/"):
+                read.append(path)
+                if path.endswith("5001"):
+                    raise ScError(404, "Work order is not found!", path)
+                return {"Status": {"Primary": "OPEN"}}
+            return super().call(user, method, path, params, body, **kw)
+    rt = Runtime(s, {1: App("sub", []), 2: App("prov", [])}, random.Random(1))
+    watch(s, rt, lambda: 10000)
+    watch(s, rt, lambda: 14000)
+    assert read == ["/workorders/5001", "/workorders/5002"]   # a deleted WO must not take every pass
+
+
 def _preflight_app(status):
     class App(FakeApp):
         def call(self, user, method, path, params=None, body=None, **kw):
@@ -690,6 +713,30 @@ def test_checklist_questions_are_answered_once_per_visit_before_check_out(tmp_pa
     assert ctx["checklists"] == [1] and ctx["photo_set"]
 
 
+def test_checklist_answers_stop_after_the_first_checklist_not_active_error(tmp_path):
+    from sc_activity_agent.client import ScError
+    s = setup(tmp_path / "x")
+    posts = []
+
+    def call(user, method, path, params=None, body=None, **kw):
+        if path == "/checklists/detail":
+            return CHECKLIST
+        if path == "/checklists/CheckListResponse":
+            posts.append(1)
+            raise ScError(400, '{"ErrorCodes":[503],"ErrorCode":503,"ErrorMessage":"The active checklist ... is not found."}', path)
+        if path == "/workorders/9":
+            return {"Status": {"Primary": "IN PROGRESS"}, "Provider": {"Id": 2000078685}}
+        return {"UserProfile": {"AuthUserId": 4242}} if path == "/users/current/profile" else {}
+    s.put("checklists", {"on": True})
+    s.db.execute("UPDATE locations SET subscriber_id=5 WHERE store_id='HQ-NYC'")
+    wo = _wo(s, provider_id=2000078685, techs={"1.0": 2})
+    wo = s.db.execute("SELECT * FROM work_orders WHERE id=?", (wo["id"],)).fetchone()
+    rt = Runtime(s, {1: FakeApp("sub", []), 2: FakeApp("prov", [])}, random.Random(1))
+    rt.apps[2].call = call
+    make_handlers(rt)["check_out"](None, wo, {"kind": "check_out", "due_at": NOW, "payload": json.dumps({"visit": 1, "final": True, "situation": "complete"})})
+    assert len(posts) == 1   # the other questions of the same checklist would all get the same 503
+
+
 def test_answers_fall_back_to_technician_one_when_the_profile_has_no_user_id(tmp_path):
     s, wo, sent = _checkout(tmp_path, profile={"Name": "x"})
     reqs = [json.loads(x[3][0][3]) for x in sent if x[1] == "/checklists/CheckListResponse"]
@@ -833,12 +880,12 @@ def test_rotate_user_hands_a_step_to_each_other_user_once_then_gives_up(tmp_path
 def test_check_in_attaches_a_seeded_asset_once_and_only_when_none_is_on_the_wo(tmp_path):
     s = setup(tmp_path)
     s.put("behavior", {"asset_on_site": 100})
-    s.db.execute("INSERT INTO assets(id,location,tag,trade,type,created_at) VALUES(55,'HQ-NYC','T1','HVAC','RTU',0)")
+    s.db.execute("INSERT INTO assets(id,location,tag,trade,type,created_at) VALUES(55,'HQ-NYC','T1','ELECTRICAL','Electrical Panel',0)")
     s.db.commit()
     calls = []
     rt = Runtime(s, {1: FakeApp("sub", calls), 2: FakeApp("prov", calls)}, random.Random(1))
     h = make_handlers(rt)["check_in"]
-    wo = _wo(s, provider_id=2000078685, equipment="HVAC RTU")
+    wo = _wo(s, provider_id=2000078685, equipment="Electrical Panel")
     h(None, wo, step("check_in", visit=1))
     h(None, s.db.execute("SELECT * FROM work_orders").fetchone(), step("check_in", visit=2))
     assert [c for c in calls if c[3] == "/assets/workorders/9/attach"] == [("prov", "prov_user", "PUT", "/assets/workorders/9/attach")]

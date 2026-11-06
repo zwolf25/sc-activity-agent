@@ -478,7 +478,7 @@ def test_subscriber_user_without_a_dashboard_cannot_create_wos(tmp_path, monkeyp
     assert s.get("dashboard_info")["yes"]["id"] == 2752
     c.post("/users/2/can-do", data={"can_do": ["create_wo"]})
     assert json.loads(s.db.execute("SELECT can_do FROM users WHERE id=2").fetchone()["can_do"]) == ["create_wo"]
-    assert "No dashboard" in c.get("/connections").text and "PM (2752)" in c.get("/connections").text
+    assert "No dashboard" in c.get("/connections").text and "<b>PM</b> (2752)" in c.get("/connections").text
 
 
 def test_old_list_shaped_dashboard_info_does_not_break_pages(tmp_path):

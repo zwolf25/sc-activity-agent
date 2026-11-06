@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v0.20.3 - 2026-11-06
+
+- Connections: the dashboard of each Subscriber user now sits on its own line under the user, with the Check dashboard button at its right. Before, the button wrapped to two lines and squeezed the user's row.
+- A work order whose invoice or review is refused because it waits for refrigerant usage (error 904 or 940) now fails at once, with a hint on the Errors page, instead of retrying three times. Seeded refrigerant assets (the RTU) are no longer attached to new work orders: a check-out on one leaves the work order in COMPLETED / PENDING REFRIGERANT USE, which blocks the review and the invoice, and the API call that answers it is not known yet. Work orders already in that state need the usage recorded in ServiceChannel (Provider Automation), then Retry.
+- The hourly status check no longer stays on a work order it cannot read (a deleted one returns 404); it moves on to the next.
+- A checklist that is not active on a work order stops after the first refused answer, not eleven.
+- Restart the agent to update. Nothing pauses.
+
 ## v0.20.2 - 2026-11-06
 
 - Connections: each Subscriber user's row shows that user's dashboard and issue list, with its own Check dashboard button. The Subscriber ID is now a small form on its own (Save and check users).
