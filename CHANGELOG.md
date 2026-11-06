@@ -2,7 +2,10 @@
 
 ## Unreleased
 
+## v0.20.5 - 2026-11-06
+
 - Tests now also run against real ServiceChannel responses saved in `tests/fixtures/` (B-90). Nothing changes when the agent runs.
+- Restart the agent to update. Nothing pauses.
 
 ## v0.20.4 - 2026-11-06
 
