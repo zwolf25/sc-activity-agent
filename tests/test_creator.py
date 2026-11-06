@@ -15,9 +15,11 @@ IL = {"ProblemTypes": [{"Name": "Doors", "Items": [{"Name": "Automatic Door", "P
 class FakeApp:
     def __init__(self):
         self.calls = []
+        self.users = []
 
     def call(self, user, method, path, params=None, body=None, **kw):
         self.calls.append((method, path, body))
+        self.users.append(user[0])
         if path == "/users/current/profile":
             return {"UserProfile": {"DefaultScUserSetupId": 3151, "Dashboards": [{"SetupId": 3151, "Name": "Asset Dashboard"}]}}
         if path.endswith("/headers"):
@@ -150,6 +152,19 @@ def test_creates_from_the_user_dashboard_and_reads_it_once_an_hour(tmp_path):
     c.dashboard(c.store.db.execute("SELECT * FROM locations").fetchone())
     assert sum(p == "/users/current/profile" for m, p, b in app.calls) == 1
     assert s.get("user_dashboard")["sub"]["id"] == 3151
+
+
+def test_one_user_serves_a_whole_create(tmp_path):
+    s, app, c = setup(tmp_path)
+    s.db.execute("INSERT INTO users(id,conn_id,username,password,can_do) VALUES(3,1,'sub2',?,'[\"create_wo\"]')", (s.enc("pw"),))
+    s.db.commit()
+    for i in range(6):
+        app.users.clear()
+        s.db.execute("DELETE FROM work_orders")
+        s.put("user_dashboard", {})
+        loc = s.db.execute("SELECT * FROM locations").fetchone()
+        c.create(loc)
+        assert len(set(app.users)) == 1, app.users
 
 
 def test_dashboard_falls_back_to_last_known_when_profile_fails(tmp_path):

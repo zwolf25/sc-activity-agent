@@ -404,7 +404,7 @@ def test_setup_check_reports_each_problem(tmp_path, monkeypatch):
     res = setupcheck.run(store, RT())
     labels = {r["label"]: r for r in res["rows"]}
     assert labels["Sign in: sub (subscriber, S)"]["ok"]
-    assert not labels["Issue list dashboards readable"]["ok"]
+    assert not labels["Issue list dashboard: sub"]["ok"]
     assert not labels["Locations"]["ok"]
     assert "Run check" in c.get("/setup").text
 
@@ -454,5 +454,5 @@ def test_dashboard_check_shows_the_users_dashboard(tmp_path, monkeypatch):
                         {"UserProfile": {"DefaultScUserSetupId": 2752, "Dashboards": [{"SetupId": 2752, "Name": "PM Expert Dashboard"}]}}
                         if path.endswith("/profile") else {"Headers": [{"Id": 1, "DashboardId": 2752, "Name": "Mine.xlsx"}]})
     c.post("/dashboards/load", data={"subscriber_id": "5"})
-    assert s.get("dashboard_info") == {"id": 2752, "name": "PM Expert Dashboard", "list": "Mine.xlsx"}
+    assert s.get("dashboard_info") == [{"user": "sub", "id": 2752, "name": "PM Expert Dashboard", "list": "Mine.xlsx", "error": ""}]
     assert "PM Expert Dashboard" in c.get("/connections").text and "Mine.xlsx" in c.get("/connections").text

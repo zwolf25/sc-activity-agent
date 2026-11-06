@@ -4,7 +4,7 @@ rate limit."""
 import time
 
 from .client import ScApp, ScError
-from .creator import Creator, user_dashboard
+from .creator import Creator, check_users
 from .hints import hint
 
 MAX_LOCATIONS = 5
@@ -27,23 +27,17 @@ def run(store, rt):
         except (ScError, OSError) as e:
             why = _why(e)
             add(label, False, f"{why}. {hint(why)}".strip())
-    sub = store.db.execute("SELECT u.username, u.password, c.client_id, c.client_secret FROM users u JOIN connections c ON c.id=u.conn_id "
-                           "WHERE c.side='subscriber' ORDER BY u.id LIMIT 1").fetchone()
     sid = store.get("subscriber_id")
-    if sub and sid:
-        try:
-            sa = ScApp(env, sub["client_id"], store.dec(sub["client_secret"]), store=store, role="subscriber")
-            user = (sub["username"], store.dec(sub["password"]))
-            d = user_dashboard(store, sa, user, time.time(), force=True)
-            heads = sa.call(user, "GET", f"/api/subscribers/{sid}/issuelist/headers", action="dashboards")["Headers"]
-            lst = next((h["Name"] for h in heads if h["DashboardId"] == d["id"]), "")
-            add("Issue list dashboards readable", bool(lst), f"{d['name'] or d['id']}: {lst}" if lst else
-                f"Dashboard {d['id']} of {sub['username']} has no issue list for this Subscriber ID. Check the Subscriber ID on Connections, or assign a dashboard with an issue list to the user in ServiceChannel.")
-        except (ScError, OSError) as e:
-            why = _why(e)
-            add("Issue list dashboards readable", False, f"{why}. Check the Subscriber ID on Connections. {hint(why)}".strip())
-    elif sub:
-        add("Issue list dashboards readable", False, "Enter the Subscriber ID on Connections and press Check dashboard.")
+    users = check_users(store, sid, time.time()) if sid else []
+    for r in users:
+        label = f"Issue list dashboard: {r['user']}"
+        if r["error"]:
+            add(label, False, f"{r['error']}. Check the Subscriber ID on Connections. {hint(r['error'])}".strip())
+        else:
+            add(label, bool(r["list"]), f"{r['name'] or r['id']}: {r['list']}" if r["list"] else
+                f"Dashboard {r['id']} has no issue list for this Subscriber ID. Check the Subscriber ID on Connections, or assign a dashboard with an issue list to {r['user']} in ServiceChannel.")
+    if not sid and store.db.execute("SELECT 1 FROM connections WHERE side='subscriber'").fetchone():
+        add("Issue list dashboard", False, "Enter the Subscriber ID on Connections and press Check dashboard.")
     for p in store.db.execute("SELECT name FROM connections WHERE side='provider' AND provider_id IS NULL"):
         add(f"Provider ID: {p['name']}", False, "Delete this connection and add it again with its numeric Provider ID.")
     locs = store.db.execute("SELECT * FROM locations WHERE enabled=1 ORDER BY store_id").fetchall()

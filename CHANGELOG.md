@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.20.1 - 2026-11-05
+
+- Fixed: with more than one Subscriber user ticked to create WOs, a create could read the issue list as one user and send the WO as another user with a different dashboard. That fails with "Cannot find issue choice" and leaves a VOID shell. A create now uses one Subscriber user from start to finish and that user's own dashboard.
+- Connections and Check setup now show and test the dashboard and issue list of every Subscriber user, one row each.
+- Restart the agent to update. Nothing pauses.
+
 ## v0.20.0 - 2026-11-05
 
 - Factory reset now pauses the agent and waits for the step in progress to finish before it deletes anything. If the step does not finish within a minute, nothing is reset and the pause is undone.

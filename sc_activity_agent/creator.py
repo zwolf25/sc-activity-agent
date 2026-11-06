@@ -32,16 +32,39 @@ def user_dashboard(store, app, user, now, force=False):
     return cache[user[0]]
 
 
+def check_users(store, subscriber_id, now, force=True):
+    """B-92: read every Subscriber user's own dashboard and its issue list. Returns [{user, id, name, list, error}]; a user that cannot be read
+    carries the error text instead. Used by Connections and Check setup."""
+    from .client import ScApp
+    out = []
+    for r in store.db.execute("SELECT u.username, u.password, c.client_id, c.client_secret FROM users u JOIN connections c ON c.id=u.conn_id "
+                              "WHERE c.side='subscriber' ORDER BY u.id"):
+        row = {"user": r["username"], "id": None, "name": "", "list": "", "error": ""}
+        try:
+            app = ScApp(store.get("env"), r["client_id"], store.dec(r["client_secret"]), store=store, role="subscriber")
+            user = (r["username"], store.dec(r["password"]))
+            d = user_dashboard(store, app, user, now, force=force)
+            heads = app.call(user, "GET", f"/api/subscribers/{subscriber_id}/issuelist/headers", action="dashboards")["Headers"]
+            row.update(id=d["id"], name=d["name"], list=next((h["Name"] for h in heads if h["DashboardId"] == d["id"]), ""))
+        except (ScError, OSError) as e:
+            row["error"] = f"Could not reach ServiceChannel: {e}" if isinstance(e, OSError) else str(getattr(e, "body", None) or e)
+        out.append(row)
+    return out
+
+
 FAIL_ALERT = 3   # B-86: failed creates in a row before an alert is sent
 
 
 class Creator:
     def __init__(self, store, rt, rng, clock=time.time):
         self.store, self.rt, self.rng, self.clock = store, rt, rng, clock
+        self._pinned = None
         self.resolves = {}   # (location db id, problem type, item, problem) -> bool
 
     # --- API reads (Subscriber) ---
     def _sub(self, loc):
+        if self._pinned:   # B-92: one user for the whole create, so the pool, issuechoice and POST all see the same dashboard
+            return self._pinned
         return self.rt.user_for(loc["store_id"], "create")
 
     def _get(self, loc, path, params=None):
@@ -105,7 +128,7 @@ class Creator:
         """True if POST /workorders can resolve this issue. The POST looks the issue up on the location's own dashboard, not the
         IssueListHeaderId we send, and issuechoice without setupId does the same lookup read-only. A 400 here is the 502 a create would
         hit, which would leave a VOID shell."""
-        key = (loc["db_id"], issue["problem_type"], issue["item"], issue["problem"])
+        key = (self._sub(loc)[1][0], loc["db_id"], issue["problem_type"], issue["item"], issue["problem"])
         if key not in self.resolves:
             try:
                 self._get(loc, "/issuelist/issuechoice", {"problemType": issue["problem_type"], "equipmentType": issue["item"],
@@ -160,6 +183,13 @@ class Creator:
         return out
 
     def create(self, loc):
+        self._pinned = self.rt.user_for(loc["store_id"], "create")
+        try:
+            return self._create(loc)
+        finally:
+            self._pinned = None
+
+    def _create(self, loc):
         now = self.clock()
         dashboard = self.dashboard(loc)
         area = self.store.get("area_id", DEFAULT_AREA)

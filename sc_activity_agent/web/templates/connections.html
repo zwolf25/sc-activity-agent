@@ -2,10 +2,10 @@
 <div class="banner warn">This instance is <b>{{ 'SB2' if env == 'sb2' else 'Production' }}</b>. The environment was chosen when it was set up and cannot be changed here.</div>
 {% if msg %}<div class="note">{{ msg }}</div>{% endif %}
 <div class="card"><h3>Issue list dashboard</h3>
-<p>New WOs use the issue list of the Subscriber user's own dashboard, the one ServiceChannel applies when it creates a WO. To change it, assign another dashboard to that user in ServiceChannel, then check again.</p>
+<p>New WOs use the issue list of the Subscriber user's own dashboard (each Subscriber user is read on its own), the one ServiceChannel applies when it creates a WO. To change it, assign another dashboard to that user in ServiceChannel, then check again.</p>
 <form method="post" action="/dashboards/load" class="row" style="justify-content:flex-start;flex-wrap:wrap">
 <label class="f">Subscriber ID<input type="text" name="subscriber_id" value="{{ subscriber_id }}" required></label><button class="primary">Check dashboard</button></form>
-{% if dashboard %}<p>Dashboard <b>{{ dashboard.name or dashboard.id }}</b> ({{ dashboard.id }}){% if dashboard.list %}, issue list <b>{{ dashboard.list }}</b>{% else %}, <span class="muted">no issue list found for this Subscriber ID</span>{% endif %}</p>{% endif %}</div>
+{% for d in dashboard or [] %}<p>{{ d.user }}: {% if d.error %}<span class="muted">{{ d.error }}</span>{% else %}dashboard <b>{{ d.name or d.id }}</b> ({{ d.id }}){% if d.list %}, issue list <b>{{ d.list }}</b>{% else %}, <span class="muted">no issue list found for this Subscriber ID</span>{% endif %}{% endif %}</p>{% endfor %}</div>
 {% if env != 'sb2' %}<div class="card"><h3>Test instance (advanced)</h3>
 <p>A separate SB2 copy of this app, with its own data, logins and port. It does not change this instance. You need an SB2 integration app to use it.</p>
 <form method="post" action="/test-instance"><button>Open SB2 test instance</button></form></div>{% endif %}

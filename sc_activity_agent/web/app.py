@@ -24,7 +24,7 @@ from .. import __version__, autostart, awake, planner, status, update
 from .. import locations as locations_mod
 from ..alerts import EVENTS, Alerts, AlertError
 from ..client import ScApp, ScError
-from ..creator import user_dashboard
+from ..creator import check_users
 from ..hints import ERROR_HINTS, hint
 from .. import setupcheck
 from ..handlers import ACTION, cancel_wo
@@ -267,20 +267,16 @@ def create_app(store, engine=None, rt=None):
     @app.post("/dashboards/load")
     def load_dashboards(subscriber_id: int = Form(...)):
         store.put("subscriber_id", subscriber_id)
-        sa = sub_app()
-        if not sa:
+        rows = check_users(store, subscriber_id, time.time())
+        if not rows:
             return RedirectResponse("/connections?msg=Add a Subscriber user first", 303)
-        try:
-            d = user_dashboard(store, sa[0], sa[1], time.time(), force=True)
-            heads = sa[0].call(sa[1], "GET", f"/api/subscribers/{subscriber_id}/issuelist/headers", action="dashboards")["Headers"]
-        except (ScError, OSError) as e:
-            why = "Could not reach ServiceChannel: " + str(e) if isinstance(e, OSError) else str(e.body or e)
-            return RedirectResponse("/connections?msg=" + quote(f"Could not read the dashboard: {why}. Check the Subscriber ID and that the Subscriber user has a dashboard. {hint(why)}".strip()), 303)
-        lst = next((h["Name"] for h in heads if h["DashboardId"] == d["id"]), "")
-        store.put("dashboard_info", {"id": d["id"], "name": d["name"], "list": lst})
-        if not lst:
-            return RedirectResponse("/connections?msg=" + quote(f"Dashboard {d['id']} has no issue list for this Subscriber ID."), 303)
-        return RedirectResponse("/connections?msg=Dashboard checked", 303)
+        store.put("dashboard_info", rows)
+        bad = [r for r in rows if r["error"] or not r["list"]]
+        if bad:
+            r = bad[0]
+            why = r["error"] or f"dashboard {r['id']} has no issue list for this Subscriber ID"
+            return RedirectResponse("/connections?msg=" + quote(f"{r['user']}: {why}. {hint(why)}".strip()), 303)
+        return RedirectResponse("/connections?msg=Dashboards checked", 303)
 
     @app.post("/connections/add")
     def add_connection(side: str = Form(...), name: str = Form(...), client_id: str = Form(...), client_secret: str = Form(...),
