@@ -171,3 +171,16 @@ def test_dashboard_check_runs_again_only_when_due_and_never_raises(tmp_path):
     assert len(asked) > n
     s2, c2 = _check(tmp_path / "x", lambda p: (_ for _ in ()).throw(ScError(500, "down", "x")))
     assert s2.get("dash_check") is None   # an API error is not a mismatch
+
+
+def test_alert_after_three_failed_creates_in_a_row(tmp_path, monkeypatch):
+    from sc_activity_agent import alerts
+    sent = []
+    monkeypatch.setattr(alerts.Alerts, "create_failed", lambda self, n, loc, err: sent.append(n))
+    s, app, c = setup(tmp_path)
+    s.db.execute("DELETE FROM connections WHERE side='provider'")
+    s.db.commit()
+    for _ in range(3):
+        s.put("create_slots", {"day": {"HQ": "2025-10-27"}, "due": [{"loc": "HQ", "at": 0}]})
+        c.tick()
+    assert sent == [3] and s.get("create_streak") == 3

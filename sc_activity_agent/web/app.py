@@ -24,6 +24,8 @@ from .. import __version__, autostart, awake, planner, status, update
 from .. import locations as locations_mod
 from ..alerts import EVENTS, Alerts, AlertError
 from ..client import ScApp, ScError
+from ..hints import ERROR_HINTS, hint
+from .. import setupcheck
 from ..handlers import ACTION, cancel_wo
 
 # what a user can be set to do, by connection side: key, label (users.can_do stores the keys; they match handlers.ACTION values)
@@ -84,23 +86,6 @@ def gap_text(g, z):
     fmt = STAMP
     moved = f"{g['steps']} scheduled steps were moved forward to make up for it." if g["steps"] else "No scheduled steps were affected."
     return f"The agent was not running from {a.strftime(fmt)} to {b.strftime(fmt)} ({span}), for example while the computer slept or the app was updated. {moved}"
-
-
-# B-79: known causes, matched against the error text
-ERROR_HINTS = [(re.compile(r"\b1104\b"), "The invoice or proposal is over the NTE. Skip it, or raise the NTE on the WO in ServiceChannel."),
-               (re.compile(r"\b403\b.*\b100\b|\b100\b.*\b403\b"), "ServiceChannel refused a second attach on the same asset. Skip it."),
-               (re.compile(r"\b429\b"), "Rate limited. Retry later; lower the calls per minute if it repeats."),
-               (re.compile(r"\b804\b"), "Check-in is not enabled for this Subscriber and Provider pair. Open Setup, copy the request under Check-in permission and send it to ServiceChannel support."),
-               (re.compile(r"\b1145\b"), "ServiceChannel blocks this Provider on billing. Fix the Provider's billing in Fixxbook (CSA Billing), then retry."),
-               (re.compile(r"no eligible trade at"), "No Provider you control is Rank 1 for any trade at this location. In ServiceChannel Contracts, rank one of your Providers 1 for a trade there, or use another location. Then press 'Re-read contracts' on Locations. Also check that each Provider connection has its Provider ID."),
-               (re.compile(r"no issue resolves on the dashboard"), "The issue list dashboard has no problem for this location's trades. In ServiceChannel, assign the dashboard to the Subscriber user, then reload dashboards on Connections."),
-               (re.compile(r"Client ID or secret rejected"), "ServiceChannel does not accept this integration app. Check the Client ID and secret, and that the app is registered in this environment (SB2 apps do not work in Production). Delete the connection on Connections and add it again."),
-               (re.compile(r"Username or password rejected"), "ServiceChannel does not accept this user's login. Delete the user on Connections and add it again with the current password."),
-               (re.compile(r"Could not reach ServiceChannel"), "The computer cannot reach ServiceChannel. Check the internet connection, VPN or proxy, then retry.")]
-
-
-def hint(text):
-    return next((h for rx, h in ERROR_HINTS if rx.search(text or "")), "")
 
 
 def error_groups(rows, tz):
@@ -227,7 +212,8 @@ def create_app(store, engine=None, rt=None):
 
     @app.get("/setup")
     def setup(request: Request):
-        return page(request, "setup", pairs=pair_status())
+        chk = store.get("setup_check") or {}
+        return page(request, "setup", pairs=pair_status(), check=dict(chk, when=stamp(chk["at"], ZoneInfo(store.get("tz", "America/New_York")))) if chk.get("at") else chk)
 
     @app.get("/dashboard")
     def dashboard(request: Request, page_no: int = Query(1, alias="page"), hide_done: str = "", hide_skipped: str = "", f: str = "", w: str = ""):
@@ -681,6 +667,16 @@ def create_app(store, engine=None, rt=None):
             return RedirectResponse("/reset?msg=" + quote("Nothing was reset. " + why), 303)
         path = reset_mod.factory_reset(store, rt, engine)
         return RedirectResponse("/setup?msg=" + quote(f"Factory reset done. The old database is saved at {path}. Set up again below."), 303)
+
+    @app.post("/setup/check")
+    def setup_check():
+        """B-87: run every setup test in the background; Setup shows the rows when it finishes."""
+        if rt is None:
+            return RedirectResponse("/setup?msg=The agent is not running, so nothing can be checked.", 303)
+        if not (store.get("setup_check") or {}).get("running"):
+            store.put("setup_check", {**(store.get("setup_check") or {}), "running": True})
+            background(setupcheck.run, store, rt)
+        return RedirectResponse("/setup", 303)
 
     @app.post("/alerts/token")
     def alerts_token(token: str = Form(...)):

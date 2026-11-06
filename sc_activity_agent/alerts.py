@@ -22,6 +22,7 @@ EVENTS = {"step_failed": "A step failed after its retries",
           "checkin_blocked": "Check-in is blocked for a Provider (error 804)",
           "connection": "A connection or login failed",
           "offline": "The agent was not running for over an hour",
+          "create_failed": "Work order creation failed several times in a row",
           "cap_hit": "A daily limit paused the agent",
           "smoke": "The SB2 smoke run finished (SB2 instances only)"}
 
@@ -117,6 +118,13 @@ class Alerts:
         return self.send(f"step:{st['id']}", f"WO {sc_id} at {loc}: {st['kind']} failed after {n} tries. {text[:200]}",
                          [[("Retry", f"r:{st['id']}"), ("Skip step", f"s:{st['id']}")],
                           [("Pause agent", "p"), ("Cancel WO", f"c:{wo['id']}")]], event="step_failed")
+
+    def create_failed(self, streak, location, error):
+        """B-86: creation keeps failing, which stops all new activity but touches no step, so step_failed never fires."""
+        from .hints import hint
+        text = f"Work order creation failed {streak} times in a row. Last, at {location}: {str(error)[:160]}"
+        fix = hint(str(error))
+        return self.send("create_failed", f"{text}. {fix}".strip() if fix else text + ". Open the console, Errors page.", event="create_failed")
 
     def offline(self, start, end):
         if end - start <= 3600:

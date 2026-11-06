@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.19.0 - 2026-11-05
+
+- New alert: "Work order creation failed several times in a row". After 3 failed creates in a row the Telegram alert names the location, the error and the fix. Before, a creation problem (no Rank 1 provider, dashboard not assigned) only showed on the Errors page, and nothing alerted you while the agent made no activity. It follows the alert settings and the 6 hour repeat limit; switch it off under Settings > Telegram alerts.
+- New: Setup > Check setup. One click tests every sign-in, the Subscriber's issue list dashboards and the Rank 1 trades at your first 5 enabled locations, and shows the fix next to each problem. It only reads from ServiceChannel and creates nothing.
+- Restart the agent to update. Nothing pauses.
+
 ## v0.18.0 - 2026-11-05
 
 - New: Settings > Danger zone > Factory reset. It clears all connections, users, locations, tracked work orders, the audit log and every setting, so the agent starts setup from scratch without a reinstall. It saves a database backup first, keeps the environment, port and secret key, and needs the typed word RESET plus a tick box. Work orders already in ServiceChannel are not deleted (run Clean-up first to cancel them). It refuses while a clean-up or update is running.

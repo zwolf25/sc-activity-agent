@@ -392,3 +392,24 @@ def test_provider_needs_numeric_id(tmp_path):
 def test_create_error_hint():
     from sc_activity_agent.web.app import hint
     assert "Rank 1" in hint("409 no eligible trade at ZW123 (no Rank 1 provider connection)")
+
+
+def test_setup_check_reports_each_problem(tmp_path, monkeypatch):
+    from sc_activity_agent import setupcheck
+    from sc_activity_agent.client import ScApp, ScError
+    store, c = client(tmp_path)
+    store.db.execute("INSERT INTO connections VALUES(1,'subscriber','S','c',?,NULL)", (store.enc("x"),))
+    store.db.execute("INSERT INTO users(id,conn_id,username,password,can_do) VALUES(1,1,'sub',?,'[]')", (store.enc("pw"),))
+    store.db.commit()
+    store.put("subscriber_id", 5)
+    def boom(self, *a, **k):
+        raise ScError(403, "forbidden", "x")
+    monkeypatch.setattr(ScApp, "call", boom)
+    class RT:
+        rng = None
+    res = setupcheck.run(store, RT())
+    labels = {r["label"]: r for r in res["rows"]}
+    assert labels["Sign in: sub (subscriber, S)"]["ok"]
+    assert not labels["Issue list dashboards readable"]["ok"]
+    assert not labels["Locations"]["ok"]
+    assert "Run check" in c.get("/setup").text

@@ -6,6 +6,7 @@ import time
 from zoneinfo import ZoneInfo
 
 from . import assets, generator, photos, planner
+from .alerts import Alerts
 from .client import ScError
 from .engine import add_plan
 
@@ -13,6 +14,9 @@ DEFAULT_DASHBOARD = 3151
 SAMPLE = 6   # issues compared per dashboard check (B-70)
 DEFAULT_AREA = 3          # SALES FLOOR: accepts every item of DOORS, HVAC and GENERAL MAINTENANCE on dashboard 3151
 RANK_TTL = 24 * 3600
+
+
+FAIL_ALERT = 3   # B-86: failed creates in a row before an alert is sent
 
 
 class Creator:
@@ -149,7 +153,12 @@ class Creator:
             self.store.put("create_slots", slots)
             try:
                 out.append((loc["store_id"], self.create(loc)))
+                self.store.put("create_streak", 0)
             except ScError as e:
+                streak = (self.store.get("create_streak") or 0) + 1
+                self.store.put("create_streak", streak)
+                if streak >= FAIL_ALERT:
+                    Alerts(self.store).create_failed(streak, loc["store_id"], e)
                 errs = self.store.get("create_errors", [])[-19:]
                 errs.append({"at": self.clock(), "location": loc["store_id"], "error": str(e)})
                 self.store.put("create_errors", errs)
