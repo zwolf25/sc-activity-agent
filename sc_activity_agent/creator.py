@@ -32,24 +32,34 @@ def user_dashboard(store, app, user, now, force=False):
     return cache[user[0]]
 
 
-def check_users(store, subscriber_id, now, force=True):
-    """B-92: read every Subscriber user's own dashboard and its issue list. Returns [{user, id, name, list, error}]; a user that cannot be read
-    carries the error text instead. Used by Connections and Check setup."""
-    from .client import ScApp
-    out = []
-    for r in store.db.execute("SELECT u.username, u.password, c.client_id, c.client_secret FROM users u JOIN connections c ON c.id=u.conn_id "
-                              "WHERE c.side='subscriber' ORDER BY u.id"):
-        row = {"user": r["username"], "id": None, "name": "", "list": "", "error": ""}
-        try:
-            app = ScApp(store.get("env"), r["client_id"], store.dec(r["client_secret"]), store=store, role="subscriber")
-            user = (r["username"], store.dec(r["password"]))
-            d = user_dashboard(store, app, user, now, force=force)
+def check_user(store, app, user, subscriber_id, now, force=True):
+    """B-92: read one Subscriber user's own dashboard and, when the Subscriber ID is known, its issue list. Returns and stores
+    {user, id, name, list, error} in settings key dashboard_info (username -> row). `id` is None when the user has no readable dashboard,
+    and the console then refuses to tick Create WOs for that user."""
+    row = {"user": user[0], "id": None, "name": "", "list": "", "error": ""}
+    try:
+        d = user_dashboard(store, app, user, now, force=force)
+        row.update(id=d["id"], name=d["name"])
+        if subscriber_id:
             heads = app.call(user, "GET", f"/api/subscribers/{subscriber_id}/issuelist/headers", action="dashboards")["Headers"]
-            row.update(id=d["id"], name=d["name"], list=next((h["Name"] for h in heads if h["DashboardId"] == d["id"]), ""))
-        except (ScError, OSError) as e:
-            row["error"] = f"Could not reach ServiceChannel: {e}" if isinstance(e, OSError) else str(getattr(e, "body", None) or e)
-        out.append(row)
-    return out
+            row["list"] = next((h["Name"] for h in heads if h["DashboardId"] == d["id"]), "")
+    except (ScError, OSError) as e:
+        row["error"] = f"Could not reach ServiceChannel: {e}" if isinstance(e, OSError) else str(getattr(e, "body", None) or e)
+    info = store.get("dashboard_info") or {}
+    if not isinstance(info, dict):   # v0.20.0/1 stored a list
+        info = {}
+    info[user[0]] = row
+    store.put("dashboard_info", info)
+    return row
+
+
+def check_users(store, subscriber_id, now, force=True):
+    """check_user for every Subscriber user. Used by the Subscriber ID form and Check setup."""
+    from .client import ScApp
+    return [check_user(store, ScApp(store.get("env"), r["client_id"], store.dec(r["client_secret"]), store=store, role="subscriber"),
+                       (r["username"], store.dec(r["password"])), subscriber_id, now, force)
+            for r in store.db.execute("SELECT u.username, u.password, c.client_id, c.client_secret FROM users u JOIN connections c ON c.id=u.conn_id "
+                                      "WHERE c.side='subscriber' ORDER BY u.id")]
 
 
 FAIL_ALERT = 3   # B-86: failed creates in a row before an alert is sent

@@ -67,6 +67,7 @@ None yet. Zac's new ideas go here first, then get sized and ranked.
 | B-67 | Asset seeding finished: `audit` and `enrich` read the asset list once, and a Dashboard and Locations banner shows where a Rank 1 trade has no seeded assets, with Dismiss (earlier work in 0.13.0) | 0.14.3 |
 | B-64 | Dashboard stage tiles open a list of the WOs in that stage | 0.14.2 |
 | B-91 | Dashboard dropdown removed: the Subscriber user's own dashboard is read from the profile and shown on Connections; B-70 banner and sample check removed | 0.20.0 |
+| B-93 | Per-user Check dashboard button on Connections; a Subscriber user is checked on add; no dashboard means no Create WOs | 0.20.2 |
 | B-92 | A create uses one Subscriber user from pool to POST; Connections and Check setup show every Subscriber user's dashboard | 0.20.1 |
 | B-70 | Dashboard mismatch warning (selected dashboard vs the Subscriber user's active one) and the setup note | 0.14.2 |
 | B-23 | WOs can be created with a seeded asset attached (Behavior slider, default 0) | 0.14.0 |

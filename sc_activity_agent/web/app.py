@@ -24,7 +24,7 @@ from .. import __version__, autostart, awake, planner, status, update
 from .. import locations as locations_mod
 from ..alerts import EVENTS, Alerts, AlertError
 from ..client import ScApp, ScError
-from ..creator import check_users
+from ..creator import check_user, check_users
 from ..hints import ERROR_HINTS, hint
 from .. import setupcheck
 from ..handlers import ACTION, cancel_wo
@@ -158,12 +158,13 @@ def create_app(store, engine=None, rt=None):
         (it can only be confirmed by the first creation pass) shows on the checklist but does not hold back the Dashboard."""
         n = lambda sql: db.execute(sql).fetchone()[0]
         has = lambda side: n(f"SELECT COUNT(*) FROM connections c WHERE side='{side}' AND EXISTS(SELECT 1 FROM users u WHERE u.conn_id=c.id)") > 0
+        dash_rows = list((store.get("dashboard_info") or {}).values()) if isinstance(store.get("dashboard_info"), dict) else []
         no_pid = [r[0] for r in db.execute("SELECT name FROM connections WHERE side='provider' AND provider_id IS NULL")]
         r1 = store.get("rank1", {})
         ranked = any(r1.get(r[0], {}).get("trades") for r in db.execute("SELECT store_id FROM locations WHERE enabled=1"))
         return [("Subscriber connection with a user", has("subscriber"), "/connections",
                  "Add the Subscriber integration app (Client ID and secret) and a Subscriber user. Both come from ServiceChannel; the app must be registered in this environment.", True),
-                ("Subscriber ID and dashboard checked", bool(store.get("subscriber_id")) and bool(store.get("dashboard_info")), "/connections",
+                ("Subscriber ID and dashboard checked", bool(store.get("subscriber_id")) and bool(dash_rows) and all(r["id"] is not None for r in dash_rows), "/connections",
                  "On Connections, enter the numeric Subscriber ID and press Check dashboard. The agent draws problems from the issue list of the Subscriber user's own dashboard.", True),
                 ("Provider connection with a user", has("provider"), "/connections",
                  "Add a Provider integration app and a Provider user. A Provider that is Rank 1 for a trade at your location receives the Work Orders.", True),
@@ -261,7 +262,7 @@ def create_app(store, engine=None, rt=None):
             for u in c["users"]:
                 u["can_do"] = json.loads(u["can_do"])
             c["actions"] = CAN_DO[c["side"]]
-        return page(request, "connections", conns=conns, idle=[a for a in missing_actions()], techless=no_tech(), msg=msg, dashboard=store.get("dashboard_info"),
+        return page(request, "connections", conns=conns, idle=[a for a in missing_actions()], techless=no_tech(), msg=msg, dashboard=info if isinstance(info := store.get("dashboard_info"), dict) else {},
                     subscriber_id=store.get("subscriber_id", ""))
 
     @app.post("/dashboards/load")
@@ -269,14 +270,37 @@ def create_app(store, engine=None, rt=None):
         store.put("subscriber_id", subscriber_id)
         rows = check_users(store, subscriber_id, time.time())
         if not rows:
-            return RedirectResponse("/connections?msg=Add a Subscriber user first", 303)
-        store.put("dashboard_info", rows)
-        bad = [r for r in rows if r["error"] or not r["list"]]
-        if bad:
-            r = bad[0]
-            why = r["error"] or f"dashboard {r['id']} has no issue list for this Subscriber ID"
-            return RedirectResponse("/connections?msg=" + quote(f"{r['user']}: {why}. {hint(why)}".strip()), 303)
-        return RedirectResponse("/connections?msg=Dashboards checked", 303)
+            return RedirectResponse("/connections?msg=Subscriber ID saved. Add a Subscriber user next", 303)
+        return RedirectResponse("/connections?msg=" + quote(_dash_msg(rows, drop_create=True)), 303)
+
+    def _dash_msg(rows, drop_create=False):
+        """Message for dashboard rows. A user without a dashboard loses Create WOs, since a create would fail for them."""
+        out = []
+        for r in rows:
+            if r["id"] is None:
+                why = r["error"] or "no dashboard"
+                out.append(f"{r['user']}: {why}. {hint(why)}".strip())
+                if drop_create:
+                    _no_create(r["user"])
+            elif not r["list"] and store.get("subscriber_id"):
+                out.append(f"{r['user']}: dashboard {r['id']} has no issue list for this Subscriber ID.")
+        return " ".join(out) or "Dashboards checked"
+
+    def _no_create(username):
+        u = db.execute("SELECT id, can_do FROM users WHERE username=?", (username,)).fetchone()
+        if u and "create_wo" in json.loads(u["can_do"]):
+            db.execute("UPDATE users SET can_do=? WHERE id=?", (json.dumps([a for a in json.loads(u["can_do"]) if a != "create_wo"]), u["id"]))
+            db.commit()
+
+    @app.post("/users/{uid}/check-dashboard")
+    def check_dashboard(uid: int):
+        u = db.execute("SELECT u.*, c.client_id, c.client_secret FROM users u JOIN connections c ON c.id=u.conn_id WHERE u.id=?", (uid,)).fetchone()
+        r = check_user(store, ScApp(store.get("env"), u["client_id"], store.dec(u["client_secret"]), store=store, role="subscriber"),
+                       (u["username"], store.dec(u["password"])), store.get("subscriber_id"), time.time())
+        msg = _dash_msg([r], drop_create=True)
+        if r["id"] is not None and msg == "Dashboards checked":
+            msg = f"{u['username']}: dashboard {r['name'] or r['id']}, issue list {r['list'] or 'not checked (enter the Subscriber ID)'}"
+        return RedirectResponse("/connections?msg=" + quote(msg), 303)
 
     @app.post("/connections/add")
     def add_connection(side: str = Form(...), name: str = Form(...), client_id: str = Form(...), client_secret: str = Form(...),
@@ -307,6 +331,11 @@ def create_app(store, engine=None, rt=None):
         db.execute("INSERT INTO users(conn_id,username,password,label,can_do) VALUES(?,?,?,?,?)",
                    (cid, username.strip(), store.enc(password), label, json.dumps([a for a, _ in CAN_DO[side]] if first else [])))
         db.commit()
+        if side == "subscriber":   # B-92: read the user's dashboard now; without one the user cannot create WOs
+            r = check_user(store, ScApp(store.get("env"), c["client_id"], store.dec(c["client_secret"]), store=store, role="subscriber"),
+                           (username.strip(), password), store.get("subscriber_id"), time.time())
+            msg = _dash_msg([r], drop_create=True)
+            return RedirectResponse("/connections" + ("" if msg == "Dashboards checked" else "?msg=" + quote(msg)), 303)
         return RedirectResponse("/connections", 303)
 
     @app.post("/users/{uid}/can-do")
@@ -314,9 +343,16 @@ def create_app(store, engine=None, rt=None):
         side = db.execute("SELECT c.side FROM users u JOIN connections c ON c.id=u.conn_id WHERE u.id=?", (uid,)).fetchone()["side"]
         ok = {a for a, _ in CAN_DO[side]}
         picked = [a for a in (await request.form()).getlist("can_do") if a in ok]
+        msg = ""
+        if side == "subscriber" and "create_wo" in picked:   # B-92: a user with no dashboard cannot create WOs
+            u = db.execute("SELECT username FROM users WHERE id=?", (uid,)).fetchone()
+            row = (store.get("dashboard_info") or {}).get(u["username"]) if isinstance(store.get("dashboard_info"), dict) else None
+            if not row or row["id"] is None:
+                picked.remove("create_wo")
+                msg = f"?msg={quote(u['username'] + ' has no dashboard, so Create WOs was not ticked. Press Check dashboard on that user, or assign a dashboard to the user in ServiceChannel.')}"
         db.execute("UPDATE users SET can_do=? WHERE id=?", (json.dumps(picked), uid))
         db.commit()
-        return RedirectResponse("/connections", 303)
+        return RedirectResponse("/connections" + msg, 303)
 
     @app.post("/users/{uid}/label")
     def set_label(uid: int, label: str = Form("")):

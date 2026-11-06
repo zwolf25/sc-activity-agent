@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.20.2 - 2026-11-06
+
+- Connections: each Subscriber user's row shows that user's dashboard and issue list, with its own Check dashboard button. The Subscriber ID is now a small form on its own (Save and check users).
+- A Subscriber user is checked when you add it. A user with no dashboard cannot be set to Create WOs, because ServiceChannel creates the WO from that dashboard and the create would fail. Assign a dashboard to the user in ServiceChannel, then press Check dashboard.
+- Restart the agent to update. Nothing pauses. After the update, press Save and check users once so existing users show their dashboard; Create WOs stays ticked for users who already had it.
+
 ## v0.20.1 - 2026-11-05
 
 - Fixed: with more than one Subscriber user ticked to create WOs, a create could read the issue list as one user and send the WO as another user with a different dashboard. That fails with "Cannot find issue choice" and leaves a VOID shell. A create now uses one Subscriber user from start to finish and that user's own dashboard.

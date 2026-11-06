@@ -70,7 +70,7 @@ def test_wizard_points_to_next_step_and_dashboard_check(tmp_path):
     s, c = client(tmp_path)
     assert "Next: Subscriber connection with a user" in c.get("/setup").text
     r = c.post("/dashboards/load", data={"subscriber_id": "5"}, follow_redirects=False)
-    assert "Add%20a%20Subscriber%20user%20first" in r.headers["location"]
+    assert "Add%20a%20Subscriber%20user%20next" in r.headers["location"]
     assert s.get("subscriber_id") == 5
 
 
@@ -454,5 +454,34 @@ def test_dashboard_check_shows_the_users_dashboard(tmp_path, monkeypatch):
                         {"UserProfile": {"DefaultScUserSetupId": 2752, "Dashboards": [{"SetupId": 2752, "Name": "PM Expert Dashboard"}]}}
                         if path.endswith("/profile") else {"Headers": [{"Id": 1, "DashboardId": 2752, "Name": "Mine.xlsx"}]})
     c.post("/dashboards/load", data={"subscriber_id": "5"})
-    assert s.get("dashboard_info") == [{"user": "sub", "id": 2752, "name": "PM Expert Dashboard", "list": "Mine.xlsx", "error": ""}]
+    assert s.get("dashboard_info") == {"sub": {"user": "sub", "id": 2752, "name": "PM Expert Dashboard", "list": "Mine.xlsx", "error": ""}}
     assert "PM Expert Dashboard" in c.get("/connections").text and "Mine.xlsx" in c.get("/connections").text
+
+
+def test_subscriber_user_without_a_dashboard_cannot_create_wos(tmp_path, monkeypatch):
+    import json
+    from sc_activity_agent.client import ScApp
+    s, c = client(tmp_path)
+    c.post("/connections/add", data={"side": "subscriber", "name": "S", "client_id": "a", "client_secret": "b"})
+    has = {"yes": True}
+    monkeypatch.setattr(ScApp, "token", lambda self, u, p: "t")
+    monkeypatch.setattr(ScApp, "call", lambda self, user, method, path, *a, **k:
+                        {"UserProfile": {"DefaultScUserSetupId": 2752 if user[0] == "yes" else 0, "Dashboards": [{"SetupId": 2752, "Name": "PM"}]}}
+                        if path.endswith("/profile") else {"Headers": [{"Id": 1, "DashboardId": 2752, "Name": "L.xlsx"}]})
+    c.post("/connections/1/users", data={"username": "no", "password": "p"})   # first user starts with every action ticked
+    row = s.db.execute("SELECT can_do FROM users WHERE username='no'").fetchone()
+    assert "create_wo" not in json.loads(row["can_do"]) and s.get("dashboard_info")["no"]["id"] is None
+    r = c.post("/users/1/can-do", data={"can_do": ["create_wo", "review"]}, follow_redirects=False)
+    assert "has%20no%20dashboard" in r.headers["location"]
+    assert json.loads(s.db.execute("SELECT can_do FROM users WHERE id=1").fetchone()["can_do"]) == ["review"]
+    c.post("/connections/1/users", data={"username": "yes", "password": "p"})
+    assert s.get("dashboard_info")["yes"]["id"] == 2752
+    c.post("/users/2/can-do", data={"can_do": ["create_wo"]})
+    assert json.loads(s.db.execute("SELECT can_do FROM users WHERE id=2").fetchone()["can_do"]) == ["create_wo"]
+    assert "No dashboard" in c.get("/connections").text and "PM (2752)" in c.get("/connections").text
+
+
+def test_old_list_shaped_dashboard_info_does_not_break_pages(tmp_path):
+    s, c = client(tmp_path)
+    s.put("dashboard_info", [{"user": "sub", "id": 1, "name": "", "list": "", "error": ""}])
+    assert c.get("/setup").status_code == 200 and c.get("/connections").status_code == 200
