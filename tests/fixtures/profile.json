@@ -1,0 +1,72 @@
+{
+ "Stores": {
+  "Stores": []
+ },
+ "UserProfile": {
+  "AccountPayableManager": false,
+  "AuthUserId": 8029022,
+  "CobranderId": 2189,
+  "CultureName": "en",
+  "Dashboards": [
+   {
+    "DashDescription": "",
+    "IsDeleted": false,
+    "Name": "PM Expert Dashboard",
+    "SetupId": 2752
+   }
+  ],
+  "DefaultScUserSetupId": 2752,
+  "DistrictAccess": "",
+  "Districts": [],
+  "Email": "redacted",
+  "EulaSigned": false,
+  "FirstTimeUser": true,
+  "FullName": "redacted",
+  "HasLocationNoteRestrictions": false,
+  "HasRestrictedAccess": false,
+  "IsInternalProviderUser": false,
+  "IsMLPUser": false,
+  "IsMultiSubscriber": false,
+  "IsPublicEmail": false,
+  "IsRedirectToDashboard": false,
+  "IsUniversalUser": false,
+  "Limits": {
+   "InvoiceLimit": {
+    "Amount": 0.0,
+    "CurrencyId": 1
+   },
+   "NteLimit": {
+    "Amount": 0.0,
+    "CurrencyId": 1
+   },
+   "ProposalLimit": {
+    "Amount": 0.0,
+    "CurrencyId": 1
+   }
+  },
+  "LocationAccess": "",
+  "LoginUrl": "https://login.servicechannel.com/",
+  "LogoUrl": "",
+  "MaximumNteAmount": 0.0,
+  "Microstrategy": 0,
+  "ParentSubscriberId": 0,
+  "ParentSubscriberName": "",
+  "PropTeamEmail": "redacted",
+  "ProviderId": -1,
+  "ProviderName": "",
+  "RegionAccess": "",
+  "Regions": [],
+  "RoleID": 0,
+  "Roles": [],
+  "SetupId": 0,
+  "Stores": [],
+  "SubscriberId": 2014917582,
+  "SubscriberName": "ServiceChannel Product Management",
+  "TradesPermitted": [],
+  "UserHasInvoiceAccess": false,
+  "UserId": 8177231,
+  "UserName": "redacted",
+  "UserNameOrEmptyString": "redacted",
+  "UserNameOrFullName": "redacted"
+ }
+}

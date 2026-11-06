@@ -1,0 +1,1187 @@
+{
+ "AreaFieldsSpecified": false,
+ "AreaFilters": [],
+ "Conditions": [
+  {
+   "Id": "c1",
+   "Name": "",
+   "Operator": "",
+   "Value": ""
+  },
+  {
+   "Id": "c2",
+   "Name": "",
+   "Operator": "",
+   "Value": ""
+  },
+  {
+   "Id": "c3",
+   "Name": "",
+   "Operator": "",
+   "Value": ""
+  },
+  {
+   "Id": "c4",
+   "Name": "",
+   "Operator": "",
+   "Value": ""
+  },
+  {
+   "Id": "c5",
+   "Name": "",
+   "Operator": "",
+   "Value": ""
+  },
+  {
+   "Id": "c6",
+   "Name": "",
+   "Operator": "",
+   "Value": ""
+  },
+  {
+   "Id": "c7",
+   "Name": "",
+   "Operator": "",
+   "Value": ""
+  },
+  {
+   "Id": "c8",
+   "Name": "",
+   "Operator": "",
+   "Value": ""
+  },
+  {
+   "Id": "c9",
+   "Name": "",
+   "Operator": "",
+   "Value": ""
+  },
+  {
+   "Id": "c10",
+   "Name": "",
+   "Operator": "",
+   "Value": ""
+  },
+  {
+   "Id": "c11",
+   "Name": "",
+   "Operator": "",
+   "Value": ""
+  },
+  {
+   "Id": "c12",
+   "Name": "",
+   "Operator": "",
+   "Value": ""
+  }
+ ],
+ "GlobalFields": {
+  "Fields": []
+ },
+ "Id": 0,
+ "IssueGroupId": 0,
+ "Name": "SCActivityAgentIssueList.xlsx",
+ "ProblemTypes": [
+  {
+   "AdditionalFields": {
+    "Fields": []
+   },
+   "Items": [
+    {
+     "AdditionalFieldsSpecified": false,
+     "FieldsSpecified": false,
+     "Name": "Turbo Oven",
+     "Problems": [
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "KITCHEN EQUIPMENT",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Blower failure",
+       "Nte": "500",
+       "Priority": "NORMAL",
+       "Trade": "KITCHEN EQUIPMENT",
+       "TradeId": 121949,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "KITCHEN EQUIPMENT",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Cook temperature low",
+       "Nte": "501",
+       "Priority": "NORMAL",
+       "Trade": "KITCHEN EQUIPMENT",
+       "TradeId": 121949,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "KITCHEN EQUIPMENT",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Door monitor defective",
+       "Nte": "502",
+       "Priority": "NORMAL",
+       "Trade": "KITCHEN EQUIPMENT",
+       "TradeId": 121949,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "KITCHEN EQUIPMENT",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Emergency stop",
+       "Nte": "503",
+       "Priority": "NORMAL",
+       "Trade": "KITCHEN EQUIPMENT",
+       "TradeId": 121949,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "KITCHEN EQUIPMENT",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Magnetron low",
+       "Nte": "504",
+       "Priority": "NORMAL",
+       "Trade": "KITCHEN EQUIPMENT",
+       "TradeId": 121949,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      }
+     ],
+     "ProviderRank": ""
+    },
+    {
+     "AdditionalFieldsSpecified": false,
+     "FieldsSpecified": false,
+     "Name": "Fryer",
+     "Problems": [
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentEntry": "required",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "KITCHEN EQUIPMENT",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "for testing equipment override",
+       "Nte": "500",
+       "Priority": "NORMAL",
+       "Trade": "KITCHEN EQUIPMENT",
+       "TradeId": 121949,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentEntry": "required",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "KITCHEN EQUIPMENT",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Installation",
+       "Nte": "500",
+       "Priority": "NORMAL",
+       "RequireAttachment": "required",
+       "Trade": "KITCHEN EQUIPMENT",
+       "TradeId": 121949,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      }
+     ],
+     "ProviderRank": ""
+    },
+    {
+     "AdditionalFieldsSpecified": false,
+     "FieldsSpecified": false,
+     "Name": "Hanging Dial Scale",
+     "Problems": [
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentEntry": "required",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "KITCHEN EQUIPMENT",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Broken Chain",
+       "Nte": "501",
+       "Priority": "NORMAL",
+       "RequireAttachment": "required",
+       "Trade": "KITCHEN EQUIPMENT",
+       "TradeId": 121949,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentEntry": "required",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "KITCHEN EQUIPMENT",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Needle not working",
+       "Nte": "502",
+       "Priority": "NORMAL",
+       "RequireAttachment": "required",
+       "Trade": "KITCHEN EQUIPMENT",
+       "TradeId": 121949,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      }
+     ],
+     "ProviderRank": ""
+    },
+    {
+     "AdditionalFieldsSpecified": false,
+     "FieldsSpecified": false,
+     "Name": "Digital Hanging Scale",
+     "Problems": [
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentEntry": "required",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "KITCHEN EQUIPMENT",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Display out",
+       "Nte": "502",
+       "Priority": "NORMAL",
+       "RequireAttachment": "required",
+       "Trade": "KITCHEN EQUIPMENT",
+       "TradeId": 121949,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentEntry": "required",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "KITCHEN EQUIPMENT",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "No Power",
+       "Nte": "502",
+       "Priority": "NORMAL",
+       "RequireAttachment": "required",
+       "Trade": "KITCHEN EQUIPMENT",
+       "TradeId": 121949,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentEntry": "required",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "KITCHEN EQUIPMENT",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Buttons Not Working",
+       "Nte": "502",
+       "Priority": "NORMAL",
+       "RequireAttachment": "required",
+       "Trade": "KITCHEN EQUIPMENT",
+       "TradeId": 121949,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      }
+     ],
+     "ProviderRank": ""
+    },
+    {
+     "AdditionalFieldsSpecified": false,
+     "FieldsSpecified": false,
+     "Name": "Fork Lift",
+     "Problems": [
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentEntry": "required",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "FREIGHT EQUIPMENT",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Battery",
+       "Nte": "505",
+       "Priority": "NORMAL",
+       "RequireAttachment": "required",
+       "Trade": "FREIGHT EQUIPMENT",
+       "TradeId": 123207,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      }
+     ],
+     "ProviderRank": ""
+    }
+   ],
+   "Name": "Appliances"
+  },
+  {
+   "AdditionalFields": {
+    "Fields": []
+   },
+   "Items": [
+    {
+     "AdditionalFieldsSpecified": false,
+     "FieldsSpecified": false,
+     "Name": "Baler",
+     "Problems": [
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentEntry": "required",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "GENERAL MAINTENANCE",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Baler",
+       "Nte": "500",
+       "Priority": "NORMAL",
+       "Trade": "GENERAL MAINTENANCE",
+       "TradeId": 112193,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      }
+     ],
+     "ProviderRank": ""
+    }
+   ],
+   "Name": "Baler"
+  },
+  {
+   "AdditionalFields": {
+    "Fields": []
+   },
+   "Items": [
+    {
+     "AdditionalFieldsSpecified": false,
+     "FieldsSpecified": false,
+     "Name": "Automatic Door",
+     "Problems": [
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "DOORS",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Making loud noise",
+       "Nte": "500",
+       "Priority": "NORMAL",
+       "Trade": "DOORS",
+       "TradeId": 112196,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "DOORS",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Not opening/closing",
+       "Nte": "1000",
+       "Priority": "NORMAL",
+       "Trade": "DOORS",
+       "TradeId": 112196,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "DOORS",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Off track",
+       "Nte": "1000",
+       "Priority": "NORMAL",
+       "Trade": "DOORS",
+       "TradeId": 112196,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "DOORS",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Other",
+       "Nte": "500",
+       "Priority": "NORMAL",
+       "Trade": "DOORS",
+       "TradeId": 112196,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      }
+     ],
+     "ProviderRank": ""
+    },
+    {
+     "AdditionalFieldsSpecified": false,
+     "FieldsSpecified": false,
+     "Name": "Exterior Door",
+     "Problems": [
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "DOORS",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Dragging",
+       "Nte": "250",
+       "Priority": "NORMAL",
+       "Trade": "DOORS",
+       "TradeId": 112196,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "GENERAL MAINTENANCE",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Handle loose/broken",
+       "Nte": "250",
+       "Priority": "NORMAL",
+       "Trade": "GENERAL MAINTENANCE",
+       "TradeId": 112193,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "DOORS",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Leaking fluid",
+       "Nte": "500",
+       "Priority": "NORMAL",
+       "Trade": "DOORS",
+       "TradeId": 112196,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "DOORS",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Noisy",
+       "Nte": "250",
+       "Priority": "NORMAL",
+       "Trade": "DOORS",
+       "TradeId": 112196,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "DOORS",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Not closing all the way",
+       "Nte": "500",
+       "Priority": "NORMAL",
+       "Trade": "DOORS",
+       "TradeId": 112196,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "DOORS",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Not opening/closing",
+       "Nte": "1000",
+       "Priority": "EMERGENCY",
+       "Trade": "DOORS",
+       "TradeId": 112196,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      }
+     ],
+     "ProviderRank": ""
+    },
+    {
+     "AdditionalFieldsSpecified": false,
+     "FieldsSpecified": false,
+     "Name": "Dock Door",
+     "Problems": [
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentEntry": "required",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "REFRIGERATION",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Other",
+       "Nte": "500",
+       "Priority": "NORMAL",
+       "Trade": "REFRIGERATION",
+       "TradeId": 120880,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentEntry": "required",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "REFRIGERATION",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Slamming",
+       "Nte": "500",
+       "Priority": "NORMAL",
+       "Trade": "REFRIGERATION",
+       "TradeId": 120880,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentEntry": "required",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "REFRIGERATION",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Sticking",
+       "Nte": "500",
+       "Priority": "NORMAL",
+       "Trade": "REFRIGERATION",
+       "TradeId": 120880,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [
+         {
+          "Name": "c1",
+          "Value": "OverTest"
+         }
+        ],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentEntry": "required",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "REFRIGERATION",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Dragging",
+       "Nte": "500",
+       "Priority": "NORMAL",
+       "Trade": "REFRIGERATION",
+       "TradeId": 120880,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [
+         {
+          "Name": "c1",
+          "Value": "OverTest"
+         }
+        ],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentEntry": "required",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "REFRIGERATION",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Handle loose/broken",
+       "Nte": "500",
+       "Priority": "NORMAL",
+       "Trade": "REFRIGERATION",
+       "TradeId": 120880,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [
+         {
+          "Name": "c1",
+          "Value": "OverTest"
+         }
+        ],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "<b><u><font color= \"FF0000\">test-vilka something went wrong</b></font></u>",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentEntry": "required",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "REFRIGERATION",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Leaking fluid",
+       "Nte": "500",
+       "Priority": "NORMAL",
+       "Trade": "REFRIGERATION",
+       "TradeId": 120880,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [
+         {
+          "Name": "c1",
+          "Value": "OverTest"
+         }
+        ],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentEntry": "required",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "REFRIGERATION",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Noisy",
+       "Nte": "500",
+       "Priority": "NORMAL",
+       "Trade": "REFRIGERATION",
+       "TradeId": 120880,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [
+         {
+          "Name": "c1",
+          "Value": "OverTest"
+         }
+        ],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentEntry": "required",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "REFRIGERATION",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Not closing all the way",
+       "Nte": "500",
+       "Priority": "NORMAL",
+       "Trade": "REFRIGERATION",
+       "TradeId": 120880,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [
+         {
+          "Name": "c1",
+          "Value": "OverTest"
+         }
+        ],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentEntry": "required",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "REFRIGERATION",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Not opening/closing",
+       "Nte": "500",
+       "Priority": "EMERGENCY",
+       "Trade": "REFRIGERATION",
+       "TradeId": 120880,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentEntry": "required",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "GENERAL MAINTENANCE",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "General Maintenance",
+       "Nte": "500",
+       "Priority": "NORMAL",
+       "Trade": "GENERAL MAINTENANCE",
+       "TradeId": 112193,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      },
+      {
+       "AdditionalFields": {
+        "Fields": []
+       },
+       "ApprovalCode": "",
+       "AttachmentName": "",
+       "Category": {
+        "CategoryOverrides": [],
+        "Default": "REPAIR"
+       },
+       "CategoryId": 14349,
+       "Comments": "",
+       "ContractService": "",
+       "Currency": "",
+       "EquipmentId": "",
+       "EtcTime": "",
+       "FormattedTrade": "DOORS",
+       "IsTradeDeleted": false,
+       "LinkToMedia": "",
+       "Name": "Other Issues",
+       "Nte": "500",
+       "Priority": "NORMAL",
+       "Trade": "DOORS",
+       "TradeId": 112196,
+       "Troubleshooting": "",
+       "WoLabel": ""
+      }
+     ],
+     "ProviderRank": ""
+    }
+   ],
+   "Name": "Doors"
+  }
+ ],
+ "S3Name": "SCActivityAgentIssueList.xlsx",
+ "SetupId": 0,
+ "SubscriberId": 2014917582,
+ "Version": "2.1"
+}

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Tests now also run against real ServiceChannel responses saved in `tests/fixtures/` (B-90). Nothing changes when the agent runs.
+
 ## v0.20.4 - 2026-11-06
 
 - The Updating page now shows the release notes of the version being installed, so there is something to read while the agent restarts.

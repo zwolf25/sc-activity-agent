@@ -1,0 +1,113 @@
+{
+ "ApprovalCode": "1234",
+ "AssetCount": 0,
+ "Attachments": {
+  "Count": {
+   "Own": 0,
+   "Total": 0
+  }
+ },
+ "AutoComplete": false,
+ "AutoInvoice": false,
+ "CallDate": "2026-11-04T09:15:49Z",
+ "CallDate_DTO": "2026-11-04T04:15:49-05:00",
+ "Caller": "redacted",
+ "CallerId": 0,
+ "Category": "REPAIR",
+ "CategoryId": 14349,
+ "CheckInDeniedReason": "Cannot check in/out work order in COMPLETED/CONFIRMED status.",
+ "CheckInRange": 10.0,
+ "CompletedDate": "2026-11-05T16:25:00Z",
+ "CompletedDate_DTO": "2026-11-05T11:25:00-05:00",
+ "CreatedBy": "redacted",
+ "Currency": {
+  "AlphabeticalCode": "USD",
+  "Id": 1,
+  "Rate": 0.0
+ },
+ "Description": "Minor Painting - General Repairs",
+ "ExpirationDate": "2026-11-06T09:15:49Z",
+ "ExpirationDate_DTO": "2026-11-06T09:15:49+00:00",
+ "HasWorkActivity": true,
+ "Id": 369161146,
+ "IsCheckInDenied": true,
+ "IsEnabledForMobile": true,
+ "IsExpired": false,
+ "IsInvoiced": false,
+ "IssueTicketInfo": {
+  "Id": 0,
+  "SetupId": 0
+ },
+ "Labels": [
+  {
+   "Id": 0
+  }
+ ],
+ "LinkedInWorkOrders": [],
+ "LinkedWorkOrders": [],
+ "Location": {
+  "AddressTypeId": 0,
+  "Id": 2007339993,
+  "IsInternational": false,
+  "Latitude": 40.831,
+  "Longitude": -73.903,
+  "Name": "Zac Test Location",
+  "Notes": [],
+  "StoreId": "ZW123",
+  "SubscriberId": 2014917582,
+  "TimeShiftToEST": 0
+ },
+ "LocationId": 0,
+ "Notes": {
+  "Count": {
+   "Own": 0,
+   "Total": 19
+  },
+  "Last": {
+   "ActionRequired": false,
+   "CreatedBy": "redacted",
+   "DateCreated": "2026-11-06T14:31:41.1657702Z",
+   "DateCreated_DTO": "2026-11-06T14:31:41.1657702+00:00",
+   "DocumentId": "59e779ef-6331-4e17-bfd5-b53b632751df",
+   "Id": 3128112309,
+   "NoteData": "Review Provided.",
+   "Number": 19
+  },
+  "WorkOrderId": 0
+ },
+ "Nte": 250.0,
+ "Number": "369161146",
+ "OriginalEta": "2026-11-06T09:15:49Z",
+ "OriginalEta_DTO": "2026-11-06T04:15:49-05:00",
+ "PostedId": 0,
+ "Priority": "Normal",
+ "ProblemCode": "Minor Painting",
+ "Provider": {
+  "DoNotDispatch": false,
+  "Id": 2000000677,
+  "IsInternal": false,
+  "IsOnOffShoreFeatureEnabled": false,
+  "Name": "GriffCo Inc.",
+  "Phone": "redacted"
+ },
+ "PurchaseNumber": "369161146",
+ "Resolution": "Hi, all done. Minor Painting is fixed and we left the sales floor tidy. Thanks.",
+ "ScheduledDate": "2026-11-06T09:15:49Z",
+ "ScheduledDate_DTO": "2026-11-06T04:15:49-05:00",
+ "Source": "WEB API Client: Clau",
+ "Status": {
+  "CanCreateInvoice": false,
+  "Extended": "CONFIRMED",
+  "Primary": "COMPLETED"
+ },
+ "Subscriber": {
+  "Id": 2014917582,
+  "IsOutsourcedWorkOn": false,
+  "Name": "ServiceChannel Product Management",
+  "ShortName": "ServiceChannel Product Management"
+ },
+ "Trade": "GENERAL MAINTENANCE",
+ "TradeId": 112193,
+ "UpdatedDate": "2026-11-06T14:31:41.2957908Z",
+ "UpdatedDate_DTO": "2026-11-06T09:31:41.2957908-05:00"
+}

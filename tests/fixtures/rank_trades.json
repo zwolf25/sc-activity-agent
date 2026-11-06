@@ -1,0 +1,47 @@
+[
+ {
+  "PrimaryTrade": "APPLIANCES",
+  "Trade": "CART REPAIR",
+  "TradeId": 162343
+ },
+ {
+  "PrimaryTrade": "DOORS",
+  "Trade": "DOORS",
+  "TradeId": 112196
+ },
+ {
+  "PrimaryTrade": "DOORS",
+  "Trade": "DOORS-TRIAGE",
+  "TradeId": 114924
+ },
+ {
+  "PrimaryTrade": "REFRIGERATION",
+  "Trade": "FM- REFRIGERATION",
+  "TradeId": 123783
+ },
+ {
+  "PrimaryTrade": "GENERAL REPAIRS & MAINTENANCE",
+  "Trade": "GENERAL MAINTENANCE",
+  "TradeId": 112193
+ },
+ {
+  "PrimaryTrade": "HVAC",
+  "Trade": "HVAC",
+  "TradeId": 120881
+ },
+ {
+  "PrimaryTrade": "JANITORIAL",
+  "Trade": "JANITORIAL",
+  "TradeId": 126625
+ },
+ {
+  "PrimaryTrade": "KITCHEN EQUIPMENT",
+  "Trade": "KITCHEN EQUIPMENT",
+  "TradeId": 121949
+ },
+ {
+  "PrimaryTrade": "REFRIGERATION",
+  "Trade": "REFRIGERATION",
+  "TradeId": 120880
+ }
+]
