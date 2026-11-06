@@ -60,6 +60,26 @@ def test_creates_only_rank_one_trade_and_persists_plan(tmp_path):
     assert s.db.execute("SELECT COUNT(*) FROM steps").fetchone()[0] > 5
 
 
+def test_wo_routed_to_a_provider_we_do_not_hold_is_cancelled_and_the_trade_skipped(tmp_path):
+    s, app, c = setup(tmp_path)
+    real = app.call
+    app.call = lambda user, method, path, *a, **kw: {"Provider": {"Id": 999}} if (method, path) == ("GET", "/workorders/9001") else real(user, method, path, *a, **kw)
+    out = c.tick()
+    assert len(out) == 1 and "provider 999" in out[0][1] and s.db.execute("SELECT COUNT(*) FROM work_orders").fetchone()[0] == 0
+    assert any(m == "PUT" and p == "/workorders/9001/status" for m, p, b in app.calls)
+    assert s.get("rank1_foreign") == {"HQ": ["DOORS"]} and c.our_trades({"store_id": "HQ", "subscriber_id": 5, "db_id": 10}) == set()
+
+
+def test_wo_routed_to_another_of_our_providers_uses_that_provider(tmp_path):
+    s, app, c = setup(tmp_path)
+    s.db.execute("INSERT INTO connections VALUES(3,'provider','P2','c','x',88)")
+    s.db.commit()
+    real = app.call
+    app.call = lambda user, method, path, *a, **kw: {"Provider": {"Id": 88}} if (method, path) == ("GET", "/workorders/9001") else real(user, method, path, *a, **kw)
+    assert c.tick() == [("HQ", 9001)]
+    assert '"provider_id": 88' in s.db.execute("SELECT ctx FROM work_orders").fetchone()[0]
+
+
 def test_failed_create_is_not_retried_and_is_logged(tmp_path):
     s, app, c = setup(tmp_path)
     s.db.execute("DELETE FROM connections WHERE side='provider'")

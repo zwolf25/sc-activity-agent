@@ -112,20 +112,47 @@ class Creator:
         cache = self.store.get("rank1", {})
         hit = cache.get(loc["store_id"])
         if hit and "owners" in hit and not force and self.clock() - hit["at"] < RANK_TTL:   # no owners = an older cache entry: re-read
-            return set(hit["trades"])
+            return set(hit["trades"]) - set(self.store.get("rank1_foreign", {}).get(loc["store_id"], []))
         owners = {}   # trade -> provider id, so a WO's provider-side steps run as that provider's users
         get = lambda p: self._get(loc, p)
         for c in self.store.db.execute("SELECT provider_id FROM connections WHERE side='provider' AND provider_id IS NOT NULL"):
             for t in generator.rank_one_trades(get, loc["subscriber_id"], c["provider_id"], loc["db_id"]):
                 owners.setdefault(t, c["provider_id"])
-        trades = set(owners)
+        trades = set(owners) - set(self.store.get("rank1_foreign", {}).get(loc["store_id"], []))
         if trades:   # never cache an empty answer: a transient API blip would block creation for a day
             cache[loc["store_id"]] = {"at": self.clock(), "trades": sorted(trades), "owners": owners}
             self.store.put("rank1", cache)
         return trades
 
+    def _our_provider_ids(self):
+        return {c["provider_id"] for c in self.store.db.execute("SELECT provider_id FROM connections WHERE side='provider' AND provider_id IS NOT NULL")}
+
+    def _assigned_provider(self, app, user, wo_id):
+        """The provider ServiceChannel actually gave the new WO to, or None if it cannot be read."""
+        try:
+            p = (app.call(user, "GET", f"/workorders/{wo_id}", action="check_provider", wo=wo_id) or {}).get("Provider")
+        except ScError:
+            return None
+        return int((p.get("Id") if isinstance(p, dict) else p) or 0) or None
+
+    def _foreign(self, loc, trade, wo_id, actual):
+        """The WO went to a provider we have no connection for (our Rank 1 read was wrong): cancel it, stop creating this trade here, say why."""
+        foreign = self.store.get("rank1_foreign", {})
+        foreign[loc["store_id"]] = sorted({*foreign.get(loc["store_id"], []), trade})
+        self.store.put("rank1_foreign", foreign)
+        try:
+            app, user = self._sub(loc)
+            app.call(user, "PUT", f"/workorders/{wo_id}/status", action="cancel", wo=wo_id, write=True,
+                     body={"Status": {"Primary": "COMPLETED", "Extended": "CANCELED"}, "Note": "Cancelled by SC Activity Agent: assigned to a provider it cannot act for"})
+        except ScError:
+            pass
+        raise ScError(409, f"WO {wo_id} at {loc['store_id']} went to provider {actual}, which is not one of your Provider connections. It was cancelled and {trade} is skipped at this location until you press 'Re-read contracts' on Locations", "create")
+
     def resync(self, loc):
         """Re-read Rank 1 now and record which trades on the location's issue list are skipped because another provider is Rank 1."""
+        foreign = self.store.get("rank1_foreign", {})
+        if foreign.pop(loc["store_id"], None):   # the user asked for a fresh read: give a skipped trade another chance
+            self.store.put("rank1_foreign", foreign)
         ours = self.our_trades(loc, force=True)
         listed = {i["trade"] for i in self._issues(loc, self.dashboard(loc))}
         cache = self.store.get("rank1", {})
@@ -233,6 +260,9 @@ class Creator:
             body["AssetId"] = asset
         app, user = self._sub(loc)
         r = app.call(user, "POST", "/workorders", body=body, action="create_wo", write=True)
+        actual = self._assigned_provider(app, user, r["id"])
+        if actual and actual not in self._our_provider_ids():
+            self._foreign(loc, issue["trade"], r["id"], actual)
         ctx = dict(trade=issue["trade"], issue=issue["problem"], location=loc["name"] or loc["store_id"],
                    sched_day=sched.strftime("%A"), eta=sched.strftime("%I:%M %p").lstrip("0"),
                    eta_end=(sched + dt.timedelta(hours=2)).strftime("%I:%M %p").lstrip("0"), area="sales floor",
@@ -240,6 +270,8 @@ class Creator:
         if asset:
             ctx["asset_id"] = asset
         pid = self.store.get("rank1", {}).get(loc["store_id"], {}).get("owners", {}).get(issue["trade"])
+        if actual and actual in self._our_provider_ids():
+            pid = actual   # ServiceChannel's routing wins over our Rank 1 cache
         if pid:
             ctx["provider_id"] = pid
         if self.rng.random() * 100 < b["photo_before"]:

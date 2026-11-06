@@ -450,14 +450,15 @@ def create_app(store, engine=None, rt=None):
         found = update.check(store, force=True)
         if not found:
             return RedirectResponse("/dashboard", 303)
-        store.put("update_status", {"state": "installing", "tag": found["tag"], "from": __version__, "at": time.time()})
+        store.put("update_status", {"state": "installing", "tag": found["tag"], "from": __version__, "at": time.time(), "notes": found["notes"]})
         subprocess.Popen([sys.executable, "-m", "sc_activity_agent.cli", "--data-dir", str(store.dir), "update", "--yes"],
                          start_new_session=True)
         return RedirectResponse("/updating", 303)
 
     @app.get("/updating")
     def updating(request: Request):
-        return page(request, "updating", st=store.get("update_status") or {})
+        st = store.get("update_status") or {}
+        return page(request, "updating", st=st, notes=update.notes_blocks(st.get("notes")))
 
     @app.get("/api/update-status")
     def update_status():

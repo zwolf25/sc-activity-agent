@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.20.4 - 2026-11-06
+
+- The Updating page now shows the release notes of the version being installed, so there is something to read while the agent restarts.
+- The agent now checks who ServiceChannel gave each new work order to. Before, it trusted its Rank 1 read. On 2026-11-06 two Production HVAC work orders at ZW123 went to AHS Services Co, a provider the agent has no login for, and every accept failed with 502 "Work order is not found". Now such a work order is cancelled at once, the trade is skipped at that location, and the Errors page says which provider took it. Press Re-read contracts on Locations to let the agent try that trade again. A work order that goes to another of your own providers is planned for that provider.
+- Restart the agent to update. Nothing pauses.
+
 ## v0.20.3 - 2026-11-06
 
 - Connections: the dashboard of each Subscriber user now sits on its own line under the user, with the Check dashboard button at its right. Before, the button wrapped to two lines and squeezed the user's row.

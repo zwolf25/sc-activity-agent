@@ -155,11 +155,28 @@ def in_progress(store):
     return None
 
 
+def notes_blocks(notes):
+    """Release notes (the CHANGELOG bullets) as [(kind, text)] with kind h, li or p, for the Updating page. Bold and code marks are dropped."""
+    out = []
+    for line in (notes or "").splitlines():
+        t = line.strip().replace("**", "").replace("`", "")
+        if not t:
+            continue
+        if t.startswith("#"):
+            out.append(("h", t.lstrip("# ")))
+        elif t[0] in "-*":
+            out.append(("li", t[1:].strip()))
+        else:
+            out.append(("p", t))
+    return out
+
+
 def apply(store, tag, **kw):
     """Runs _apply and leaves its progress in store key update_status, which the console's progress page polls."""
-    store.put("update_status", {"state": "installing", "tag": tag, "from": __version__, "at": time.time()})
+    notes = (store.get("update_status") or {}).get("notes", "")   # the console saved them when Update was pressed; keep them for the progress page
+    store.put("update_status", {"state": "installing", "tag": tag, "from": __version__, "at": time.time(), "notes": notes})
     ok, msg = _apply(store, tag, **kw)
-    store.put("update_status", {"state": "restarting" if ok else "failed", "tag": tag, "from": __version__, "at": time.time(), "msg": msg})
+    store.put("update_status", {"state": "restarting" if ok else "failed", "tag": tag, "from": __version__, "at": time.time(), "msg": msg, "notes": notes})
     return ok, msg
 
 

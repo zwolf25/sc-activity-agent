@@ -263,3 +263,6 @@ Provider app and user (SydeTech, Production app does not exist on SB2; a separat
 - Subscriber `PUT /workorders/{id}/status` {COMPLETED/CONFIRMED} returns 400 error 940 "The 'RefrigerantWasUsed' option should be set to 'Yes' or 'No'". Adding `RefrigerantWasUsed` ("No", false) at the top level or inside Status, as Subscriber or Provider, gives the same 940. `POST /invoices` returns 400 error 904 "Invalid State (COMPLETED/PENDING REFRIGERANT USE)".
 - GET `/workorders/{id}/refrigerant`, `/refrigerants`, `/refrigerantusage` and `/refrigerant/workorders/{id}` are 404.
 - Not tried yet (SB2 returned 500 on every call afterwards): `RefrigerantWasUsed` on `universalCheckOut`. ServiceChannel's help says the usage is recorded in Provider Automation.
+## Rank 1 and routing disagree (Production, 2026-11-06)
+- ZW123 (db id 2007339993) has HVAC contracts 1455103990 (AHS Services Co, provider 2000136066) and 1643098019 (GriffCo, 2000000677). `GetPrimaryRankedProviderLocations` lists ZW123 for GriffCo, yet WOs 369383858 and 369403348 were created with `Provider.Id` 2000136066. GriffCo's user got 502 "Work order is not found!" on `PUT /accept`. A GM WO at the same location went to GriffCo and worked.
+- The agent has no credentials for AHS, so its rank could not be read. After a create, `GET /workorders/{id}` is the only reliable source for the provider.

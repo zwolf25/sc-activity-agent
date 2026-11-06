@@ -291,7 +291,7 @@ def test_update_button_starts_one_installer_and_shows_progress(tmp_path, monkeyp
     from sc_activity_agent.web import app as webapp
     s, c = client(tmp_path)
     started = []
-    monkeypatch.setattr(update, "check", lambda store, force=False: {"tag": "v99.0.0", "notes": ""})
+    monkeypatch.setattr(update, "check", lambda store, force=False: {"tag": "v99.0.0", "notes": "- **Fix** one thing\n- Fix `two`"})
     monkeypatch.setattr(webapp.subprocess, "Popen", lambda *a, **k: started.append(a))
     for _ in range(3):   # a second and third click must not start more installers
         r = c.post("/update", follow_redirects=False)
@@ -299,6 +299,7 @@ def test_update_button_starts_one_installer_and_shows_progress(tmp_path, monkeyp
     assert len(started) == 1
     page = c.get("/updating").text
     assert "Updating to v99.0.0" in page and "/api/update-status" in page
+    assert "What is new in v99.0.0" in page and "<li>Fix one thing</li>" in page and "<li>Fix two</li>" in page
     assert c.get("/api/update-status").json()["state"] == "installing" and c.get("/api/update-status").json()["version"] == __version__
     s.put("update_status", {**s.get("update_status"), "state": "failed", "msg": "Install failed"})
     assert c.post("/update", follow_redirects=False).headers["location"] == "/updating" and len(started) == 2   # a failed run can be retried

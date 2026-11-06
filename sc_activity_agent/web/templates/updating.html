@@ -2,6 +2,7 @@
 <div class="card" id="upd-card"><h2 id="upd-h">Updating to {{ st.tag or 'the new version' }}</h2>
 <p id="upd-p">The agent pauses, installs the new version and restarts. This page waits for it and then opens the dashboard. You only press Update once.</p>
 <div class="bar upd" role="progressbar" aria-label="Update in progress"><i></i></div><p class="muted" id="upd-s">Installing the new version…</p></div>
+{% if notes %}<div class="card"><h3>What is new in {{ st.tag }}</h3>{% for k, t in notes %}{% if k == 'h' %}<h4>{{ t }}</h4>{% elif k == 'li' %}<ul><li>{{ t }}</li></ul>{% else %}<p>{{ t }}</p>{% endif %}{% endfor %}</div>{% endif %}
 <script>
 (function(){const from="{{ st.get('from') or version }}",t0=Date.now();
 const st=document.getElementById('upd-s'),h=document.getElementById('upd-h'),p=document.getElementById('upd-p');
