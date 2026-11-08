@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.20.6 - 2026-11-07
+- Invoice and proposal approvals now go only to a Subscriber user whose invoice or proposal limit in ServiceChannel covers the total. The agent reads each user's limits from their profile (cached for an hour). If no user's limit is high enough, the step fails with a message saying so. If a user is still refused over their limit, the step switches user at once instead of retrying three times.
+- A work order that has no saved provider is no longer given to a random capable user when two providers could take it. The step fails with a clear message instead of retrying against a user who cannot see the work order.
+- Restart the agent to update. Nothing pauses. Set each Subscriber user's invoice and proposal limits in ServiceChannel so a user with a low limit is skipped.
+
 ## v0.20.5 - 2026-11-06
 
 - Tests now also run against real ServiceChannel responses saved in `tests/fixtures/` (B-90). Nothing changes when the agent runs.

@@ -289,6 +289,54 @@ def test_provider_steps_only_use_users_of_the_wos_provider(tmp_path):
         rt.user_for("HQ-NYC", "accept", _wo_with(s, 999), step("accept"))
 
 
+def test_wo_without_provider_id_is_refused_when_two_providers_could_take_it(tmp_path):
+    from sc_activity_agent.client import ScError
+    s = setup(tmp_path)
+    s.db.execute("INSERT INTO connections VALUES(3,'provider','P2','c','x',555)")
+    _tech(s, 3, 3, can=("accept",))
+    s.db.execute("UPDATE users SET can_do=? WHERE conn_id=2", (json.dumps(["accept"]),))
+    s.db.commit()
+    rt = Runtime(s, {1: 1, 2: 2, 3: 3}, random.Random(1))
+    with pytest.raises(ScError, match="refusing to guess"):
+        rt.user_for("HQ-NYC", "accept", _wo(s), step("accept"))
+
+
+class LimitApp(FakeApp):
+    """Answers the profile read with the InvoiceLimit this app's user holds."""
+    def __init__(self, limit, calls):
+        super().__init__("sub", calls)
+        self.limit = limit
+
+    def call(self, user, method, path, params=None, body=None, **kw):
+        if path == "/users/current/profile":
+            self.calls.append(("profile", user[0]))
+            return {"UserProfile": {"Limits": {"InvoiceLimit": {"Amount": self.limit}, "ProposalLimit": {"Amount": self.limit}}}}
+        return super().call(user, method, path, params, body, **kw)
+
+
+def test_invoice_decide_only_picks_users_whose_invoice_limit_covers_the_invoice(tmp_path):
+    from sc_activity_agent.client import ScError
+    s = setup(tmp_path)
+    s.db.execute("INSERT INTO connections VALUES(3,'subscriber','S2','c','x',NULL)")
+    s.db.execute("INSERT INTO users(id,conn_id,username,password,can_do) VALUES(3,3,'rich_user',?,?)", (s.enc("pw"), json.dumps(["invoice_decide"])))
+    s.db.commit()
+    calls = []
+    rt = Runtime(s, {1: LimitApp(0, calls), 2: FakeApp("prov", calls), 3: LimitApp(100000, calls)}, random.Random(1))
+    wo = _wo(s, amount="$1,234.56")
+    picked = {rt.user_for("HQ-NYC", "invoice_decide", wo)[1][0] for _ in range(20)}
+    assert picked == {"rich_user"}
+    assert [c for c in calls if c[0] == "profile"] == [("profile", "sub_user"), ("profile", "rich_user")]   # read once each, then cached
+    assert rt.user_for("HQ-NYC", "review", wo)[1][0] in {"sub_user", "rich_user"}   # other actions are not limit-gated
+    rt = Runtime(s, {1: LimitApp(0, []), 2: FakeApp("prov", []), 3: LimitApp(10, [])}, random.Random(1))
+    s.put("user_limits", {})
+    with pytest.raises(ScError, match="no user can approve a \\$1,234.56 invoice"):
+        rt.user_for("HQ-NYC", "invoice_decide", wo)
+    s.put("user_limits", {})
+    s.db.execute("UPDATE users SET can_do=? WHERE id IN (1,3)", (json.dumps(["proposal_decide"]),))
+    with pytest.raises(ScError, match="no user can approve a \\$1,234.56 proposal"):   # the same filter on ProposalLimit
+        rt.user_for("HQ-NYC", "proposal_decide", wo)
+
+
 def _wo_with(s, pid):
     s.db.execute("UPDATE work_orders SET ctx=? WHERE sc_id=9", (json.dumps({**CTX, "provider_id": pid}),))
     s.db.commit()

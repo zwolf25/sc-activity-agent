@@ -105,7 +105,7 @@ def _limit_handler(bad_user):
     def run(engine, wo, st):
         user = json.loads(engine.store.db.execute("SELECT payload FROM steps WHERE id=?", (st["id"],)).fetchone()[0]).get("user", 1)
         if user == bad_user:
-            raise ScError(403, '{"ErrorCode":100,"ErrorMessage":"Invoice Amount exceeds user Limit"}', "/x")
+            raise ScError(403, '{"ErrorCode":101,"ErrorMessage":"No permission for this user"}', "/x")
     return run
 
 
@@ -149,3 +149,10 @@ def test_a_wo_waiting_for_refrigerant_usage_fails_at_once_without_retries(tmp_pa
     e.tick()
     row = s.db.execute("SELECT state, attempts FROM steps WHERE kind='accept'").fetchone()
     assert row["state"] == "failed" and row["attempts"] == 3   # a retry cannot clear it, only a person in ServiceChannel
+
+
+def test_over_limit_403_is_recognised_so_the_step_switches_user_on_the_first_failure():
+    from sc_activity_agent.engine import over_limit, user_bound
+    e = ScError(403, '{"ErrorCodes":[100],"ErrorCode":100,"ErrorMessage":"Invoice Amount exceeds user Limit"}')
+    assert over_limit(e) and user_bound(e)
+    assert not over_limit(ScError(403, '{"ErrorCode":100,"ErrorMessage":"No permission"}')) and not over_limit(ScError(500, "boom"))
