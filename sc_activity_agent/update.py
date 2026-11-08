@@ -137,14 +137,43 @@ def _restart(store, wait=10):
     launcher.ensure_running(store.dir, port)
 
 
-def _stop(store):
-    """Ask the running agent to exit. False when there is none."""
-    pid = store.dir / "agent.pid"
+def _alive(pid):
     try:
-        os.kill(int(pid.read_text()), signal.SIGTERM)
+        os.kill(pid, 0)
+    except PermissionError:
         return True
-    except (OSError, ValueError):
+    except OSError:
         return False
+    return True
+
+
+def _agent_pid(store):
+    """The running agent's pid: the one in agent.pid when that process is alive, else whoever holds agent.lock. The pid file can go stale
+    (2026-11-07 Prod: it named a dead process, so the update signalled nothing and the old agent kept running)."""
+    try:
+        pid = int((store.dir / "agent.pid").read_text())
+        if _alive(pid):
+            return pid
+    except (OSError, ValueError):
+        pass
+    if shutil.which("lsof"):
+        out = subprocess.run(["lsof", "-t", str(store.dir / "agent.lock")], capture_output=True, text=True).stdout.split()
+        held = [int(p) for p in out if p.isdigit() and int(p) != os.getpid()]
+        return held[0] if held else None
+    return None
+
+
+def _stop(store, wait=20):
+    """Ask the running agent to exit and wait for it to go. False when there is none; RuntimeError when it will not exit."""
+    pid = _agent_pid(store)
+    if pid is None:
+        return False
+    os.kill(pid, signal.SIGTERM)
+    for _ in range(wait * 4):
+        if not _alive(pid):
+            return True
+        time.sleep(0.25)
+    raise RuntimeError(f"the old agent (process {pid}) did not exit")
 
 
 def in_progress(store):
@@ -203,7 +232,11 @@ def _apply(store, tag, run=subprocess.run, pip=_pip, restart=_restart, stop=_sto
         back = pip(_spec(r, f"v{__version__}"))
         what = "Previous version put back" if not back.returncode else f"Could not reinstall v{__version__}, run agent update"
         return False, f"New version failed to start. Database restored from {saved.name}. {what}. Run agent resume to continue."
-    if not stop(store):
+    try:
+        stopped = stop(store)
+    except RuntimeError as e:   # the new code is installed but the old agent still runs: say so, or the page waits for a restart that never comes
+        return False, f"Updated to {tag}, but {e}. Quit it and the new version starts."
+    if not stopped:
         return True, f"Updated to {tag}. The agent was not running; start it to use the new version."
     restart(store)
     return True, f"Updated to {tag}. The agent restarts on the new version."

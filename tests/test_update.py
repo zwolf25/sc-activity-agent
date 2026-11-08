@@ -1,3 +1,4 @@
+import os
 import subprocess
 
 from sc_activity_agent import update
@@ -93,3 +94,24 @@ def test_success_restarts_the_agent_that_was_running(tmp_path):
     assert ok and not restarted and "not running" in msg
     ok, msg = update.apply(s, "v9.0.0", run=ok_run, pip=ok_pip, restart=restarted.append, stop=lambda st: True)
     assert ok and restarted == [s]
+
+
+def test_stop_finds_the_agent_by_its_lock_when_the_pid_file_is_stale(tmp_path, monkeypatch):
+    s = Store(tmp_path)
+    (tmp_path / "agent.pid").write_text("999999")   # no such process
+    monkeypatch.setattr(update.shutil, "which", lambda n: "/usr/sbin/lsof")
+    monkeypatch.setattr(update.subprocess, "run", lambda *a, **k: type("R", (), {"stdout": f"{os.getppid()}\n"})())
+    assert update._agent_pid(s) == os.getppid()
+    (tmp_path / "agent.pid").write_text(str(os.getpid()))
+    assert update._agent_pid(s) == os.getpid()   # a live pid file wins
+
+
+def test_update_fails_loudly_when_the_old_agent_will_not_exit(tmp_path):
+    s = Store(tmp_path)
+    s.put("update_repo", "o/r")
+    def stuck(st):
+        raise RuntimeError("the old agent (process 7) did not exit")
+    ok_run = lambda a, **k: subprocess.CompletedProcess(a, 0)
+    ok_pip = lambda spec: subprocess.CompletedProcess([], 0)
+    ok, msg = update.apply(s, "v9.0.0", run=ok_run, pip=ok_pip, restart=lambda st: None, stop=stuck)
+    assert not ok and "process 7" in msg and s.get("update_status")["state"] == "failed"
