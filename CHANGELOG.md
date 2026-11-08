@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.20.10 - 2026-11-08
+
+- Fixed a stall where overdue steps never ran. Each loop pass runs a limited number of due steps. Steps queued behind an unfinished earlier step of the same work order used up those slots and were then skipped, so the earlier step, which had a later due time, never got a turn. This showed on SB2 after a sleep gap: 311 steps overdue and nothing run since Nov 5. Only the first unfinished step of each work order now takes a slot.
+- Restart the agent to update. Nothing pauses.
+
 ## v0.20.9 - 2026-11-08
 
 - Error 916 ("At least one attachment required to create this WorkOrder") is fixed. ServiceChannel marks some issues in the issue list as RequireAttachment. The agent now tells ServiceChannel to skip that check for those issues and attaches the before photo right after the create, whatever the before-photo slider says. The 916 hint on the Errors page was wrong (it blamed an account setting) and now names the issue flag.

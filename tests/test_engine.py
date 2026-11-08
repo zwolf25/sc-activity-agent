@@ -156,3 +156,15 @@ def test_over_limit_403_is_recognised_so_the_step_switches_user_on_the_first_fai
     e = ScError(403, '{"ErrorCodes":[100],"ErrorCode":100,"ErrorMessage":"Invoice Amount exceeds user Limit"}')
     assert over_limit(e) and user_bound(e)
     assert not over_limit(ScError(403, '{"ErrorCode":100,"ErrorMessage":"No permission"}')) and not over_limit(ScError(500, "boom"))
+
+
+def test_an_overdue_step_behind_a_later_one_is_not_starved_by_the_steps_queued_after_it(tmp_path):
+    """SB2 2026-11-08: step 113 was due after its successors (a gap shift), so the 10 slots per tick filled with its blocked successors."""
+    s = Store(tmp_path)
+    steps = [{"kind": "sub_note", "due_at": NOW + 100, "payload": {}}] + [{"kind": "check_in", "due_at": NOW + i, "payload": {}} for i in range(1, 8)]
+    for w in range(3):
+        add_plan(s, "HQ-NYC", "HVAC", 2000 + w, steps, {}, NOW)
+    ran = []
+    e = Engine(s, {"sub_note": lambda *a: ran.append(a[2]["wo_id"]), "check_in": lambda *a: None}, clock=lambda: NOW + 500, per_tick=3)
+    e.tick()
+    assert len(ran) == 3   # the three first steps run, not three of their blocked successors
