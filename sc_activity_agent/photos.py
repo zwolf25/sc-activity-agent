@@ -7,12 +7,21 @@ import re
 
 DIR = pathlib.Path(__file__).parent / "photos"
 KINDS = ("before", "after", "both")
-SLUG = {"door": "doors", "general": "general-maintenance", "hvac": "hvac", "electric": "electrical", "plumb": "plumbing", "janitor": "janitorial"}
+SLUG = {"door": "doors", "general": "general-maintenance", "hvac": "hvac", "electric": "electrical", "plumb": "plumbing", "janitor": "janitorial",
+        "kitchen": "kitchen-equipment", "freight": "freight-equipment"}
 
 
 # Issue text ("<equipment> <problem>", lower case) -> sets that show that kind of fault. First rule that matches wins; no match falls
-# back to any set of the WO's trade. Only the six trades the library covers appear here.
+# back to any set of the WO's trade. Only the trades the library covers appear here.
 BY_ISSUE = [
+    (r"fryer", ["kitchen-fryer-install", "kitchen-fryer-install-b"]),
+    (r"fork ?lift", ["freight-forklift-battery", "freight-forklift-battery-b"]),
+    (r"dial scale.*chain", ["kitchen-dial-scale-chain", "kitchen-dial-scale-chain-b"]),
+    (r"dial scale", ["kitchen-dial-scale-needle", "kitchen-dial-scale-glass"]),
+    (r"digital.*display", ["kitchen-digital-scale-display", "kitchen-digital-scale"]),
+    (r"digital.*power", ["kitchen-digital-scale-nopower"]),
+    (r"digital.*button", ["kitchen-digital-scale"]),
+    (r"digital|scale", ["kitchen-digital-scale", "kitchen-digital-scale-nopower", "kitchen-digital-scale-display", "kitchen-dial-scale-chain"]),
     (r"water heater|pilot", ["plumbing-water-heater-valve", "water-heater-pilot-out"]),
     (r"automatic door", ["door-automatic-sensor"]),
     (r"glass|window", ["door-glass-cracked", "glass-door-entry"]),

@@ -663,5 +663,115 @@
   "before": "roof-drain-clogged_before.jpg",
   "after": "roof-drain-clogged_after.jpg",
   "both": "roof-drain-clogged_both.jpg"
+ },
+ {
+  "id": "kitchen-fryer-install",
+  "trades": [
+   "kitchen-equipment"
+  ],
+  "scene": "Deep fryer delivered wrapped on a pallet, then installed and connected under the hood",
+  "before": "kitchen-fryer-install_before.jpg",
+  "after": "kitchen-fryer-install_after.jpg",
+  "both": "kitchen-fryer-install_both.jpg"
+ },
+ {
+  "id": "kitchen-dial-scale-needle",
+  "trades": [
+   "kitchen-equipment"
+  ],
+  "scene": "Hanging dial scale with a bent needle, then replaced and zeroed",
+  "before": "kitchen-dial-scale-needle_before.jpg",
+  "after": "kitchen-dial-scale-needle_after.jpg",
+  "both": "kitchen-dial-scale-needle_both.jpg"
+ },
+ {
+  "id": "kitchen-fryer-install-b",
+  "trades": [
+   "kitchen-equipment"
+  ],
+  "scene": "Old fryer removed with greasy floor and loose gas hose, then a new fryer installed and connected",
+  "before": "kitchen-fryer-install-b_before.jpg",
+  "after": "kitchen-fryer-install-b_after.jpg",
+  "both": "kitchen-fryer-install-b_both.jpg"
+ },
+ {
+  "id": "kitchen-dial-scale-chain",
+  "trades": [
+   "kitchen-equipment"
+  ],
+  "scene": "Hanging dial scale with a broken chain link and tilted pan, then repaired and level",
+  "before": "kitchen-dial-scale-chain_before.jpg",
+  "after": "kitchen-dial-scale-chain_after.jpg",
+  "both": "kitchen-dial-scale-chain_both.jpg"
+ },
+ {
+  "id": "kitchen-dial-scale-glass",
+  "trades": [
+   "kitchen-equipment"
+  ],
+  "scene": "Wall-mounted dial scale with cracked glass and needle off zero, then replaced",
+  "before": "kitchen-dial-scale-glass_before.jpg",
+  "after": "kitchen-dial-scale-glass_after.jpg",
+  "both": "kitchen-dial-scale-glass_both.jpg"
+ },
+ {
+  "id": "kitchen-digital-scale",
+  "trades": [
+   "kitchen-equipment"
+  ],
+  "scene": "Hanging digital scale with blank display, broken keypad and open battery cover, then repaired",
+  "before": "kitchen-digital-scale_before.jpg",
+  "after": "kitchen-digital-scale_after.jpg",
+  "both": "kitchen-digital-scale_both.jpg"
+ },
+ {
+  "id": "kitchen-digital-scale-nopower",
+  "trades": [
+   "kitchen-equipment"
+  ],
+  "scene": "Hanging digital scale with a dead display and corroded batteries, then fresh batteries and a lit display",
+  "before": "kitchen-digital-scale-nopower_before.jpg",
+  "after": "kitchen-digital-scale-nopower_after.jpg",
+  "both": "kitchen-digital-scale-nopower_both.jpg"
+ },
+ {
+  "id": "kitchen-digital-scale-display",
+  "trades": [
+   "kitchen-equipment"
+  ],
+  "scene": "Hanging digital scale with a cracked display, then a new display",
+  "before": "kitchen-digital-scale-display_before.jpg",
+  "after": "kitchen-digital-scale-display_after.jpg",
+  "both": "kitchen-digital-scale-display_both.jpg"
+ },
+ {
+  "id": "freight-forklift-battery",
+  "trades": [
+   "freight-equipment"
+  ],
+  "scene": "Forklift battery covered in corrosion, then cleaned with new cables",
+  "before": "freight-forklift-battery_before.jpg",
+  "after": "freight-forklift-battery_after.jpg",
+  "both": "freight-forklift-battery_both.jpg"
+ },
+ {
+  "id": "freight-forklift-battery-b",
+  "trades": [
+   "freight-equipment"
+  ],
+  "scene": "Forklift battery with frayed cables and a loose clamp, then new cables and a clean tray",
+  "before": "freight-forklift-battery-b_before.jpg",
+  "after": "freight-forklift-battery-b_after.jpg",
+  "both": "freight-forklift-battery-b_both.jpg"
+ },
+ {
+  "id": "kitchen-dial-scale-chain-b",
+  "trades": [
+   "kitchen-equipment"
+  ],
+  "scene": "Hanging scale with a bent open hook and a detached chain, then a new closed hook and chains attached",
+  "before": "kitchen-dial-scale-chain-b_before.jpg",
+  "after": "kitchen-dial-scale-chain-b_after.jpg",
+  "both": "kitchen-dial-scale-chain-b_both.jpg"
  }
 ]

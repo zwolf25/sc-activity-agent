@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## v0.20.9 - 2026-11-08
+
+- Error 916 ("At least one attachment required to create this WorkOrder") is fixed. ServiceChannel marks some issues in the issue list as RequireAttachment. The agent now tells ServiceChannel to skip that check for those issues and attaches the before photo right after the create, whatever the before-photo slider says. The 916 hint on the Errors page was wrong (it blamed an account setting) and now names the issue flag.
+- Eleven new photo sets (Kitchen Equipment and Freight Equipment): fryer installs, dial scales, digital scales and a forklift battery. Every issue that requires an attachment now has a matching set. A WO in a trade with no photo set still gets no photo.
+- Work orders finished by clean-up or pickup (B-51) now also get an invoice payment step, a few weeks after the approval, so they no longer stay in Payment due with nothing pending.
+- Restart the agent to update. Nothing pauses. Existing Payment due work orders with nothing pending need a one-time backfill (done by hand on Production).
+
 ## v0.20.8 - 2026-11-07
 
 - Steps planned outside activity hours no longer all land on exactly the opening minute (for example 08:00:00). A step moved to the start of the next activity window now lands up to 90 minutes after it, so the audit log looks less mechanical. Plans already saved keep their times.

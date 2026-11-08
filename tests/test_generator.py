@@ -36,6 +36,16 @@ def test_payload_takes_nte_from_issue_and_omits_status():
     assert p["ContractInfo"]["TradeId"] == 2 and p["IssueRequestInfo"]["AssetType"] == "RTU"
 
 
+def test_an_issue_marked_require_attachment_sends_the_ignore_flag_B95():
+    prob = {"Name": "Scale", "Trade": "KITCHEN EQUIPMENT", "TradeId": 4, "Priority": "NORMAL", "Category": {"Default": "REPAIR"}, "CategoryId": 9, "Nte": "0"}
+    il = {"ProblemTypes": [{"Name": "T", "Items": [{"Name": "I", "Problems": [{**prob, "RequireAttachment": "required"}, {**prob, "Name": "Q"}]}]}]}
+    req, plain = g.issues(il)
+    now, loc = dt.datetime(2026, 10, 23, 12), {"subscriber_id": 5, "id": 6, "store_id": "HQ"}
+    assert req["attach_required"] and not plain["attach_required"]
+    assert g.payload(req, loc, 1, 3, now, now)["IgnoreAttachmentsRequiredFlag"] is True
+    assert "IgnoreAttachmentsRequiredFlag" not in g.payload(plain, loc, 1, 3, now, now)
+
+
 def test_daily_count_weekdays_only_and_mean():
     r = random.Random(3)
     sat = dt.date(2026, 10, 24)

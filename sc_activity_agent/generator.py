@@ -6,7 +6,7 @@ def issues(issue_list):
     """Flatten the dashboard issue list (problems with no trade or no CategoryId are skipped, since a create needs both; GET .../storedashboards/{id}/issuelist) to one dict per problem."""
     return [{"problem_type": pt["Name"], "item": it["Name"], "problem": p["Name"], "trade": p["Trade"],
              "trade_id": p["TradeId"], "priority": p["Priority"], "category": p["Category"]["Default"],
-             "category_id": p["CategoryId"], "nte": float(p["Nte"] or 0)}
+             "category_id": p["CategoryId"], "nte": float(p["Nte"] or 0), "attach_required": p.get("RequireAttachment") == "required"}
             for pt in issue_list["ProblemTypes"] for it in pt["Items"] for p in it["Problems"] if p["Trade"] and p.get("CategoryId")]
 
 
@@ -37,7 +37,7 @@ def pick(rng, pool, mix=None):
 def payload(issue, loc, header_id, area_id, scheduled, now, test=False):
     """loc: {subscriber_id, id, store_id}. Status is deliberately omitted (SB2 rejects every value)."""
     f = "%Y-%m-%dT%H:%M:%S"
-    return {
+    body = {
         "ContractInfo": {"SubscriberId": loc["subscriber_id"], "LocationId": loc["id"], "StoreId": loc["store_id"],
                          "TradeName": issue["trade"], "TradeId": issue["trade_id"]},
         "Category": issue["category"], "CategoryId": issue["category_id"], "Priority": issue["priority"],
@@ -48,6 +48,9 @@ def payload(issue, loc, header_id, area_id, scheduled, now, test=False):
         "DispatchSettingsInfo": {"IsTest": test, "NotificationDisabled": test},
         "ApiRequest": True, "IssueListHeaderId": header_id,
     }
+    if issue.get("attach_required"):   # B-95: the issue list marks it RequireAttachment and a create without one is refused (916); the API lets us skip the check, so the photo follows the create
+        body["IgnoreAttachmentsRequiredFlag"] = True
+    return body
 
 
 def daily_count(rng, per_month, day, days=(0, 1, 2, 3, 4)):

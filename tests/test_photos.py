@@ -14,7 +14,7 @@ def test_every_set_has_all_three_files_and_known_trades():
 
 def test_every_supported_trade_has_several_sets():
     for slug in photos.SLUG.values():
-        assert sum(slug in s["trades"] for s in photos.sets().values()) >= 4, slug
+        assert sum(slug in s["trades"] for s in photos.sets().values()) >= (2 if slug.endswith("equipment") else 4), slug   # equipment trades have 2 to 5 sets each (the 7 required-attachment issues)
 
 
 def test_pick_matches_the_trade_and_reuses_a_set_by_id():
@@ -50,6 +50,13 @@ def test_issue_rules_name_real_sets_and_pick_a_matching_scene():
     assert photos.pick("PLUMBING", "before", rng, issue="Backflow Preventer leaking")[0] == "backflow-preventer-spraying"
     assert photos.pick("DOOR/LOCK", "before", rng, issue="Overhead Door off track")[0] in ("overhead-door-off-track", "door-sweep-worn", "door-kick-plate")
     assert photos.pick("GENERAL MAINTENANCE", "before", rng, issue="Flag pole halyard broken")[0] == "flagpole-halyard-frayed"
+    # B-95: every issue that requires an attachment finds a set of its own kind
+    for trade, issue, ids in (("KITCHEN EQUIPMENT", "Fryer Installation", ("kitchen-fryer-install", "kitchen-fryer-install-b")),
+                              ("KITCHEN EQUIPMENT", "Hanging Dial Scale Broken Chain", ("kitchen-dial-scale-chain", "kitchen-dial-scale-chain-b")),
+                              ("KITCHEN EQUIPMENT", "Hanging Dial Scale Needle not working", ("kitchen-dial-scale-needle", "kitchen-dial-scale-glass")),
+                              ("KITCHEN EQUIPMENT", "Digital Hanging Scale No Power", ("kitchen-digital-scale-nopower",)),
+                              ("FREIGHT EQUIPMENT", "Fork Lift Battery", ("freight-forklift-battery", "freight-forklift-battery-b"))):
+        assert photos.pick(trade, "before", rng, issue=issue)[0] in ids, issue
 
 
 def test_pick_avoids_recent_sets_while_another_fits_and_recent_reads_the_last_wos(tmp_path):

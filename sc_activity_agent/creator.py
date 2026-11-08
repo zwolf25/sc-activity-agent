@@ -274,7 +274,7 @@ class Creator:
             pid = actual   # ServiceChannel's routing wins over our Rank 1 cache
         if pid:
             ctx["provider_id"] = pid
-        if self.rng.random() * 100 < b["photo_before"]:
+        if issue.get("attach_required") or self.rng.random() * 100 < b["photo_before"]:   # B-95: an issue that requires an attachment gets its before photo whatever the slider says
             self._attach_before(app, user, r["id"], issue["trade"], ctx, loc["store_id"])
         add_plan(self.store, loc["store_id"], issue["trade"], r["id"], plan, ctx, now)
         return r["id"]

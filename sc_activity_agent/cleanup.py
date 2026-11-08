@@ -76,7 +76,7 @@ def _eta(w, key):
 
 
 def finish_plan(store, rt, w, now, accept=False):
-    """Give a WO held by one of our providers a short plan: one visit, review, invoice, approve. Times fit the activity window.
+    """Give a WO held by one of our providers a short plan: one visit, review, invoice, approve, pay. Times fit the activity window.
     accept adds the Provider's accept first, for a WO that is still OPEN (B-51)."""
     loc = store.db.execute("SELECT * FROM locations WHERE store_id=?", (w["_location"],)).fetchone()
     c, rng, tz = {**planner.DEFAULTS, **store.get("behavior", {})}, rt.rng, loc["tz"] or "America/New_York"
@@ -96,6 +96,7 @@ def finish_plan(store, rt, w, now, accept=False):
                                   ("invoice_decide", 3600, 21600, {"approve": True})):
         t = planner._fit(t + rng.randint(lo, hi), t, c, tz, rng)
         steps.append({"kind": kind, "due_at": t, "payload": payload})
+    steps.append({"kind": "invoice_pay", "due_at": t + max(2, rng.gauss(c["pay_days"], c["pay_days"] * 0.25)) * 86400, "payload": {}})   # same rule as planner.build_plan; without it the WO sits in Payment due forever
     trade = w.get("Trade") or "General"
     issue = w.get("Problem") or w.get("ProblemDescription") or "reported issue"
     ctx = dict(trade=trade, issue=issue, location=loc["name"] or loc["store_id"], sched_day="", eta="", eta_end="", area="sales floor",

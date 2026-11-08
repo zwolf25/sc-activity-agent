@@ -92,7 +92,7 @@ def test_finish_gives_our_providers_wos_a_plan_and_cancels_the_rest(tmp_path):
     st = cleanup.run(s, rt, clock=lambda: NOW, finish=True)
     assert st["finished"] == 1 and st["cancelled"] == 1
     kinds = [r[0] for r in s.db.execute("SELECT kind FROM steps WHERE wo_id=(SELECT id FROM work_orders WHERE sc_id=1) ORDER BY seq")]
-    assert kinds == ["check_in", "check_out", "review", "invoice_submit", "invoice_decide"]
+    assert kinds == ["check_in", "check_out", "review", "invoice_submit", "invoice_decide", "invoice_pay"]
     assert [c[1] for c in app.calls if c[0] == "PUT"] == ["/workorders/2/status"]
 
 
@@ -143,6 +143,16 @@ def test_finish_plan_adds_the_availability_exchange_only_when_the_eta_is_inside_
     kinds = lambda i: [r[0] for r in s.db.execute("SELECT kind FROM steps WHERE wo_id=(SELECT id FROM work_orders WHERE sc_id=?) ORDER BY seq", (i,))]
     assert kinds(11)[:3] == ["sub_note", "prov_note", "check_in"]
     assert kinds(12)[0] == kinds(13)[0] == kinds(14)[0] == "check_in"
+
+
+def test_finish_plan_ends_with_a_pay_step_days_after_the_decision(tmp_path):
+    s, app, rt = setup(tmp_path, [])
+    s.db.execute("INSERT INTO connections VALUES(2,'provider','P','c','x',77)")
+    s.db.commit()
+    cleanup.finish_plan(s, rt, {**wo(21), "_location": "HQ"}, NOW)
+    rows = s.db.execute("SELECT kind, due_at FROM steps WHERE wo_id=(SELECT id FROM work_orders WHERE sc_id=21) ORDER BY seq").fetchall()
+    assert [r[0] for r in rows][-2:] == ["invoice_decide", "invoice_pay"]
+    assert rows[-1][1] - rows[-2][1] >= 2 * 86400
 
 
 def test_pickup_plans_only_recent_wos_of_ours_in_our_trades_and_can_be_turned_off(tmp_path):
