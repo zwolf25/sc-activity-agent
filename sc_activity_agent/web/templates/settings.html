@@ -24,6 +24,10 @@
 <div class="row" style="justify-content:flex-start"><form method="post" action="/check-update"><button>Check for updates</button></form>
 <button type="button" id="diag">Copy diagnostics</button></div>
 <script>document.getElementById('diag').onclick=async e=>{const b=e.target;try{const t=await (await fetch('/diagnostics')).text();await navigator.clipboard.writeText(t);b.textContent='Copied'}catch(x){window.open('/diagnostics')}}</script></div>
+<div class="card"><h3>Issue list</h3>
+<p>The issue list this agent is built and tested against, in ServiceChannel's upload format. Load it on your Subscriber's dashboard to run the same setup, or if you lost your copy.</p>
+<p><a href="/issue-list.xlsx">Download SCActivityAgentIssueList.xlsx</a></p></div>
+
 <div class="card"><h3>Backups</h3>
 <p>A copy of the database (settings, connections, plans) is saved before every update and every clean-up run. The last 10 are kept in the <code>backups</code> folder of this instance's data folder.</p>
 <form method="post" action="/backup"><button>Back up now</button></form>

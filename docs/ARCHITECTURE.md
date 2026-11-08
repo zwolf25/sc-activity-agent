@@ -87,6 +87,8 @@ One Python process runs two things: an engine loop and a localhost web console. 
 
 **Audit log and Errors answer different questions.** Audit is every API call (what happened). Errors is the queue of failed steps and creates with Retry and Skip (what needs a person). The Audit log has a failures-only filter, and Errors links into it by WO.
 
+**The shared issue list file.** `sc_activity_agent/SCActivityAgentIssueList.xlsx` is the ServiceChannel upload file for the list we test against (single copy, packaged via `package-data`; notes in `issue-list/README.md`). The Settings page serves it at `GET /issue-list.xlsx`, and `release.yml` attaches it to each release. `tests/test_issue_list.py` checks that every attachment-required issue in it has a photo set. Why: users who load the same list get the same trades and photo coverage. The agent never edits or uploads an issue list; any issue list change is made in this file first.
+
 **NTE and category come from the issue list.** The dashboard issue list is the source of truth for trade, category, priority and NTE, so they are not settings. `POST /workorders` resolves the issue on the Subscriber user's own dashboard and ignores `IssueListHeaderId` (api-notes, 2026-11-03), so a dashboard chosen in the agent could only disagree with what a create uses. B-91 therefore reads the user's dashboard from the profile and shows it read-only on Connections. The agent does not require a particular issue list.
 
 **No LLM at runtime.** Notes come from templates filled with WO details and seeded phrase variation. This costs nothing per run and gives the same behavior every time.

@@ -12,7 +12,7 @@ from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, Form, Query, Request
-from fastapi.responses import PlainTextResponse, RedirectResponse
+from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -677,6 +677,10 @@ def create_app(store, engine=None, rt=None):
         tail = "\n".join(log.read_text(errors="replace").splitlines()[-60:]) if log.exists() else "(no agent.log)"
         return (f"agent {__version__}  env={store.get('env')}  paused={store.get('paused_at') is not None}\n"
                 f"python {sys.version.split()[0]}  {platform.platform()}  port={store.get('port')}\n--- agent.log (last 60 lines)\n{tail}")
+
+    @app.get("/issue-list.xlsx")
+    def issue_list_file():
+        return FileResponse(Path(__file__).parent.parent / "SCActivityAgentIssueList.xlsx", filename="SCActivityAgentIssueList.xlsx")
 
     @app.post("/backup")
     def backup_now():

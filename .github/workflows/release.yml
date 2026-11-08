@@ -15,6 +15,6 @@ jobs:
           python-version: "3.12"
       - run: pip install build
       - run: python -m build
-      - run: gh release upload "${{ github.event.release.tag_name }}" dist/* --clobber
+      - run: gh release upload "${{ github.event.release.tag_name }}" dist/* sc_activity_agent/SCActivityAgentIssueList.xlsx --clobber
         env:
           GH_TOKEN: ${{ github.token }}

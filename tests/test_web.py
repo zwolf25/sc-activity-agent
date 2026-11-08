@@ -487,3 +487,10 @@ def test_old_list_shaped_dashboard_info_does_not_break_pages(tmp_path):
     s, c = client(tmp_path)
     s.put("dashboard_info", [{"user": "sub", "id": 1, "name": "", "list": "", "error": ""}])
     assert c.get("/setup").status_code == 200 and c.get("/connections").status_code == 200
+
+
+def test_settings_offers_the_issue_list_download(tmp_path):
+    _, c = client(tmp_path)
+    assert "/issue-list.xlsx" in c.get("/settings").text
+    r = c.get("/issue-list.xlsx")
+    assert r.status_code == 200 and r.content[:2] == b"PK" and "attachment" in r.headers["content-disposition"]

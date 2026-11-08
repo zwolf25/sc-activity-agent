@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.20.11 - 2026-11-08
+
+- New: the issue list we build and test against, `SCActivityAgentIssueList.xlsx`, ships with the agent and is attached to every release. Settings > Issue list downloads it, in case you lose your copy. Load it on your Subscriber's dashboard to run the same setup.
+- Nothing to do on update.
+
 ## v0.20.10 - 2026-11-08
 
 - Fixed a stall where overdue steps never ran. Each loop pass runs a limited number of due steps. Steps queued behind an unfinished earlier step of the same work order used up those slots and were then skipped, so the earlier step, which had a later due time, never got a turn. This showed on SB2 after a sleep gap: 311 steps overdue and nothing run since Nov 5. Only the first unfinished step of each work order now takes a slot.
