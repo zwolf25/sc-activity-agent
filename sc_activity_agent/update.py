@@ -102,10 +102,11 @@ def restore(store, name):
     pid = store.dir / "agent.pid"
     if pid.exists():
         try:
-            os.kill(int(pid.read_text()), 0)
-            raise RuntimeError("The agent is running. Quit it first, then restore.")
+            running = _alive(int(pid.read_text()))
         except (OSError, ValueError):
-            pass
+            running = False
+        if running:
+            raise RuntimeError("The agent is running. Quit it first, then restore.")
     keep = backup(store)
     put_db(store, src)
     return keep
@@ -138,6 +139,17 @@ def _restart(store, wait=10):
 
 
 def _alive(pid):
+    """Is this process running. os.kill(pid, 0) is a probe on POSIX but TerminateProcess on Windows, so Windows asks the OS for the exit code."""
+    if sys.platform == "win32":
+        import ctypes
+        k = ctypes.windll.kernel32
+        h = k.OpenProcess(0x1000, False, pid)   # PROCESS_QUERY_LIMITED_INFORMATION
+        if not h:
+            return False
+        code = ctypes.c_ulong()
+        k.GetExitCodeProcess(h, ctypes.byref(code))
+        k.CloseHandle(h)
+        return code.value == 259   # STILL_ACTIVE
     try:
         os.kill(pid, 0)
     except PermissionError:
