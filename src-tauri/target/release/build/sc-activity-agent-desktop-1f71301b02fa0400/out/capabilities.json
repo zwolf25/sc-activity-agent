@@ -1,1 +1,0 @@
-{"default":{"identifier":"default","description":"The console served by the local agent may check for and install updates","remote":{"urls":["http://127.0.0.1:*"]},"local":true,"windows":["main"],"permissions":["core:default","updater:default","process:allow-restart"]}}

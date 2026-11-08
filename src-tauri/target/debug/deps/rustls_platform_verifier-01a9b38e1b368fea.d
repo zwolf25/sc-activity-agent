@@ -1,8 +1,0 @@
-/Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/debug/deps/rustls_platform_verifier-01a9b38e1b368fea.d: /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-platform-verifier-0.7.1/src/lib.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-platform-verifier-0.7.1/src/verification/mod.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-platform-verifier-0.7.1/src/verification/apple.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-platform-verifier-0.7.1/src/../README.md
-
-/Users/zackwolf/Projects/sc-activity-agent/src-tauri/target/debug/deps/librustls_platform_verifier-01a9b38e1b368fea.rmeta: /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-platform-verifier-0.7.1/src/lib.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-platform-verifier-0.7.1/src/verification/mod.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-platform-verifier-0.7.1/src/verification/apple.rs /Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-platform-verifier-0.7.1/src/../README.md
-
-/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-platform-verifier-0.7.1/src/lib.rs:
-/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-platform-verifier-0.7.1/src/verification/mod.rs:
-/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-platform-verifier-0.7.1/src/verification/apple.rs:
-/Users/zackwolf/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/rustls-platform-verifier-0.7.1/src/../README.md:
