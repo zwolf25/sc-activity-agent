@@ -168,6 +168,17 @@ def test_plan_follows_the_chosen_activity_days():
             assert all(datetime.fromtimestamp(s["due_at"], tz).weekday() in days for s in plan if s["kind"] != "create_wo"), (days, seed)
 
 
+def test_steps_moved_to_the_window_start_do_not_all_land_on_the_opening_minute():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    tz = "America/New_York"
+    night = datetime(2026, 11, 7, 22, 0, tzinfo=ZoneInfo(tz)).timestamp()   # Saturday night, weekends on
+    c = {"hours_start": 8, "hours_end": 17, "days": [0, 1, 2, 3, 4, 5, 6]}
+    got = [planner._fit(night, 0, c, tz, random.Random(i)) for i in range(50)]
+    start = datetime(2026, 11, 8, 8, 0, tzinfo=ZoneInfo(tz)).timestamp()
+    assert all(start <= t <= start + 5400 for t in got) and len(set(got)) > 20
+
+
 def test_every_step_falls_in_activity_hours_on_a_weekday():
     from datetime import datetime
     from zoneinfo import ZoneInfo

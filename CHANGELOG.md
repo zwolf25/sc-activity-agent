@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.20.8 - 2026-11-07
+
+- Steps planned outside activity hours no longer all land on exactly the opening minute (for example 08:00:00). A step moved to the start of the next activity window now lands up to 90 minutes after it, so the audit log looks less mechanical. Plans already saved keep their times.
+- The Errors page now explains error 916 ("At least one attachment required to create this WorkOrder"): ServiceChannel wants an attachment at create, and the agent adds its photo after the create, so the fix is on the ServiceChannel side. Seen on Production at ZW123 on 2026-11-07. The agent still does not retry a failed create.
+- Restart the agent to update. Nothing pauses.
+
 ## v0.20.7 - 2026-11-07
 
 - Updates now stop the right agent. If the saved process number is out of date, the update finds the running agent by its lock file, and it waits for the agent to exit. If the old agent will not exit, the Updating page says so and names the process instead of waiting for a restart that never happens.

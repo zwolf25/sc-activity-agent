@@ -387,6 +387,7 @@ def test_provider_needs_numeric_id(tmp_path):
 def test_create_error_hint():
     from sc_activity_agent.web.app import hint
     assert "Rank 1" in hint("409 no eligible trade at ZW123 (no Rank 1 provider connection)")
+    assert "attachment" in hint('400 /workorders: {"ErrorCodes":[916],"ErrorMessage":"At least one attachment required to create this WorkOrder"}')
 
 
 def test_setup_check_reports_each_problem(tmp_path, monkeypatch):

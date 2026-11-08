@@ -31,14 +31,15 @@ def _at(day, hour_float, tz):
 
 def _fit(ts, prev, c, tz, rng):
     """Moves ts inside activity hours on a business day, keeping it after prev. A step outside the window moves to the start of the
-    next one, and the order rule spreads consecutive moved steps a few minutes apart."""
+    next one, up to 90 minutes after its start so plans of different WOs do not pile up at the opening minute, and the order rule spreads
+    consecutive moved steps a few minutes apart."""
     z = ZoneInfo(tz)
     d = datetime.fromtimestamp(ts, z)
     h0, h1 = c["hours_start"], c["hours_end"]
     new = ts
     if not (d.weekday() in c["days"] and _at(d.date(), h0, tz) <= ts <= _at(d.date(), h1, tz)):
         day = d.date() if d.weekday() in c["days"] and ts < _at(d.date(), h0, tz) else _biz_day(d.date(), 1, c["days"])
-        new = _at(day, h0, tz)
+        new = _at(day, h0, tz) + rng.randint(0, min(5400, int((h1 - h0) * 1800)))   # jitter: steps from many WOs must not all land on exactly h0
     if new <= prev:
         new = prev + rng.randint(60, 600)
         if new > _at(datetime.fromtimestamp(new, z).date(), h1, tz):
