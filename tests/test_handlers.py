@@ -943,3 +943,37 @@ def test_check_in_attaches_a_seeded_asset_once_and_only_when_none_is_on_the_wo(t
     s.db.commit()
     h(None, s.db.execute("SELECT * FROM work_orders").fetchone(), step("check_in", visit=1))
     assert not [c for c in calls if "attach" in c[3]]
+
+
+def test_user_approved_invoice_skips_the_planned_resubmit(tmp_path):
+    s = setup(tmp_path)
+    calls = []
+    sub, prov = FakeApp("sub", calls), FakeApp("prov", calls)
+    sub.istatus = "APPROVED"
+    rt = Runtime(s, {1: sub, 2: prov}, random.Random(1))
+    plan = planner.build_plan(random.Random(4), NOW, {"proposal_rate": 0, "invoice_approval": 0})
+    add_plan(s, "HQ-NYC", "HVAC", 5001, plan, CTX, NOW)
+    e = Engine(s, make_handlers(rt), clock=lambda: plan[-1]["due_at"] + 10, per_tick=50)
+    for _ in range(len(plan) + 3):
+        e.tick()
+    assert prov.invoice_numbers == ["INV-5001-1"]   # no resubmit
+    assert s.db.execute("SELECT COUNT(*) FROM steps WHERE state='failed'").fetchone()[0] == 0
+
+
+def test_resubmit_refused_with_1105_is_done_not_failed(tmp_path):
+    from sc_activity_agent.client import ScError
+
+    class Exists(FakeApp):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            if path == "/invoices" and self.invoice_numbers:
+                raise ScError(400, '{"ErrorCode":1105,"ErrorMessage":"Invoice exists"}', path)
+            return super().call(user, method, path, params, body, **kw)
+
+    s = setup(tmp_path)
+    rt = Runtime(s, {1: FakeApp("sub", []), 2: Exists("prov", [])}, random.Random(1))
+    plan = planner.build_plan(random.Random(4), NOW, {"proposal_rate": 0, "invoice_approval": 0})
+    add_plan(s, "HQ-NYC", "HVAC", 5001, plan, CTX, NOW)
+    e = Engine(s, make_handlers(rt), clock=lambda: plan[-1]["due_at"] + 10, per_tick=50)
+    for _ in range(len(plan) + 3):
+        e.tick()
+    assert s.db.execute("SELECT COUNT(*) FROM steps WHERE state='failed'").fetchone()[0] == 0

@@ -49,6 +49,7 @@ None yet. Zac's new ideas go here first, then get sized and ranked.
 ## Done
 | ID | Item | Version |
 |----|------|---------|
+| B-97 | A person approves an invoice before the agent's reject: `invoice_decide` skips the planned resubmit steps, and a resubmit refused with 1105 ends as done, not failed | 0.20.12 |
 | B-90 | Recorded-response tests: `scripts/record_fixtures.py` saves one real response per endpoint the agent reads (personal data removed) into `tests/fixtures/`; `tests/test_recorded.py` runs the parsers against them in CI | next release |
 | B-89 | Factory reset and restore wait for the step in progress (`reset.quiesced`); Restore button in Settings > Backups (`restore_live`); backups in the same second no longer overwrite each other | 0.20.0 |
 | B-87 | Check setup button on Setup: live sign-in, dashboard and Rank 1 tests with a fix next to each problem | 0.19.0 |

@@ -65,7 +65,12 @@ def build(rt, call, ctx_of):
                 "InvoiceAmountsDetails": {"LaborAmount": labor, "MaterialAmount": material},
                 "Labors": [{"SkillLevel": "2", "LaborType": "1", "NumOfTech": "1", "HourlyRate": rate, "Hours": hours, "Amount": labor}],
                 "Materials": mats}
-        r = call(wo, step, "POST", "/invoices", body=body)
+        try:
+            r = call(wo, step, "POST", "/invoices", body=body)
+        except ScError as e:
+            if json.loads(step["payload"]).get("situation") == "invoice_fix" and e.status == 400 and "1105" in str(e):
+                return   # someone approved the invoice before this resubmit: nothing to resubmit
+            raise
         agreed = None
         try:   # learn the contract rate the API compares against, so the next invoice (or the resubmission) bills it
             inv = call(wo, step, "GET", f"/invoices/{(r or {}).get('Id')}") or {}
@@ -88,6 +93,10 @@ def build(rt, call, ctx_of):
         c = ctx_of(wo)
         inv = call(wo, step, "GET", f"/invoices/{c['invoice_id']}")
         if (inv or {}).get("Status") in ("APPROVED", "PAID", "REJECTED"):
+            if inv["Status"] != "REJECTED":   # approved by someone else: the planned resubmit would hit 1105 "Invoice exists"
+                rt.store.db.execute("UPDATE steps SET state='skipped' WHERE wo_id=? AND seq>? AND state='pending' AND kind IN ('invoice_submit','invoice_decide')",
+                                    (wo["id"], step["seq"]))
+                rt.store.db.commit()
             return   # the user already decided; never overturn it
         flag = invoice_flag(wo, inv or {})
         if p["approve"] and flag and (c.get("invoice_count") or 1) < 3:   # the plan meant to approve, but the invoice carries a flag: reject, and the provider resubmits

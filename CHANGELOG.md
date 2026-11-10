@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v0.20.12 - 2026-11-10
+
+- Fixed: a rejected-invoice plan failed with 1105 "Invoice exists" when someone approved the invoice before the agent's reject. The decide step now skips the planned resubmit when the invoice is already APPROVED or PAID, and a resubmit that still gets 1105 ends as done instead of failed. Restart the agent after updating; nothing pauses and no migration.
+
 ## v0.20.11 - 2026-11-08
 
 - New: the issue list we build and test against, `SCActivityAgentIssueList.xlsx`, ships with the agent and is attached to every release. Settings > Issue list downloads it, in case you lose your copy. Load it on your Subscriber's dashboard to run the same setup.
