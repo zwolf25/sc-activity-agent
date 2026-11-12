@@ -72,8 +72,22 @@ We read proposals through `GET /odata/proposals?$filter=Id eq {id}` instead.
 - `PUT /proposals/{id}/approve` on a proposal that was already rejected returns 204 and flips it to Approved. `PUT /proposals/{id}/assignWO` on an already approved proposal returns 400 `Proposal already approved`.
 - **Expected:** the same guard on both calls, or a clear status error. As it stands, an integration that acts on a stale view can overturn a user's rejection without any warning.
 
+### 13. SB2 work orders disappear mid-lifecycle (found in the 2026-11-09 review)
+- 34 of 35 failed steps in two weeks of SB2 use are `502 Work order is not found` (as 400 or 404) on WOs we created 2026-10-27 to 2026-10-31. Every one still showed as active on our side. Earlier calls on the same WOs had worked (`accept`, notes), so the WOs were created correctly and later became unreachable.
+- Not all of these WOs were created by our agent. About 85 of the 130 SB2 WOs came from `POST /workorders`; the rest were adopted by the hand-made-WO pickup (WOs other SB2 users created at the same location). Other users can delete or cancel their own WOs, and our clean-up is off on SB2, so a purge by us is ruled out. We have not confirmed whether the vanished WOs were agent-created or adopted, or whether SB2 deletes or archives WOs on a schedule. **Question for Eng:** does SB2 delete or archive WOs on a schedule? If so, what is the retention window?
+- **Expected:** a stable WO for at least the length of a test lifecycle, or a distinct error for deleted WOs, not the same `not found` a wrong provider user gets (see item 11).
+
+### 14. Payment before the invoice date returns 1178
+- `POST /invoices/{id}/Payment` returns 400 `1178 Invoice cannot be paid before invoice dates` for an invoice that was just approved. It failed 24 times on one invoice. The message does not say which date applies or what the earliest valid payment date is.
+- **Expected:** return the earliest valid date in the error, or accept payment once the invoice is approved.
+
+### 15. 500 bursts under load
+- SB2 returned 112 HTTP 500s in two weeks. They cluster on 2026-10-29 (29) and 2026-11-02 (47), the two days we created the most WOs (about 30 each). Other days had 0 to 10. Routes seen: `GET /contracts`, `GET /odata/locations({id})/workorders` and `GET /workorders/{id}`. The same requests succeed on retry.
+- **Expected:** a 429 with `Retry-After`, or a 503, rather than a 500 with no body.
+
 ## Minor
 
+- **`/contracts` with an unknown trade:** returns 503 `Trade not found` (6 times). It does not say whether the trade name or the trade id was wrong.
 - **Mixed key casing:** WO create returns `{"id": ...}`, invoice create returns `{"Id": ...}`.
 - **Provider shape:** `GET /workorders/{id}` nests the provider as `Provider.Id`. There is no `ProviderId` key.
 - **`validateCheckIn` without coordinates:** missing `latitude`/`longitude` returns `IsOutsideGeolocation: true` instead of a 400. A WO scheduled days out reports `IsOutsideAcceptableTimeframe`.
