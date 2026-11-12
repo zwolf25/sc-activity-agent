@@ -1,4 +1,5 @@
 """Subscriber review (plain confirm or a star rating) and the rework visit a bad rating plans."""
+import datetime as dt
 import json
 
 from .. import content, planner
@@ -12,7 +13,8 @@ def build(rt, call, ctx_of):
         reviews (star_rating) is a rating instead (POST /feedbacks). Of those, rework % get 1 or 2 stars and mark the WO Unsatisfactory (IN PROGRESS)
         so the provider returns for another visit; the rest get 3 to 5 stars and confirm it. Feedback is only accepted while the WO is COMPLETED / PENDING CONFIRMATION (verified on SB2)."""
         def confirm():
-            text = content.note("subscriber", "review", ctx_of(wo), rt.rng)
+            again = json.loads(step["payload"]).get("round", 1) > 1   # the second review follows a return visit
+            text = content.note("subscriber", "review_rework" if again else "review", ctx_of(wo), rt.rng)
             return call(wo, step, "PUT", f"/workorders/{wo['sc_id']}/status",
                         body={"Status": {"Primary": "COMPLETED", "Extended": "CONFIRMED"}, "Note": text})
 
@@ -41,10 +43,17 @@ def build(rt, call, ctx_of):
         stars = rt.rng.choice([1, 2]) if bad else rt.rng.choice([3, 4, 4, 5, 5])
         fb = {"Answer": "unsatisfactory" if bad else "satisfactory", "StarScore": stars, "LocationId": loc["db_id"], "SubscriberId": loc["subscriber_id"]}
         if bad or stars < 3:
-            fb["Comment"] = content.note("subscriber", "low_stars" if stars < 2 else "unsatisfactory", ctx_of(wo), rt.rng)
+            c = {**ctx_of(wo), "complaint": content.complaint(ctx_of(wo), rt.rng), "last_visit": last_visit(wo)}
+            fb["Comment"] = content.note("subscriber", "low_stars" if stars < 2 else "unsatisfactory", c, rt.rng)
         call(wo, step, "POST", f"/feedbacks/workorders/{wo['sc_id']}", body=fb)
         if bad:
+            rt.save_ctx(wo, complaint=c["complaint"])   # the provider's return note answers the same complaint
             rework(engine, wo, step)
+
+    def last_visit(wo):
+        """'Tuesday's visit' from the latest finished check-out, or None-safe fallback text."""
+        r = rt.store.db.execute("SELECT done_at FROM steps WHERE wo_id=? AND kind='check_out' AND state='done' ORDER BY done_at DESC LIMIT 1", (wo["id"],)).fetchone()
+        return f"{dt.datetime.fromtimestamp(r[0]):%A}'s visit" if r and r[0] else "the last visit"
 
     def rework(engine, wo, step):
         """Plan the return: a provider note, another visit, a final check-out and a second review. Every later step moves back by the
@@ -57,7 +66,7 @@ def build(rt, call, ctx_of):
         rt.store.db.execute("UPDATE steps SET payload=? WHERE wo_id=? AND seq=?", (json.dumps({**json.loads(step["payload"]), "unsatisfactory": True}), wo["id"], step["seq"]))
         rt.store.db.execute("UPDATE steps SET due_at=due_at+? WHERE wo_id=? AND seq>? AND state='pending'", (t_rev - step["due_at"], wo["id"], step["seq"]))
         insert_steps(rt.store, wo["id"], step["seq"], [
-            ("prov_note", t_in - 3600, {"situation": "return"}),
+            ("prov_note", t_in - 3600, {"situation": "rework"}),
             ("check_in", t_in, {"visit": visit, "tech": 0, "situation": "return"}),
             ("check_out", t_out, {"visit": visit, "final": True, "situation": "complete"}),
             ("review", t_rev, {"situation": "review", "round": 2})])

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v0.20.14 - 2026-11-12
+
+- Changed: the star-rating and rework messages now name the work order. The Subscriber's low-rating comment says what is still wrong with the equipment, in words that fit the trade (for example "the Water Heater is leaking again"), and mentions the store, the area and the day of the last visit. The provider's return note answers the same complaint, and the second review after a return visit has its own wording. Issue labels that name no problem ("Other Issues") are no longer quoted. Restart the agent after updating; no migration.
+
 ## v0.20.13 - 2026-11-11
 
 - New: seed assets from the console. The "No assets seeded yet" banner on Dashboard and Locations now has a Seed button for each location. It asks for confirmation, approves that location for Production (assets.approved_locations) and seeds in the background, with a progress banner and a Retry button on error. The `agent assets` commands still work. Restart the agent after updating; no migration.

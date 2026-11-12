@@ -328,3 +328,17 @@ def test_no_show_plan_accepts_then_never_checks_in_and_ends_in_a_reassign():
         assert p[-2]["payload"]["situation"] == "noshow" and p[-1]["payload"]["cancel"] == "noshow_cancel"
         assert p[-1]["due_at"] > p[-2]["due_at"] > max(s["due_at"] for s in p[:-2])
     assert "no_show" in planner.DEFAULTS and planner.build_plan(random.Random(1), NOW, {})[-1]["kind"] != "reassign"
+
+
+def test_rating_messages_name_the_wo_and_vary():
+    ctx = dict(trade="PLUMBING", issue="Leak", equipment="Water Heater", location="ZW123", area="back room", sched_day="Monday", eta="9:00 AM", eta_end="11:00 AM")
+    out = {content.note("subscriber", "unsatisfactory", {**ctx, "complaint": content.complaint(ctx, random.Random(i))}, random.Random(i)) for i in range(60)}
+    assert len(out) > 15 and all("Water Heater" in t or "ZW123" in t for t in out)
+    assert not any(w in t for t in out for w in ("{", "PLUMBING"))   # no raw slots, trade reads as plain text
+
+
+def test_generic_issue_labels_are_not_quoted_in_notes():
+    ctx = dict(trade="PLUMBING", issue="Other Issues", equipment="Water Heater", location="ZW123", area="back room", sched_day="Monday", eta="9:00 AM", eta_end="11:00 AM")
+    for i in range(80):
+        for sit in ("unsatisfactory", "low_stars"):
+            assert "Other Issues" not in content.note("subscriber", sit, ctx, random.Random(i))

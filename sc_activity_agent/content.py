@@ -4,6 +4,26 @@ import re
 GREET = ["", "", "Hi, ", "Hello, ", "Team, "]
 CLOSE = ["", "", " Thanks.", " Thank you.", " Let us know if anything changes."]
 
+# What a store says is still wrong, by trade. Reads after "the {equipment}", so each starts with a verb.
+COMPLAINTS = {
+    "HVAC": ["is still not cooling", "is blowing warm air again", "is making a loud noise again", "shut off again after the visit", "is not holding the set temperature"],
+    "PLUMBING": ["is leaking again", "still has low pressure", "is still backing up", "still has no hot water", "is dripping again"],
+    "ELECTRICAL": ["tripped the breaker again", "is still flickering", "still has no power", "is buzzing again", "is still not working"],
+    "DOORS": ["still sticks and will not latch", "is still not closing properly", "still will not lock", "is still catching on the frame", "is still not opening"],
+    "GENERAL MAINTENANCE": ["is still loose and unsafe", "has the same problem as before", "is still not repaired", "is still damaged"],
+    "JANITORIAL": ["was missed again", "still was not cleaned properly", "still needs a proper clean"],
+    "KITCHEN EQUIPMENT": ["is still not holding temperature", "is still not working", "is still leaking", "is still making noise"],
+    "FREIGHT EQUIPMENT": ["is still not operating", "is still jammed", "still stops mid-cycle"],
+    "*": ["is still not working", "has the same problem as before", "is not fixed"],
+}
+GENERIC_ISSUES = {"other issues", "other", "reported issue", ""}   # issue labels that name no problem; a template quoting {issue} reads badly
+
+
+def complaint(ctx, rng):
+    """One 'still wrong' phrase for this WO's trade."""
+    return rng.choice(COMPLAINTS.get(str(ctx.get("trade", "")).upper(), COMPLAINTS["*"]))
+
+
 T = {  # (role, situation) -> templates; {slots} filled from ctx
     ("provider", "ack"): [
         "Received the {trade} request for {issue}. We will get a tech scheduled.",
@@ -71,11 +91,27 @@ T = {  # (role, situation) -> templates; {slots} filled from ctx
         "Reviewed. Work looks good.",
         "Confirmed with the store, the {issue} is resolved."],
     ("subscriber", "unsatisfactory"): [
-        "The {issue} is not fixed. Please send the technician back to finish the repair.",
-        "Store reports the {issue} is still happening. Please return to complete the work."],
+        "After {last_visit}, the {equipment} {complaint}. Please send the technician back to finish the repair.",
+        "{location} reports the {equipment} {complaint}, same as before. Please return and complete the work.",
+        "The {equipment} in the {area} area {complaint}, so the {issue} repair was not completed. Please schedule a return visit.",
+        "Store contact says the {equipment} {complaint} in the {area} area. We need the provider back on site.",
+        "The {trade_text} repair did not hold. The {equipment} {complaint}. Please come back and fix it properly.",
+        "Checked with {location} after {last_visit}: the {equipment} {complaint}. Please return to finish."],
     ("subscriber", "low_stars"): [
-        "Work was incomplete and the store is not satisfied. Please come back and finish the job.",
-        "Not up to standard. The {issue} needs another visit."],
+        "Not satisfied with the {trade_text} work at {location}. The {equipment} {complaint}. Please come back and finish the job.",
+        "Work was incomplete. The {equipment} in the {area} area {complaint}, and the {issue} is still open.",
+        "Poor result after {last_visit}. The {equipment} {complaint}. This needs another visit.",
+        "The store is not happy with this repair. The {equipment} {complaint} and the {area} area is still affected.",
+        "Not up to standard. The {equipment} {complaint}, so the {issue} was not resolved."],
+    ("provider", "rework"): [
+        "Sorry about that. Understood that the {equipment} {complaint}. Scheduling a return visit to {location}.",
+        "Thanks for the feedback. We will send a {trade_text} tech back to look at the {equipment} in the {area} area.",
+        "Acknowledged. Planning a return visit to find out why the {equipment} {complaint}.",
+        "We hear you. Our tech will return to {location} and recheck the {equipment} before leaving."],
+    ("subscriber", "review_rework"): [
+        "The return visit fixed it. The {equipment} in the {area} area is working as expected.",
+        "Store confirms the {equipment} is fixed after the second visit. Thank you for coming back.",
+        "Verified at {location}. The {trade_text} problem is resolved this time."],
     ("subscriber", "invoice_ok"): [
         "Invoice approved.",
         "Approved. Thank you for the quick turnaround."],
@@ -93,9 +129,19 @@ T = {  # (role, situation) -> templates; {slots} filled from ctx
 
 def note(role, situation, ctx, rng):
     """Return note text. Raises KeyError for an unknown situation, ValueError if a slot is missing from ctx."""
-    text = rng.choice(T[(role, situation)])
+    pool = T[(role, situation)]
+    if str(ctx.get("issue", "")).strip().lower() in GENERIC_ISSUES:
+        pool = [t for t in pool if "{issue}" not in t] or pool
+    text = rng.choice(pool)
+    if "{complaint}" in text and "complaint" not in ctx:
+        ctx = {**ctx, "complaint": complaint(ctx, rng)}
+    if "{trade_text}" in text:   # "plumbing work", "HVAC work": short names stay as they are
+        t = str(ctx.get("trade", ""))
+        ctx = {**ctx, "trade_text": t if len(t) <= 4 else t.lower()}
+    if "{last_visit}" in text and "last_visit" not in ctx:
+        ctx = {**ctx, "last_visit": "the last visit"}
     greet = rng.choice(GREET)
-    if greet and not text.startswith(("We ", "I ")):
+    if greet and not text.startswith(("We ", "I ", "{")):   # a leading slot may be a place name; keep its capitals
         text = text[0].lower() + text[1:]
     text = greet + text + rng.choice(CLOSE)
     missing = [s for s in re.findall(r"{(\w+)}", text) if s not in ctx]

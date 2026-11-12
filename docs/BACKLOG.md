@@ -49,6 +49,7 @@ None yet. Zac's new ideas go here first, then get sized and ranked.
 ## Done
 | ID | Item | Version |
 |----|------|---------|
+| B-99 | Star-rating and rework messages name the work order: low-rating comment, provider return note and second review use the WO's trade, equipment, store, area and last-visit day; generic issue labels are not quoted | 0.20.14 |
 | B-98 | Seed assets from the console: a Seed button per location on the unseeded-assets banner approves the location and seeds in the background, with progress and Retry | 0.20.13 |
 | B-97 | A person approves an invoice before the agent's reject: `invoice_decide` skips the planned resubmit steps, and a resubmit refused with 1105 ends as done, not failed | 0.20.12 |
 | B-90 | Recorded-response tests: `scripts/record_fixtures.py` saves one real response per endpoint the agent reads (personal data removed) into `tests/fixtures/`; `tests/test_recorded.py` runs the parsers against them in CI | next release |
