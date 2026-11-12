@@ -494,3 +494,23 @@ def test_settings_offers_the_issue_list_download(tmp_path):
     assert "/issue-list.xlsx" in c.get("/settings").text
     r = c.get("/issue-list.xlsx")
     assert r.status_code == 200 and r.content[:2] == b"PK" and "attachment" in r.headers["content-disposition"]
+
+
+def test_seed_button_approves_the_location_and_seeds_in_the_background(tmp_path, monkeypatch):
+    import time
+    from sc_activity_agent import assets
+    s, c = client(tmp_path)
+    s.db.execute("INSERT INTO locations(store_id, db_id, subscriber_id, name) VALUES('HQ-NYC', 1, 2, 'HQ')")
+    s.put("rank1", {"HQ-NYC": {"at": 0, "trades": ["HVAC"], "owners": {}}})
+    s.db.commit()
+    monkeypatch.setattr(assets, "seed_location", lambda store, rt, sid: 12)
+    assert "/assets/seed/HQ-NYC" in c.get("/dashboard").text
+    c.post("/assets/seed/HQ-NYC", headers={"referer": "/dashboard"})
+    for _ in range(50):
+        if s.get("assets_seed", {}).get("HQ-NYC", {}).get("state") == "done":
+            break
+        time.sleep(0.1)
+    assert s.get("assets_seed")["HQ-NYC"]["created"] == 12
+    assert s.get("assets")["approved_locations"] == ["HQ-NYC"]
+    c.post("/assets/seed/NOPE")   # unknown location: nothing approved
+    assert s.get("assets")["approved_locations"] == ["HQ-NYC"]

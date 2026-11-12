@@ -49,6 +49,7 @@ None yet. Zac's new ideas go here first, then get sized and ranked.
 ## Done
 | ID | Item | Version |
 |----|------|---------|
+| B-98 | Seed assets from the console: a Seed button per location on the unseeded-assets banner approves the location and seeds in the background, with progress and Retry | 0.20.13 |
 | B-97 | A person approves an invoice before the agent's reject: `invoice_decide` skips the planned resubmit steps, and a resubmit refused with 1105 ends as done, not failed | 0.20.12 |
 | B-90 | Recorded-response tests: `scripts/record_fixtures.py` saves one real response per endpoint the agent reads (personal data removed) into `tests/fixtures/`; `tests/test_recorded.py` runs the parsers against them in CI | next release |
 | B-89 | Factory reset and restore wait for the step in progress (`reset.quiesced`); Restore button in Settings > Backups (`restore_live`); backups in the same second no longer overwrite each other | 0.20.0 |

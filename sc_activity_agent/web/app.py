@@ -139,7 +139,7 @@ def create_app(store, engine=None, rt=None):
         failed = db.execute("SELECT COUNT(*) FROM steps WHERE state='failed'").fetchone()[0]
         base = dict(request=request, nav=NAV, here=name, env=store.get("env"), version=__version__,
                     paused=store.get("paused_at") is not None, failed=failed,
-                    port=store.get("port"), twin_port=store.get("twin_port"), setup=setup_checks(), update=update.pending(store), update_busy=bool(update.in_progress(store)), asset_todo=assets.unseeded(store), cap_hit=store.get("cap_hit") if store.get("paused_at") is not None else None)
+                    port=store.get("port"), twin_port=store.get("twin_port"), setup=setup_checks(), update=update.pending(store), update_busy=bool(update.in_progress(store)), asset_todo=assets.unseeded(store), asset_seed={k: v for k, v in store.get("assets_seed", {}).items() if v["state"] == "error" or v["state"] == "running" and time.time() - v["at"] < 1800}, cap_hit=store.get("cap_hit") if store.get("paused_at") is not None else None)
         return tpl.TemplateResponse(request, f"{name}.html", {**base, **ctx})
 
     def missing_actions():
@@ -435,6 +435,29 @@ def create_app(store, engine=None, rt=None):
             db.execute("UPDATE steps SET state='skipped' WHERE id=?", (sid,))
         db.commit()
         return RedirectResponse("/errors", 303)
+
+    def run_seed(sid):
+        from ..cli import build_engine
+        state = store.get("assets_seed", {})
+        try:
+            n = assets.seed_location(store, rt or build_engine(store, with_rt=True)[1], sid)
+            state[sid] = {"state": "done", "created": n, "at": time.time()}
+        except Exception as e:   # shown in the banner with a Retry button; the log has the traceback
+            state[sid] = {"state": "error", "error": str(e)[:200], "at": time.time()}
+        store.put("assets_seed", state)
+
+    @app.post("/assets/seed/{sid}")
+    def assets_seed(sid: str, request: Request):
+        """Seed button: the click is the one-time Production approval for this location (assets.approved_locations)."""
+        state = store.get("assets_seed", {})
+        loc = db.execute("SELECT 1 FROM locations WHERE store_id=? AND enabled=1", (sid,)).fetchone()
+        if loc and not (state.get(sid, {}).get("state") == "running" and time.time() - state[sid]["at"] < 1800):   # a second click must not start a second seeder
+            cfg = store.get("assets", {})
+            cfg["approved_locations"] = sorted({*cfg.get("approved_locations", []), sid})
+            store.put("assets", cfg)
+            store.put("assets_seed", {**state, sid: {"state": "running", "at": time.time()}})
+            background(run_seed, sid)
+        return RedirectResponse(request.headers.get("referer") or "/dashboard", 303)
 
     @app.post("/assets/dismiss")
     def assets_dismiss(request: Request):

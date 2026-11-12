@@ -273,6 +273,16 @@ def _locs(store, args):
     return rows or sys.exit("No such enabled location. Give --location <store id> or --all.")
 
 
+def seed_location(store, rt, store_id, rate=5):
+    """Seed one enabled location (what `agent assets seed --yes --location` does) and return how many assets were created.
+    The web button calls this; callers own the Production approval."""
+    from .creator import Creator
+    loc = store.db.execute("SELECT * FROM locations WHERE store_id=? AND enabled=1", (store_id,)).fetchone()
+    s = Seeder(store, rt, Creator(store, rt, rt.rng))
+    items, new_types, _ = s.build(loc)
+    return s.seed(loc, items, new_types, rate) if items else 0
+
+
 def cmd(args, store):
     from .cli import build_engine
     from .creator import Creator

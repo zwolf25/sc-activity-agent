@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v0.20.13 - 2026-11-11
+
+- New: seed assets from the console. The "No assets seeded yet" banner on Dashboard and Locations now has a Seed button for each location. It asks for confirmation, approves that location for Production (assets.approved_locations) and seeds in the background, with a progress banner and a Retry button on error. The `agent assets` commands still work. Restart the agent after updating; no migration.
+
 ## v0.20.12 - 2026-11-10
 
 - Fixed: a rejected-invoice plan failed with 1105 "Invoice exists" when someone approved the invoice before the agent's reject. The decide step now skips the planned resubmit when the invoice is already APPROVED or PAID, and a resubmit that still gets 1105 ends as done instead of failed. Restart the agent after updating; nothing pauses and no migration.
