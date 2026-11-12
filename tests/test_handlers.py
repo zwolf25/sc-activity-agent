@@ -374,6 +374,19 @@ def test_second_tech_is_skipped_when_the_provider_has_one_tech(tmp_path):
         rt.user_for("HQ-NYC", "check_out", wo, step("check_out", visit=1, tech=1))
 
 
+def test_a_second_tech_step_with_nobody_to_run_it_ends_done_not_failed(tmp_path):
+    s = setup(tmp_path)
+    s.db.execute("UPDATE users SET can_do='[\"accept\",\"check_in\",\"check_out\"]' WHERE id=2")
+    calls = []
+    rt = Runtime(s, {1: FakeApp("sub", calls), 2: FakeApp("prov", calls)}, random.Random(1))
+    h = make_handlers(rt)
+    wo = _wo(s, provider_id=2000078685, techs={"1.0": 2})
+    for kind in ("check_in", "check_out"):   # the user pick raises Skip in the live-WO read before the write, outside checkio
+        n = len(calls)
+        h[kind](None, wo, {"kind": kind, "due_at": 1_761_566_400, "payload": json.dumps({"visit": 1, "tech": 1, "situation": "onsite"})})
+        assert len(calls) == n
+
+
 def test_first_tech_out_of_a_crew_visit_does_not_complete_the_wo(tmp_path):
     s = setup(tmp_path)
     calls = []

@@ -4,7 +4,7 @@ import json
 import time
 
 from ..client import Later, Park, ScError
-from .common import end_plan
+from .common import Skip, end_plan
 
 
 ALREADY_DONE_WHEN_COMPLETED = {"accept", "decline", "reassign", "reschedule", "check_in", "check_out", "proposal_create", "proposal_decide"}
@@ -105,6 +105,8 @@ def guarded(rt, call, kind, fn):
             if preflight(rt, call, wo, step, kind, getattr(engine, "snap", lambda ts: ts)):
                 return
             return fn(engine, wo, step)
+        except Skip:
+            return   # nobody to run it (a second tech the provider does not have): done without a call; preflight raises it too
         except ScError as e:
             if e.status not in (400, 403, 409):
                 raise
