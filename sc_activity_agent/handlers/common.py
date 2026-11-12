@@ -10,8 +10,7 @@ ACTION = {"accept": "accept", "prov_note": "provider_note", "sub_note": "subscri
           "create": "create_wo"}
 
 
-class Skip(Exception):
-    """Raised by Runtime.user_for when a step has nobody to run it (no second tech). The step ends as done without a call."""
+from ..client import Skip  # noqa: F401  (Runtime.user_for raises it; the engine ends the step as done)
 
 
 

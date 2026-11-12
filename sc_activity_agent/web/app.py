@@ -427,6 +427,17 @@ def create_app(store, engine=None, rt=None):
             db.commit()
         return RedirectResponse("/errors", 303)
 
+    @app.post("/wos/close")
+    async def close_out(request: Request):
+        """B-103: stop the agent's plan for WOs a person finished in ServiceChannel. Writes nothing to ServiceChannel."""
+        for sc_id in (await request.form()).getlist("wo"):
+            w = db.execute("SELECT id FROM work_orders WHERE sc_id=?", (int(sc_id),)).fetchone()
+            if w:
+                db.execute("UPDATE work_orders SET state='cancelled' WHERE id=?", (w["id"],))
+                db.execute("UPDATE steps SET state='skipped' WHERE wo_id=? AND state IN ('pending','failed')", (w["id"],))
+        db.commit()
+        return RedirectResponse("/errors", 303)
+
     @app.post("/steps/{sid}/{action}")
     def step_action(sid: int, action: str):
         if action == "retry":

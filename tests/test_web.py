@@ -364,6 +364,19 @@ def test_errors_page_groups_repeats_and_acts_on_a_group(tmp_path):
     assert [r["state"] for r in s.db.execute("SELECT state FROM steps ORDER BY id")] == ["skipped", "skipped", "failed"]
 
 
+def test_close_out_ends_a_wos_plan_without_a_call(tmp_path):
+    from sc_activity_agent.engine import add_plan
+    s = Store(tmp_path)
+    add_plan(s, "HQ", "HVAC", 111111, [{"kind": "invoice", "due_at": 1.0, "payload": {}}, {"kind": "invoice_pay", "due_at": 2.0, "payload": {}}], {}, 1.0)
+    s.db.execute("UPDATE steps SET state='failed', error='x' WHERE seq=1")
+    s.db.commit()
+    c = TestClient(create_app(s))
+    assert "Close out WO" in c.get("/errors").text
+    c.post("/wos/close", data={"wo": ["111111"]})
+    assert s.db.execute("SELECT state FROM work_orders").fetchone()[0] == "cancelled"
+    assert {r[0] for r in s.db.execute("SELECT state FROM steps")} == {"skipped"}
+
+
 def test_factory_reset_needs_confirmation_and_clears(tmp_path):
     store, c = client(tmp_path)
     store.put("subscriber_id", 1)

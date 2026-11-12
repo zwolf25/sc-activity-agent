@@ -7,7 +7,7 @@ import pytest
 from sc_activity_agent import planner
 from sc_activity_agent.engine import Engine, add_plan
 from sc_activity_agent.client import Park
-from sc_activity_agent.handlers import Runtime, follow, make_handlers
+from sc_activity_agent.handlers import Runtime, follow, insert_steps, make_handlers
 from sc_activity_agent.store import Store
 
 NOW = 1_761_220_800
@@ -379,12 +379,17 @@ def test_a_second_tech_step_with_nobody_to_run_it_ends_done_not_failed(tmp_path)
     s.db.execute("UPDATE users SET can_do='[\"accept\",\"check_in\",\"check_out\"]' WHERE id=2")
     calls = []
     rt = Runtime(s, {1: FakeApp("sub", calls), 2: FakeApp("prov", calls)}, random.Random(1))
-    h = make_handlers(rt)
     wo = _wo(s, provider_id=2000078685, techs={"1.0": 2})
-    for kind in ("check_in", "check_out"):   # the user pick raises Skip in the live-WO read before the write, outside checkio
-        n = len(calls)
-        h[kind](None, wo, {"kind": kind, "due_at": 1_761_566_400, "payload": json.dumps({"visit": 1, "tech": 1, "situation": "onsite"})})
-        assert len(calls) == n
+    insert_steps(s, wo["id"], 0, [(k, NOW, {"visit": 1, "tech": 1, "situation": "onsite"}) for k in ("check_in", "check_out")])
+    e = Engine(s, make_handlers(rt), clock=lambda: NOW + 10, per_tick=50)
+    e.tick(); e.tick()   # one step per WO per tick. The user pick raises Skip in the live-WO read before the write; the engine ends the step done
+    rows = s.db.execute("SELECT state, error FROM steps WHERE wo_id=?", (wo["id"],)).fetchall()
+    assert [r["state"] for r in rows] == ["done", "done"] and not any(r["error"] for r in rows) and not calls
+
+
+def test_an_exception_with_no_message_still_leaves_an_error_text():
+    from sc_activity_agent.client import describe
+    assert describe(KeyError()) == "KeyError" and describe(ValueError("x")) == "ValueError: x"
 
 
 def test_first_tech_out_of_a_crew_visit_does_not_complete_the_wo(tmp_path):
@@ -631,6 +636,13 @@ def test_preflight_parks_the_plan_on_a_status_or_provider_it_does_not_know(tmp_p
     rt.save_ctx(_row(s), provider_id=1)
     with pytest.raises(Park):
         follow(rt, _row(s), s.db.execute("SELECT * FROM steps").fetchone(), {"Provider": {"Id": 777}})
+
+
+def test_preflight_parks_a_wo_on_the_refrigerant_hold_with_one_clear_message(tmp_path):
+    s, rt = _follow_setup(tmp_path, Status={"Primary": "COMPLETED", "Extended": "PENDING REFRIGERANT USE"})
+    out = Engine(s, make_handlers(rt), clock=lambda: NOW + 10 ** 7, per_tick=50).tick()
+    err = s.db.execute("SELECT error FROM steps WHERE id=?", (out[0][0],)).fetchone()[0]
+    assert out[0][1] == "failed" and "REFRIGERANT" in err and "Close out" in err and len(err) <= 200
 
 
 def test_a_check_in_waits_for_its_new_time_when_a_user_moved_the_date_later(tmp_path):

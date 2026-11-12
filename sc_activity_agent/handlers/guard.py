@@ -4,7 +4,7 @@ import json
 import time
 
 from ..client import Later, Park, ScError
-from .common import Skip, end_plan
+from .common import end_plan
 
 
 ALREADY_DONE_WHEN_COMPLETED = {"accept", "decline", "reassign", "reschedule", "check_in", "check_out", "proposal_create", "proposal_decide"}
@@ -25,6 +25,8 @@ def preflight(rt, call, wo, step, kind, snap=lambda ts: ts):
     if st.get("Extended") == "CANCELED":
         end_plan(rt, wo)
         return True
+    if "REFRIGERANT" in (st.get("Extended") or "").upper():   # B-102: only a person in ServiceChannel can clear it; fail this step at once, no more calls
+        raise Park("WO is COMPLETED / PENDING REFRIGERANT USE. Record the usage in ServiceChannel or cancel the WO there, then Close out the WO on the Errors page.")
     if st.get("Primary") == "COMPLETED" and kind in ALREADY_DONE_WHEN_COMPLETED:
         return True
     follow(rt, wo, step, w, snap)
@@ -105,8 +107,6 @@ def guarded(rt, call, kind, fn):
             if preflight(rt, call, wo, step, kind, getattr(engine, "snap", lambda ts: ts)):
                 return
             return fn(engine, wo, step)
-        except Skip:
-            return   # nobody to run it (a second tech the provider does not have): done without a call; preflight raises it too
         except ScError as e:
             if e.status not in (400, 403, 409):
                 raise

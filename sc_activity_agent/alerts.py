@@ -8,7 +8,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from .client import SSL_CONTEXT, ScError
+from .client import SSL_CONTEXT, ScError, describe
 
 try:   # api.telegram.org is often re-signed by a company proxy (Zscaler); the OS trust store knows that root, certifi does not
     import truststore
@@ -107,7 +107,7 @@ class Alerts:
     # --- events -----------------------------------------------------------------------------------------------------
     def step_failed(self, wo, st, err):
         loc, sc_id, n = wo["location"], wo["sc_id"], st["attempts"] + 1
-        text = str(err)
+        text = describe(err)
         if getattr(err, "status", None) == 403 and "804" in text and st["kind"] in ("check_in", "check_out"):
             return self.send(f"804:{loc}", f"Check-in is blocked at {loc} (error 804). ServiceChannel support must enable check-in/out "
                              f"for this Subscriber and Provider pair. Open the console, Setup page, for the request text.",

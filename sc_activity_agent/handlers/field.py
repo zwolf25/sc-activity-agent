@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 from .. import assets, content, photos, planner
 from ..client import ScError
-from .common import Skip, _iso, insert_steps
+from .common import _iso, insert_steps
 
 
 def build(rt, call, ctx_of, answer_checklists):
@@ -73,8 +73,6 @@ def build(rt, call, ctx_of, answer_checklists):
     def checkio(path, body, wo, step):
         try:
             call(wo, step, "POST", path, body=body)
-        except Skip:
-            return
         except ScError as e:
             if e.status == 403 and "804" in str(e):
                 raise ScError(403, "No check-in/out permission for this Subscriber and Provider pair. ServiceChannel must enable XML "

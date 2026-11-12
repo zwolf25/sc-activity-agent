@@ -6,7 +6,7 @@ import time
 from zoneinfo import ZoneInfo
 
 from .alerts import Alerts
-from .client import Later, Park, ScError
+from .client import Later, Park, ScError, Skip, describe
 
 MERGE_SECONDS = 1800  # a new gap starting this soon after an unread one extends it
 GAP_SECONDS = 600  # silence longer than this between ticks is a gap (sleep, shutdown, crash)
@@ -187,6 +187,9 @@ class Engine:
                 self.handlers[st["kind"]](self, wo, st)
                 self.store.db.execute("UPDATE steps SET state='done', done_at=?, error=NULL WHERE id=?", (now, st["id"]))
                 out.append((st["id"], "done"))
+            except Skip:   # nobody to run it (no second tech): done without a call
+                self.store.db.execute("UPDATE steps SET state='done', done_at=?, error=NULL WHERE id=?", (now, st["id"]))
+                out.append((st["id"], "done"))
             except Later:
                 pass   # follow() already re-timed the step
             except Exception as e:  # a handler bug must fail its step, not loop forever on it
@@ -194,15 +197,15 @@ class Engine:
                     break
                 n = MAX_ATTEMPTS if isinstance(e, Park) or refrigerant_hold(e) or over_limit(e) else st["attempts"] + 1   # retrying cannot clear it
                 if n >= MAX_ATTEMPTS and self.rotate and user_bound(e) and self.rotate(wo, st):
-                    self.store.db.execute("UPDATE steps SET attempts=0, error=?, due_at=? WHERE id=?", (f"{e} (switching to another user after {n} failures)", now, st["id"]))
+                    self.store.db.execute("UPDATE steps SET attempts=0, error=?, due_at=? WHERE id=?", (f"{describe(e)} (switching to another user after {n} failures)", now, st["id"]))
                     out.append((st["id"], "switch"))
                 elif n >= MAX_ATTEMPTS:
-                    self.store.db.execute("UPDATE steps SET state='failed', attempts=?, error=? WHERE id=?", (n, str(e), st["id"]))
+                    self.store.db.execute("UPDATE steps SET state='failed', attempts=?, error=? WHERE id=?", (n, describe(e), st["id"]))
                     out.append((st["id"], "failed"))
                     Alerts(self.store).step_failed(wo, st, e)
                 else:
                     self.store.db.execute("UPDATE steps SET attempts=?, error=?, due_at=? WHERE id=?",
-                                          (n, str(e), now + BACKOFF[n - 1], st["id"]))
+                                          (n, describe(e), now + BACKOFF[n - 1], st["id"]))
                     out.append((st["id"], "retry"))
             self.store.db.commit()
         return out

@@ -23,6 +23,15 @@ class Park(Exception):
     """The live WO changed in a way the plan cannot follow. The step fails at once (no retries) so the Errors page shows it."""
 
 
+class Skip(Exception):
+    """Nobody can run this step (the second tech a provider does not have). The engine ends it as done, without a call."""
+
+
+def describe(e):
+    """A step's error text, never blank: an exception with no message (a bare Skip, a KeyError) shows its class."""
+    return str(e) if isinstance(e, ScError) else (f"{type(e).__name__}: {e}" if str(e) else type(e).__name__)
+
+
 class Later(Exception):
     """The running step was moved to a later time (the WO's scheduled date changed). It stays pending and is not counted as an attempt."""
 

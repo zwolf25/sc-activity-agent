@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.20.16 - 2026-11-12
+
+- New: a **Close out WO** button on the Errors page stops the agent's plan for a WO you finished or cancelled in ServiceChannel. It skips the open steps and marks the WO cancelled in the agent, and sends nothing to ServiceChannel.
+- Changed: a WO waiting at COMPLETED / PENDING REFRIGERANT USE now fails its next step at once with a plain message (record the usage or cancel the WO in ServiceChannel, then Close out), instead of running into 921 and 904 errors.
+- Fixed: a step error is never blank any more. When an exception has no message, the Errors page and the Telegram alert show its type. A second-tech step with nobody to run it is now ended in one place in the engine. Restart the agent after updating; nothing pauses and no migration.
+
 ## v0.20.15 - 2026-11-12
 
 - Fixed: a second-technician check-in or check-out failed with a blank error when the provider has only one technician. The step now ends as done without a call, as intended, instead of failing three times and alerting. Restart the agent after updating; nothing pauses and no migration.
