@@ -89,12 +89,11 @@ class Engine:
         start = d.replace(hour=h0, minute=0, second=0, microsecond=0)
         if d.weekday() in days and start <= d < d.replace(hour=h1, minute=0, second=0, microsecond=0):
             return ts
-        if d.weekday() in days and d < start:
-            return start.timestamp()
-        d = start + dt.timedelta(days=1)
-        while d.weekday() not in days:
-            d += dt.timedelta(days=1)
-        return d.timestamp()
+        if d.weekday() not in days or d >= start:   # after hours or not an activity day: the next window
+            start += dt.timedelta(days=1)
+            while start.weekday() not in days:
+                start += dt.timedelta(days=1)
+        return start.timestamp() + self.rng.randint(0, min(5400, (h1 - h0) * 1800))   # B-96: spread over the opening 90 minutes, as the planner does, so a gap does not stack steps at 08:00:00
 
     def apply_gap(self, start, end, policy="shift"):
         """Re-time pending steps after a gap. shift: move each affected WO's remaining steps by the gap, snapped to activity
@@ -125,7 +124,8 @@ class Engine:
                     o, n = ci[r["wid"]]
                     day_end = dt.datetime.fromtimestamp(n, self.zone(r["loc"])).replace(hour=self.store.get("hours_end", 17), minute=0, second=0).timestamp()
                     new = min(n + (old - o), day_end)
-                new = max(new, wo_last.get(r["wid"], 0))
+                last = wo_last.get(r["wid"], 0)
+                new = max(new, last + self.rng.randint(60, 600)) if new <= last and last else max(new, last)   # order kept, equal times spread a few minutes apart
             wo_last[r["wid"]] = new
             undo[r["id"]] = old
             db.execute("UPDATE steps SET due_at=? WHERE id=?", (new, r["id"]))

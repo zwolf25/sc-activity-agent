@@ -1002,3 +1002,69 @@ def test_resubmit_refused_with_1105_is_done_not_failed(tmp_path):
     for _ in range(len(plan) + 3):
         e.tick()
     assert s.db.execute("SELECT COUNT(*) FROM steps WHERE state='failed'").fetchone()[0] == 0
+
+
+def _plan_run(tmp_path, prov_cls):
+    s = setup(tmp_path)
+    calls = []
+    sub, prov = FakeApp("sub", calls), prov_cls("prov", calls)
+    rt = Runtime(s, {1: sub, 2: prov}, random.Random(1))
+    plan = planner.build_plan(random.Random(4), NOW, {"proposal_rate": 0, "invoice_approval": 0})
+    add_plan(s, "HQ-NYC", "HVAC", 5001, plan, CTX, NOW)
+    e = Engine(s, make_handlers(rt), clock=lambda: plan[-1]["due_at"] + 10, per_tick=50)
+    for _ in range(len(plan) + 3):
+        e.tick()
+    return s, calls
+
+
+def test_b106_a_person_created_the_invoice_first_so_decide_and_pay_have_nothing_to_act_on(tmp_path):
+    from sc_activity_agent.client import ScError
+
+    class Invoiced(FakeApp):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            if path == "/invoices":
+                raise ScError(400, '{"ErrorCode":1105,"ErrorMessage":"Invoice exists"}', path)
+            return super().call(user, method, path, params, body, **kw)
+
+    s, calls = _plan_run(tmp_path, Invoiced)
+    assert s.db.execute("SELECT COUNT(*) FROM steps WHERE state='failed'").fetchone()[0] == 0
+    assert {r[0] for r in s.db.execute("SELECT state FROM steps WHERE kind IN ('invoice_decide','invoice_pay')")} == {"skipped"}
+    assert not [c for c in calls if "/approve" in c[3] or "Payment" in c[3]]
+
+
+def test_b106_a_person_closed_the_wo_as_no_charge_so_no_invoice_is_sent(tmp_path):
+    class NoCharge(FakeApp):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            if method == "GET" and path.startswith("/workorders/"):
+                return {"Provider": {"Id": 2000078685}, "TradeId": 120881, "Status": {"Primary": "COMPLETED", "Extended": "NO CHARGE"}}
+            return super().call(user, method, path, params, body, **kw)
+
+    s, calls = _plan_run(tmp_path, NoCharge)
+    assert s.db.execute("SELECT COUNT(*) FROM steps WHERE state='failed'").fetchone()[0] == 0
+    assert not [c for c in calls if c[3] == "/invoices"]
+
+
+def test_b106_invoice_decide_and_pay_with_no_invoice_id_do_nothing(tmp_path):
+    s = setup(tmp_path)
+    calls = []
+    rt = Runtime(s, {1: FakeApp("sub", calls), 2: FakeApp("prov", calls)}, random.Random(1))
+    h = make_handlers(rt)
+    wo = _wo(s, provider_id=2000078685)
+    for kind, p in (("invoice_decide", {"approve": True}), ("invoice_pay", {})):
+        n = len(calls)
+        Engine(s, h, clock=lambda: NOW).handlers[kind](None, wo, {"kind": kind, "due_at": NOW, "seq": 1, "payload": json.dumps(p)})
+        assert not [c for c in calls[n:] if c[2] != "GET"]
+
+
+def test_b110_text_names_the_wo_so_two_wos_of_one_trade_differ():
+    import random
+    from sc_activity_agent import content
+    a = dict(trade="HVAC", equipment="walk-in cooler", area="kitchen", location="Store 12", issue="not cooling", amount="$400", nte="$300")
+    b = dict(a, equipment="rooftop unit", area="sales floor", location="Store 88")
+    for role, sit in [("provider", "invoice"), ("provider", "proposal"), ("subscriber", "invoice_ok"), ("subscriber", "invoice_no_hours")]:
+        out = {"a": set(), "b": set()}
+        for seed in range(60):
+            out["a"].add(content.note(role, sit, a, random.Random(seed)))
+            out["b"].add(content.note(role, sit, b, random.Random(seed)))
+        assert any("walk-in cooler" in t or "Store 12" in t for t in out["a"]), (role, sit)
+        assert not any("rooftop unit" in t for t in out["a"])

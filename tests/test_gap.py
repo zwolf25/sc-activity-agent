@@ -101,10 +101,10 @@ def test_snap_reads_hours_in_the_location_zone_not_the_instance_zone(tmp_path):
     s.db.execute("INSERT INTO locations(store_id, name, tz) VALUES('HQ','HQ','America/New_York'),('LA','LA',NULL)")
     s.db.commit()
     e = Engine(s, {}, clock=lambda: T0)
-    assert e.snap(T0, "HQ") == T0 + 3600                       # 07:00 Eastern -> 08:00 Eastern
+    assert 0 <= e.snap(T0, "HQ") - (T0 + 3600) <= 5400         # 07:00 Eastern -> within 90 minutes of 08:00 Eastern (B-96 jitter)
     assert e.snap(T0 + 3 * 3600, "HQ") == T0 + 3 * 3600        # 10:00 Eastern is inside the window
     mt = dt.datetime(2026, 10, 26, 7, 0, tzinfo=ZoneInfo("America/Denver")).timestamp()
-    assert e.snap(mt, "LA") == mt + 3600 and e.snap(mt) == mt + 3600   # no zone on the row, none given: instance zone
+    assert 0 <= e.snap(mt, "LA") - (mt + 3600) <= 5400 and 0 <= e.snap(mt) - (mt + 3600) <= 5400   # no zone on the row, none given: instance zone
 
 
 def test_only_wo_limits_which_steps_are_due(tmp_path):
@@ -115,3 +115,12 @@ def test_only_wo_limits_which_steps_are_due(tmp_path):
     assert len(e.due(T0 + 10)) == 2
     e.only_wo = s.db.execute("SELECT id FROM work_orders WHERE sc_id=2").fetchone()["id"]
     assert [r["sc_id"] for r in e.due(T0 + 10)] == [2]
+
+
+def test_b96_steps_moved_to_the_next_window_do_not_all_land_on_the_opening_second(tmp_path):
+    s = Store(tmp_path)
+    s.put("tz", "America/New_York")
+    e = Engine(s, {}, clock=lambda: T0)
+    times = {e.snap(T0) for _ in range(30)}
+    assert len(times) > 10 and all(0 <= t - (T0 + 3600) <= 5400 for t in times)
+    assert e.snap(T0 + 3 * 3600) == T0 + 3 * 3600   # a step already inside the window is untouched

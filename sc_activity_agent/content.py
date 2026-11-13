@@ -65,13 +65,19 @@ T = {  # (role, situation) -> templates; {slots} filled from ctx
         "All done. {issue} is fixed and we left the {area} tidy."],
     ("provider", "proposal"): [
         "Sent a proposal of {amount} for the repair. The work is beyond the NTE of {nte}.",
-        "Proposal submitted for {amount}. Please review so we can proceed."],
+        "Proposal submitted for {amount}. Please review so we can proceed.",
+        "Sent a proposal of {amount} for the {equipment} repair in the {area} area. The work is beyond the NTE of {nte}.",
+        "Proposal for {amount} submitted for the {issue} at {location}. It is over the {nte} NTE, please review."],
     ("provider", "invoice"): [
         "Invoice submitted for {amount}.",
-        "Invoice {amount} submitted for this work order."],
+        "Invoice {amount} submitted for this work order.",
+        "Invoice {amount} submitted for the {equipment} work at {location}.",
+        "Work on the {equipment} is complete. Invoice for {amount} submitted."],
     ("provider", "invoice_fix"): [
         "Corrected the invoice as requested and resubmitted for {amount}.",
-        "Updated the invoice per your comments. Resubmitted at {amount}."],
+        "Updated the invoice per your comments. Resubmitted at {amount}.",
+        "Corrected the invoice for the {equipment} work and resubmitted at {amount}.",
+        "Updated the {location} invoice per your comments. Resubmitted at {amount}."],
     ("subscriber", "created"): [
         "Please prioritize. {issue} is affecting the {area}.",
         "Store reports {issue}. Please schedule soon."],
@@ -86,7 +92,9 @@ T = {  # (role, situation) -> templates; {slots} filled from ctx
         "Approved. Go ahead with the {equipment} repair."],
     ("subscriber", "proposal_no"): [
         "Proposal rejected. The amount is higher than expected. Please revise.",
-        "Not approving at this price. Please send a lower option."],
+        "Not approving at this price. Please send a lower option.",
+        "Not approving the {equipment} repair at this price. Please send a lower option.",
+        "The proposal for the {area} area is higher than expected. Please revise."],
     ("subscriber", "review"): [
         "Reviewed. Work looks good.",
         "Confirmed with the store, the {issue} is resolved."],
@@ -114,16 +122,21 @@ T = {  # (role, situation) -> templates; {slots} filled from ctx
         "Verified at {location}. The {trade_text} problem is resolved this time."],
     ("subscriber", "invoice_ok"): [
         "Invoice approved.",
-        "Approved. Thank you for the quick turnaround."],
+        "Approved. Thank you for the quick turnaround.",
+        "Invoice approved for the {equipment} work at {location}.",
+        "Approved. The {equipment} repair is done, thank you."],
     ("subscriber", "invoice_no_rate"): [
         "Invoice rejected. The labor rate does not match the agreed rate. Please correct and resubmit.",
-        "Rejecting: the hourly rate billed is above our agreed rate. Resubmit at the contract rate."],
+        "Rejecting: the hourly rate billed is above our agreed rate. Resubmit at the contract rate.",
+        "Invoice rejected. The labor rate on the {equipment} work does not match the agreed rate. Please correct and resubmit."],
     ("subscriber", "invoice_no_hours"): [
         "Invoice rejected. The labor hours are more than the time on site. Please correct and resubmit.",
-        "Rejecting: hours billed do not match the check-in and check-out times. Resubmit with the hours on site."],
+        "Rejecting: hours billed do not match the check-in and check-out times. Resubmit with the hours on site.",
+        "Invoice rejected. Labor hours on the {equipment} work at {location} are more than the time on site. Please correct and resubmit."],
     ("subscriber", "invoice_no"): [
         "Invoice rejected. The labor hours do not match the time on site. Please correct and resubmit.",
-        "Rejecting for now. Please attach the missing detail and resubmit."],
+        "Rejecting for now. Please attach the missing detail and resubmit.",
+        "Invoice rejected for now. Please add the missing detail for the {equipment} work and resubmit."],
 }
 
 

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v0.22.0 - 2026-11-13
+
+- Changed: when a person sets an invoice to NO CHARGE in ServiceChannel, or the first invoice submit is refused with 1105, the agent ends the invoice steps instead of failing them. The invoice decide and pay steps do nothing when there is no invoice.
+- Changed: proposal, invoice, invoice-fix and invoice-reject notes now name the work order's equipment, area and location, so two WOs of one trade no longer read the same.
+- Changed: after a sleep gap or on a rework return, steps land 0 to 90 minutes after the window opens, and steps that would share a time spread 1 to 10 minutes apart, instead of all landing at 08:00:00.
+- New (for developers): `scripts/release_prep.py X.Y.Z` does the CHANGELOG rename, version bump and test run.
+- Restart the agent after updating; nothing pauses and no migration.
+
 ## v0.21.0 - 2026-11-13
 
 - New: a network outage no longer fails steps. A failed connection (SSL error, timeout, reset) does not use up a step's 3 attempts. After 3 of them within 2 minutes the agent stops running steps, shows "Network is down since ..." on every page, tries one step a minute, and resumes by itself when ServiceChannel answers. Your own Pause is separate and is never undone by this.

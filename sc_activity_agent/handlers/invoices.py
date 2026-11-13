@@ -29,12 +29,19 @@ def build(rt, call, ctx_of):
         rt.store.db.execute("UPDATE steps SET state='skipped' WHERE wo_id=? AND state IN ('pending','failed')", (wo["id"],))
         rt.store.db.commit()
 
+    def skip_invoicing(wo, step):
+        """A person took over the invoice (created it, or closed the WO as No Charge): the decision and the payment have nothing to act on."""
+        rt.store.db.execute("UPDATE steps SET state='skipped' WHERE wo_id=? AND seq>? AND state='pending' AND kind IN ('invoice_decide','invoice_pay')", (wo["id"], step["seq"]))
+        rt.store.db.commit()
+
     def invoice_submit(engine, wo, step):
         """Line-item invoice (B-12): labor at the agreed rate for the hours on site, plus materials up to a share of the NTE. A flawed
         first invoice (payload flaw) bills the wrong rate or extra hours. The API refuses a total above the NTE (1104)."""
         c = ctx_of(wo)
         flaw = json.loads(step["payload"]).get("flaw")
         live = call(wo, step, "GET", f"/workorders/{wo['sc_id']}") or {}
+        if (live.get("Status") or {}).get("Extended") == "NO CHARGE":
+            return skip_invoicing(wo, step)   # B-106: a person already closed it as No Charge
         if live.get("Nte") is not None and float(live["Nte"]) <= 0:
             return no_charge(wo, step)   # the API refuses any invoice above an NTE of 0 (1104), so the WO closes as No Charge
         nte = float(c.get("nte") or 0)
@@ -68,7 +75,9 @@ def build(rt, call, ctx_of):
         try:
             r = call(wo, step, "POST", "/invoices", body=body)
         except ScError as e:
-            if json.loads(step["payload"]).get("situation") == "invoice_fix" and e.status == 400 and "1105" in str(e):
+            if e.status == 400 and "1105" in str(e):
+                if json.loads(step["payload"]).get("situation") != "invoice_fix":
+                    skip_invoicing(wo, step)   # B-106: a person created the invoice first, so there is no id to decide or pay
                 return   # someone approved the invoice before this resubmit: nothing to resubmit
             raise
         agreed = None
@@ -91,6 +100,8 @@ def build(rt, call, ctx_of):
     def invoice_decide(engine, wo, step):
         p = json.loads(step["payload"])
         c = ctx_of(wo)
+        if not c.get("invoice_id"):
+            return   # B-106: no invoice of ours to decide (a person invoiced it)
         inv = call(wo, step, "GET", f"/invoices/{c['invoice_id']}")
         if (inv or {}).get("Status") in ("APPROVED", "PAID", "REJECTED"):
             if inv["Status"] != "REJECTED":   # approved by someone else: the planned resubmit would hit 1105 "Invoice exists"
@@ -116,6 +127,8 @@ def build(rt, call, ctx_of):
     def invoice_pay(engine, wo, step):
         """Subscriber records a payment for the approved invoice (verified on SB2: 204, invoice Status becomes PAID)."""
         c = ctx_of(wo)
+        if not c.get("invoice_id"):
+            return
         inv = call(wo, step, "GET", f"/invoices/{c['invoice_id']}") or {}
         if inv.get("Status") != "APPROVED":
             return   # already paid, or the user rejected it: nothing to pay
