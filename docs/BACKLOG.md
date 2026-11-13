@@ -21,28 +21,27 @@ Ordered list of enhancements after v1. The order is the priority: rank 1 is next
 | 5 | B-112 | B-106 remaining cases, check API behavior first: a WO put ON HOLD by a person, a proposal withdrawn by a person, a checklist closed by a person. Add a test per case once the live behavior is known | M, spike | Left over from the B-106 audit | Claude |
 | 6 | B-83 | Issue lists with no CategoryId: v0.17.2 skips such problems. Look the id up from the category name (or the dashboard's category list) once the collaborator's problem list shows what is missing. Also confirm on SB2 whether a create without CategoryId is accepted (SB2 issuechoice returned 500 on 2026-11-04) | S | Skipping silently shrinks the issue rotation | Claude |
 | 7 | B-94 | Answer the refrigerant prompt through the API so refrigerant assets (RTU) can be attached again: a check-out on a refrigerant asset leaves the WO at COMPLETED / PENDING REFRIGERANT USE (review 940, invoice 904). ON HOLD until Zac gets setup help from Jim Smith. SB2 spike 2026-11-06: `RefrigerantWasUsed` on `universalCheckOut` is accepted and ignored. A refrigerant asset also needs its charge set (the leak and usage flow measures against it) and the API shows no charge field on the asset (`GET /assets/{id}`), so the working flow is not known. Next: capture the real calls (HAR) while the flow is done once in Provider Automation | S, on hold | Seen on Prod 2026-11-06 (WO 369197573); until then 0.20.3 skips refrigerant assets | Claude |
-| 8 | B-77 | Split `web/app.py` (751 lines: routes, SLIDERS, page context, helpers) into route modules by page, after B-62. Behavior unchanged | M | Every console change touches this one file | Claude |
-| 9 | B-15 | Provider-side PM WOs: find PM WOs and move them through the process. Subscribers cannot create PMs through the API, so the agent only picks up existing ones | L, spike | PM is a large share of real volume | Zac |
-| 10 | B-26 | PM compliance flows: pass and fail documentation, and the related follow-up | L, spike | Builds on B-15 | Zac |
-| 11 | B-27 | Linked WOs (parent and child) | M, spike | Common for multi-visit and multi-trade jobs | Zac |
-| 12 | B-28 | Recall WOs | M, spike | Rework against a closed WO. Pairs with B-25 | Zac |
-| 13 | B-65 | Rework variety: a second rework round, and the provider sending a proposal on the return visit. Today one round at most, and the return is always check-in then check-out | S | Real rework is not always one clean extra visit. Pairs with B-28 (recall WOs) | Claude |
-| 14 | B-05 | Per-location behavior overrides | M | Locations should differ in volume and trade mix | Claude |
-| 15 | B-07 | Seasonal and holiday weighting (HVAC in summer, quiet holidays) | M | Flat weekday activity is an easy tell | Claude |
-| 16 | B-80 | Asset condition after repair: when a WO with an attached asset closes, the provider updates the asset (condition up, last service date) on a share of WOs, and an old repeat-repair asset gets a replacement. Spike which fields a Provider may change | M, spike | Asset history that never changes after a repair looks seeded; pairs with B-13 | Claude |
-| 17 | B-29 | Avoided WOs: Guided Troubleshooting resolves the issue, and duplicate WOs are detected and avoided | L, spike | Tests the "WO never gets created" paths | Zac |
-| 18 | B-30 | Site audits that result in WOs created | L, spike | A second source of WOs besides the issue list | Zac |
-| 19 | B-31 | Snow and landscaping WOs done by providers with CIWO | L, spike | CIWO has its own check-in model | Zac |
-| 20 | B-32 | Quarterly RFP: a Subscriber runs an RFP with several bidding providers, then issues WOs to the winners | XL, spike | Needs several provider connections and contract changes | Zac |
-| 21 | B-33 | FTM techs and FTM WOs through the process | L, spike | Needs the FTM product model first | Zac |
-| 22 | B-04 | Deep link from the console to the WO in the ServiceChannel Subscriber view, in place of a WO detail page | S, spike | Finds the WO URL pattern. Keeps the console small | Zac |
-| 23 | B-09 | Scenario presets (quiet week, busy week, storm surge) | S | One click to change load | Claude |
-| 24 | B-16 | Clock speed-up mode for demos on SB2 | M | A full lifecycle in minutes | Claude |
-| 25 | B-13 | Repeat issues on the same asset | M | Needs B-23. Feeds repeat-repair reports | Claude |
-| 26 | B-81 | Photo library size: about 19 MB of JPEG in the repo, a third of it `_both` composites that are just before and after side by side. Option: build the composite at runtime (needs Pillow, a new dependency) or keep the files and re-save at a lower size. Decide before the library grows further | S | Every clone and update downloads the whole library | Claude |
-| 27 | B-68 | Warranty workflow for assets. Seeded assets carry no active warranty (B-67 sets none). This item covers warranty data on assets (priority, category, expiration, provider; the API shape is only partly known, see `docs/asset-seeding-research.md`), and WOs that route or behave differently while a warranty runs (warranty provider overrides trade dispatch) | L, spike | Out of scope of B-67 by decision (2026-11-02) | Zac |
-| 28 | B-22 | Complete checklists on WOs. Built (v0.10.0, Settings toggle) and verified on SB2. Now sends the answering user's `AuthUserID` (read from the profile) and traces required questions it cannot answer. Verified on SB2 (2026-11-01): the profile gives `AuthUserId` and the answers are recorded. Required question left open on SB2 (2026-11-01): check-out still succeeds, nothing recorded. Left: per-asset questions (needs B-23/B-24) | S | Required questions block submitting the checklist (engineering), so unanswerable ones are the open gap | Zac |
-| 29 | B-34 | RT workflows | XL, spike | Very hard. Last on purpose | Zac |
+| 8 | B-15 | Provider-side PM WOs: find PM WOs and move them through the process. Subscribers cannot create PMs through the API, so the agent only picks up existing ones | L, spike | PM is a large share of real volume | Zac |
+| 9 | B-26 | PM compliance flows: pass and fail documentation, and the related follow-up | L, spike | Builds on B-15 | Zac |
+| 10 | B-27 | Linked WOs (parent and child) | M, spike | Common for multi-visit and multi-trade jobs | Zac |
+| 11 | B-28 | Recall WOs | M, spike | Rework against a closed WO. Pairs with B-25 | Zac |
+| 12 | B-65 | Rework variety: a second rework round, and the provider sending a proposal on the return visit. Today one round at most, and the return is always check-in then check-out | S | Real rework is not always one clean extra visit. Pairs with B-28 (recall WOs) | Claude |
+| 13 | B-05 | Per-location behavior overrides | M | Locations should differ in volume and trade mix | Claude |
+| 14 | B-07 | Seasonal and holiday weighting (HVAC in summer, quiet holidays) | M | Flat weekday activity is an easy tell | Claude |
+| 15 | B-80 | Asset condition after repair: when a WO with an attached asset closes, the provider updates the asset (condition up, last service date) on a share of WOs, and an old repeat-repair asset gets a replacement. Spike which fields a Provider may change | M, spike | Asset history that never changes after a repair looks seeded; pairs with B-13 | Claude |
+| 16 | B-29 | Avoided WOs: Guided Troubleshooting resolves the issue, and duplicate WOs are detected and avoided | L, spike | Tests the "WO never gets created" paths | Zac |
+| 17 | B-30 | Site audits that result in WOs created | L, spike | A second source of WOs besides the issue list | Zac |
+| 18 | B-31 | Snow and landscaping WOs done by providers with CIWO | L, spike | CIWO has its own check-in model | Zac |
+| 19 | B-32 | Quarterly RFP: a Subscriber runs an RFP with several bidding providers, then issues WOs to the winners | XL, spike | Needs several provider connections and contract changes | Zac |
+| 20 | B-33 | FTM techs and FTM WOs through the process | L, spike | Needs the FTM product model first | Zac |
+| 21 | B-04 | Deep link from the console to the WO in the ServiceChannel Subscriber view, in place of a WO detail page | S, spike | Finds the WO URL pattern. Keeps the console small | Zac |
+| 22 | B-09 | Scenario presets (quiet week, busy week, storm surge) | S | One click to change load | Claude |
+| 23 | B-16 | Clock speed-up mode for demos on SB2 | M | A full lifecycle in minutes | Claude |
+| 24 | B-13 | Repeat issues on the same asset | M | Needs B-23. Feeds repeat-repair reports | Claude |
+| 25 | B-81 | Photo library size: about 19 MB of JPEG in the repo, a third of it `_both` composites that are just before and after side by side. Option: build the composite at runtime (needs Pillow, a new dependency) or keep the files and re-save at a lower size. Decide before the library grows further | S | Every clone and update downloads the whole library | Claude |
+| 26 | B-68 | Warranty workflow for assets. Seeded assets carry no active warranty (B-67 sets none). This item covers warranty data on assets (priority, category, expiration, provider; the API shape is only partly known, see `docs/asset-seeding-research.md`), and WOs that route or behave differently while a warranty runs (warranty provider overrides trade dispatch) | L, spike | Out of scope of B-67 by decision (2026-11-02) | Zac |
+| 27 | B-22 | Complete checklists on WOs. Built (v0.10.0, Settings toggle) and verified on SB2. Now sends the answering user's `AuthUserID` (read from the profile) and traces required questions it cannot answer. Verified on SB2 (2026-11-01): the profile gives `AuthUserId` and the answers are recorded. Required question left open on SB2 (2026-11-01): check-out still succeeds, nothing recorded. Left: per-asset questions (needs B-23/B-24) | S | Required questions block submitting the checklist (engineering), so unanswerable ones are the open gap | Zac |
+| 28 | B-34 | RT workflows | XL, spike | Very hard. Last on purpose | Zac |
 
 
 ## Ideas waiting for a spec
@@ -53,6 +52,7 @@ Zac's new ideas go here first, then get sized and ranked.
 ## Done
 | ID | Item | Version |
 |----|------|---------|
+| B-77 | Split `web/app.py` (848 lines) by page: Connections, Locations, Clean-up and Settings routes moved to `routes_*.py` modules with a `register(app, ...)` each; `app.py` is 421 lines. Behavior unchanged. The rest (Dashboard, Errors, Behavior) stays: it shares the page helpers | 0.22.1 |
 | B-106 | Manual-action audit, first slice: an invoice set to NO CHARGE by a person, or a first submit refused 1105, ends the invoice steps instead of failing them; decide and pay steps do nothing when no invoice exists | 0.22.0 |
 | B-110 | WO-specific wording: provider and subscriber proposal, invoice, invoice-fix and reject notes name the WO's equipment, area and location, with the generic lines kept as fallback | 0.22.0 |
 | B-96 | Jitter in `Engine.snap` and `apply_gap`: a sleep gap or rework return lands 0 to 90 minutes after the window start, and equal times spread 1 to 10 minutes apart | 0.22.0 |

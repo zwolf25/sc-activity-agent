@@ -104,9 +104,9 @@ def test_setup_flow_in_the_console(tmp_path):
     s = Store(tmp_path)
     s.put("env", "prod")
     f = Fake()
-    import sc_activity_agent.web.app as webapp
-    webapp.Alerts = lambda store: Alerts(store, f)
+    import sc_activity_agent.web.routes_settings as settings_routes
     c = TestClient(create_app(s))
+    settings_routes.Alerts = lambda store: Alerts(store, f)
     f.replies["getMe"] = {"username": "my_test_bot"}
     c.post("/alerts/token", data={"token": "123:abc"}, follow_redirects=False)
     assert Alerts(s).token() == "123:abc" and "my_test_bot" in c.get("/settings").text

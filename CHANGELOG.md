@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.22.1 - 2026-11-13
+
+- Internal: the Connections, Locations, Clean-up and Settings page routes moved out of `web/app.py` into their own modules. No behavior change.
+- Restart the agent after updating; nothing pauses and no migration.
+
 ## v0.22.0 - 2026-11-13
 
 - Changed: when a person sets an invoice to NO CHARGE in ServiceChannel, or the first invoice submit is refused with 1105, the agent ends the invoice steps instead of failing them. The invoice decide and pay steps do nothing when there is no invoice.
