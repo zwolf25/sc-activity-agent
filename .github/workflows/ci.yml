@@ -6,6 +6,7 @@ on:
 jobs:
   test:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15   # a hung test used to hold a job for hours
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -16,4 +17,4 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: pip install -e ".[dev]"
-      - run: pytest -q
+      - run: pytest -v -o faulthandler_timeout=120   # a hang dumps every thread's stack and the -v log names the test
