@@ -32,6 +32,13 @@ def describe(e):
     return str(e) if isinstance(e, ScError) else (f"{type(e).__name__}: {e}" if str(e) else type(e).__name__)
 
 
+def is_network(e):
+    """A failure of the connection itself (SSL EOF, handshake or read timeout, reset, no route), never an answer from ServiceChannel.
+    A local file error is also an OSError, so this lists the network ones."""
+    import urllib.error
+    return isinstance(e, (ConnectionError, TimeoutError, ssl.SSLError, urllib.error.URLError))
+
+
 class Later(Exception):
     """The running step was moved to a later time (the WO's scheduled date changed). It stays pending and is not counted as an attempt."""
 

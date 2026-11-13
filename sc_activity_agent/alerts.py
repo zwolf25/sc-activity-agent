@@ -102,7 +102,21 @@ class Alerts:
             return True
         except Exception as e:  # noqa: BLE001
             self.store.put("alert_error", f"{time.strftime('%b %d %H:%M')} {e}")
+            if "Could not reach Telegram" in str(e):   # B-101: keep it and resend when the network is back
+                self.store.put("alert_queue", (self.store.get("alert_queue") or [])[-19:] + [[text, buttons]])
             return False
+
+    def flush(self):
+        """Resend alerts that could not reach Telegram. Stops at the first failure and keeps the rest. Never raises."""
+        q = self.store.get("alert_queue") or []
+        try:
+            while q:
+                self.raw(*q[0])
+                q.pop(0)
+        except Exception:  # noqa: BLE001
+            pass
+        self.store.put("alert_queue", q)
+        return not q
 
     # --- events -----------------------------------------------------------------------------------------------------
     def step_failed(self, wo, st, err):

@@ -6,12 +6,13 @@ import time
 from zoneinfo import ZoneInfo
 
 from .alerts import Alerts
-from .client import Later, Park, ScError, Skip, describe
+from .client import Later, Park, ScError, Skip, describe, is_network
 
 MERGE_SECONDS = 1800  # a new gap starting this soon after an unread one extends it
 GAP_SECONDS = 600  # silence longer than this between ticks is a gap (sleep, shutdown, crash)
 MAX_ATTEMPTS = 3
 BACKOFF = (120, 600, 1800)
+NET_HITS, NET_WINDOW, NET_PROBE = 3, 120, 60   # B-101: this many network failures within this many seconds open the breaker; while open, one step probes per NET_PROBE seconds
 
 
 def user_bound(e):
@@ -40,6 +41,8 @@ class Engine:
         self.only_wo = None   # smoke run: tick only this WO so older overdue steps do not take its slots
         self.running = False   # a tick is in progress; reset and restore wait for it to end
         self.rotate = None   # fn(wo, step) -> bool, set by the CLI: pick another user for a step
+        self.net_hits, self.net_probe_at = [], 0
+        self.net_down = store.get("net_down")   # B-101: since when the breaker is open (a soft pause, separate from the operator's Pause), or None
 
     @property
     def paused(self):
@@ -182,9 +185,14 @@ class Engine:
                 "SELECT 1 FROM steps WHERE wo_id=? AND seq<? AND state IN ('pending','failed')", (st["wo_id"], st["seq"])).fetchone()
             if earlier:
                 continue
+            if self.net_down and now - self.net_probe_at < NET_PROBE:
+                break   # breaker open: the next step to run is the probe, once a minute
+            if self.net_down:
+                self.net_probe_at = now
             wo = self.store.db.execute("SELECT * FROM work_orders WHERE id=?", (st["wo_id"],)).fetchone()
             try:
                 self.handlers[st["kind"]](self, wo, st)
+                self._net_ok(now)
                 self.store.db.execute("UPDATE steps SET state='done', done_at=?, error=NULL WHERE id=?", (now, st["id"]))
                 out.append((st["id"], "done"))
             except Skip:   # nobody to run it (no second tech): done without a call
@@ -195,6 +203,13 @@ class Engine:
             except Exception as e:  # a handler bug must fail its step, not loop forever on it
                 if isinstance(e, ScError) and e.status == 0:  # paused mid-tick
                     break
+                if is_network(e):   # the connection failed, not the step: no attempt is used and the step stays pending
+                    self._net_hit(now, e)
+                    out.append((st["id"], "network"))
+                    if self.net_down:
+                        break
+                    continue
+                self._net_ok(now)   # an answer from ServiceChannel, even a refusal, means the network works
                 n = MAX_ATTEMPTS if isinstance(e, Park) or refrigerant_hold(e) or over_limit(e) else st["attempts"] + 1   # retrying cannot clear it
                 if n >= MAX_ATTEMPTS and self.rotate and user_bound(e) and self.rotate(wo, st):
                     self.store.db.execute("UPDATE steps SET attempts=0, error=?, due_at=? WHERE id=?", (f"{describe(e)} (switching to another user after {n} failures)", now, st["id"]))
@@ -209,6 +224,23 @@ class Engine:
                     out.append((st["id"], "retry"))
             self.store.db.commit()
         return out
+
+    def _net_hit(self, now, e):
+        self.net_hits = [t for t in self.net_hits if now - t < NET_WINDOW] + [now]
+        if not self.net_down and len(self.net_hits) >= NET_HITS:
+            self.net_down, self.net_probe_at = now, now
+            self.store.put("net_down", now)
+            Alerts(self.store).send(f"net_down:{int(now)}", f"Network is down ({describe(e)[:120]}). Steps are paused and nothing is lost. "
+                                    f"The agent tries again every minute and resumes by itself.", event="connection")
+
+    def _net_ok(self, now):
+        self.net_hits = []
+        if self.net_down:
+            since, self.net_down = self.net_down, None
+            self.store.put("net_down", None)
+            a = Alerts(self.store)
+            a.send(f"net_up:{int(now)}", f"Network is back after {max(1, round((now - since) / 60))} min. Steps are running again.", event="connection")
+            a.flush()
 
     # operator actions from the Errors page
     def retry(self, step_id):

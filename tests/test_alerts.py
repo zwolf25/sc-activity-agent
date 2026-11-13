@@ -118,3 +118,14 @@ def test_setup_flow_in_the_console(tmp_path):
     assert Alerts(s).cfg["chat_id"] == 42
     c.post("/alerts/save", data={"enabled": "on", "ev_step_failed": "on"})
     assert Alerts(s).cfg["enabled"] and Alerts(s).cfg["events"]["offline"] is False
+
+
+def test_an_alert_that_cannot_reach_telegram_is_queued_and_resent_on_flush(tmp_path):
+    s, a, fake = mk(tmp_path)
+    fake.replies["sendMessage"] = AlertError("Could not reach Telegram: timed out")
+    assert a.send("k", "Network is down") is False
+    assert len(s.get("alert_queue")) == 1
+    assert a.flush() is False and len(s.get("alert_queue")) == 1   # still down: kept
+    fake.replies["sendMessage"] = {}
+    assert a.flush() is True and s.get("alert_queue") == []
+    assert "Network is down" in fake.calls[-1][1]["text"]

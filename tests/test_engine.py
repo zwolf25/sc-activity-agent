@@ -168,3 +168,46 @@ def test_an_overdue_step_behind_a_later_one_is_not_starved_by_the_steps_queued_a
     e = Engine(s, {"sub_note": lambda *a: ran.append(a[2]["wo_id"]), "check_in": lambda *a: None}, clock=lambda: NOW + 500, per_tick=3)
     e.tick()
     assert len(ran) == 3   # the three first steps run, not three of their blocked successors
+
+
+def test_network_failures_open_a_breaker_use_no_attempts_and_a_probe_closes_it(tmp_path):
+    import ssl
+    from sc_activity_agent.engine import NET_PROBE
+    up, calls, t = [False], [], [NOW]
+
+    def h(e, wo, st):
+        calls.append(st["id"])
+        if not up[0]:
+            raise ssl.SSLEOFError("EOF occurred in violation of protocol")
+
+    kinds = ["accept", "prov_note", "sub_note", "proposal_create", "proposal_decide", "check_in", "check_out", "review", "invoice_submit", "invoice_decide", "invoice_pay"]
+    s, e, plan = setup(tmp_path, {k: h for k in kinds}, lambda: t[0])
+    for i in range(3):   # a WO runs one step at a time, so add two more WOs to get three failures in one tick
+        add_plan(s, "HQ-NYC", "HVAC", 2000 + i, plan[:1], {}, NOW)
+    t[0] = plan[-1]["due_at"] + 10
+    e.tick()
+    assert e.net_down and s.get("net_down") == t[0]
+    assert s.db.execute("SELECT MAX(attempts) FROM steps").fetchone()[0] == 0   # network errors never use an attempt
+    n = len(calls)
+    t[0] += 30
+    e.tick()
+    assert len(calls) == n   # open: nothing runs inside the minute
+    t[0] += NET_PROBE
+    e.tick()
+    assert len(calls) == n + 1   # exactly one probe, still down
+    up[0] = True
+    t[0] += NET_PROBE
+    e.tick()
+    assert e.net_down is None and s.get("net_down") is None
+    t[0] += 1
+    e.tick()
+    assert s.db.execute("SELECT COUNT(*) FROM steps WHERE state='failed'").fetchone()[0] == 0
+
+
+def test_a_refusal_from_servicechannel_is_not_a_network_fault(tmp_path):
+    def bad(*a):
+        raise ScError(403, "no", "/x")
+    s, e, plan = setup(tmp_path, {"accept": bad}, lambda: plan_end[0])
+    plan_end = [plan[-1]["due_at"] + 10]
+    e.tick()
+    assert e.net_down is None and s.db.execute("SELECT attempts FROM steps WHERE seq=0").fetchone()[0] == 1

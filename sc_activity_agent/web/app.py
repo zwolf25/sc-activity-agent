@@ -102,7 +102,7 @@ def error_groups(rows, tz):
         rs = g["rows"]
         out.append(dict(kind=g["kind"], error=g["error"], count=len(rs), ids=[r["id"] for r in rs], wos=[r["sc_id"] for r in rs],
                         first=stamp(rs[0]["due_at"], tz), last=stamp(rs[-1]["due_at"], tz),
-                        hint=hint(g["error"])))
+                        waiting=sum(r["waiting"] for r in rs) if "waiting" in rs[0].keys() else 0, hint=hint(g["error"])))
     return sorted(out, key=lambda g: -g["count"])
 
 
@@ -139,7 +139,7 @@ def create_app(store, engine=None, rt=None):
         failed = db.execute("SELECT COUNT(*) FROM steps WHERE state='failed'").fetchone()[0]
         base = dict(request=request, nav=NAV, here=name, env=store.get("env"), version=__version__,
                     paused=store.get("paused_at") is not None, failed=failed,
-                    port=store.get("port"), twin_port=store.get("twin_port"), setup=setup_checks(), update=update.pending(store), update_busy=bool(update.in_progress(store)), asset_todo=assets.unseeded(store), asset_seed={k: v for k, v in store.get("assets_seed", {}).items() if v["state"] == "error" or v["state"] == "running" and time.time() - v["at"] < 1800}, cap_hit=store.get("cap_hit") if store.get("paused_at") is not None else None)
+                    port=store.get("port"), twin_port=store.get("twin_port"), setup=setup_checks(), update=update.pending(store), update_busy=bool(update.in_progress(store)), asset_todo=assets.unseeded(store), asset_seed={k: v for k, v in store.get("assets_seed", {}).items() if v["state"] == "error" or v["state"] == "running" and time.time() - v["at"] < 1800}, cap_hit=store.get("cap_hit") if store.get("paused_at") is not None else None, net_down=stamp(store.get("net_down"), ZoneInfo(store.get("tz", "America/New_York"))) if store.get("net_down") else None)
         return tpl.TemplateResponse(request, f"{name}.html", {**base, **ctx})
 
     def missing_actions():
@@ -404,7 +404,8 @@ def create_app(store, engine=None, rt=None):
 
     @app.get("/errors")
     def errors(request: Request):
-        rows = db.execute("SELECT s.*, w.sc_id FROM steps s JOIN work_orders w ON w.id=s.wo_id WHERE s.state='failed' ORDER BY s.due_at").fetchall()
+        rows = db.execute("SELECT s.*, w.sc_id, (SELECT COUNT(*) FROM steps x WHERE x.wo_id=s.wo_id AND x.seq>s.seq AND x.state='pending') waiting "
+                          "FROM steps s JOIN work_orders w ON w.id=s.wo_id WHERE s.state='failed' ORDER BY s.due_at").fetchall()
         tz = ZoneInfo(store.get("tz", "America/New_York"))
         return page(request, "errors", groups=error_groups(rows, tz), create_errors=[dict(e, hint=hint(e["error"]), when=stamp(e["at"], tz))
                                                     for e in store.get("create_errors", [])[::-1]])

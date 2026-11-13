@@ -381,6 +381,18 @@ def test_close_out_ends_a_wos_plan_without_a_call(tmp_path):
     assert {r[0] for r in s.db.execute("SELECT state FROM steps")} == {"skipped"}
 
 
+def test_errors_row_counts_the_steps_waiting_behind_it_and_the_banner_shows_a_network_outage(tmp_path):
+    from sc_activity_agent.engine import add_plan
+    s = Store(tmp_path)
+    add_plan(s, "HQ", "HVAC", 111111, [{"kind": "check_in", "due_at": 1.0, "payload": {}}] + [{"kind": "note", "due_at": 2.0, "payload": {}}] * 3, {}, 1.0)
+    s.db.execute("UPDATE steps SET state='failed', error='boom' WHERE seq=0")
+    s.db.commit()
+    c = TestClient(create_app(s))
+    assert "3 later steps waiting" in c.get("/errors").text and "Network is down" not in c.get("/dashboard").text
+    s.put("net_down", 1_761_220_800)
+    assert "Network is down since" in c.get("/dashboard").text
+
+
 def test_factory_reset_needs_confirmation_and_clears(tmp_path):
     store, c = client(tmp_path)
     store.put("subscriber_id", 1)

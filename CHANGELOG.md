@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v0.21.0 - 2026-11-13
+
+- New: a network outage no longer fails steps. A failed connection (SSL error, timeout, reset) does not use up a step's 3 attempts. After 3 of them within 2 minutes the agent stops running steps, shows "Network is down since ..." on every page, tries one step a minute, and resumes by itself when ServiceChannel answers. Your own Pause is separate and is never undone by this.
+- New: Telegram alerts that could not be sent during an outage are kept (the last 20) and sent when the network is back, with one "network is back" message.
+- New: a failed step's row on the Errors page says how many later steps of that WO are waiting behind it.
+- Checked: no database lock lines in the Prod log since 0.17.5, so that backlog item is closed.
+- Restart the agent after updating; nothing pauses and no migration.
+
 ## v0.20.16 - 2026-11-12
 
 - New: a **Close out WO** button on the Errors page stops the agent's plan for a WO you finished or cancelled in ServiceChannel. It skips the open steps and marks the WO cancelled in the agent, and sends nothing to ServiceChannel.
