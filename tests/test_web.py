@@ -12,6 +12,10 @@ def login_works(monkeypatch):
     from sc_activity_agent.client import ScApp
     monkeypatch.setattr(ScApp, "token", lambda self, user, pw: "tok")
 
+    def no_network(method, url, headers, data):   # adding a Subscriber user also reads its dashboard: a real call that stalled 60 s+ on slow networks (B-107)
+        raise OSError("no network in tests")
+    monkeypatch.setattr(ScApp, "_http", staticmethod(no_network))
+
 
 def client(tmp_path):
     s = Store(tmp_path)
