@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.22.2 - 2026-11-18
+
+- Fixed: when a person reassigns a WO to another provider in ServiceChannel, the old provider's steps now fail once with a plain message ("A person moved the WO to provider X ... Close out the WO") instead of retrying for ever and alerting on every Retry. A WO that no longer exists fails the same way. Use Close out WO on the Errors page to end the plan.
+- Restart the agent after updating; nothing pauses and no migration.
+
 ## v0.22.1 - 2026-11-13
 
 - Internal: the Connections, Locations, Clean-up and Settings page routes moved out of `web/app.py` into their own modules. No behavior change.

@@ -6,7 +6,7 @@ import pytest
 
 from sc_activity_agent import planner
 from sc_activity_agent.engine import Engine, add_plan
-from sc_activity_agent.client import Park
+from sc_activity_agent.client import Park, ScError
 from sc_activity_agent.handlers import Runtime, follow, insert_steps, make_handlers
 from sc_activity_agent.store import Store
 
@@ -643,6 +643,38 @@ def test_preflight_parks_a_wo_on_the_refrigerant_hold_with_one_clear_message(tmp
     out = Engine(s, make_handlers(rt), clock=lambda: NOW + 10 ** 7, per_tick=50).tick()
     err = s.db.execute("SELECT error FROM steps WHERE id=?", (out[0][0],)).fetchone()[0]
     assert out[0][1] == "failed" and "REFRIGERANT" in err and "Close out" in err and len(err) <= 200
+
+
+def test_a_wo_a_person_moved_to_another_provider_parks_at_once_not_after_retries(tmp_path):
+    s = setup(tmp_path)
+    calls = []
+
+    class App(FakeApp):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            if self.name == "prov" and path.startswith("/workorders/"):
+                raise ScError(404, '{"ErrorCodes":[502],"ErrorCode":502,"ErrorMessage":"Work order is not found!"}', path)
+            if method == "GET" and path.startswith("/workorders/"):
+                return {"Provider": {"Id": 2098493150, "Name": "IRINA TECH"}}
+            return super().call(user, method, path, params, body, **kw)
+    rt = Runtime(s, {1: App("sub", calls), 2: App("prov", calls)}, random.Random(1))
+    add_plan(s, "HQ-NYC", "HVAC", 5001, planner.build_plan(random.Random(4), NOW, {}), {**CTX, "provider_id": 2000078685}, NOW)
+    out = Engine(s, make_handlers(rt), clock=lambda: NOW + 10 ** 7, per_tick=50).tick()
+    err = s.db.execute("SELECT error FROM steps WHERE id=?", (out[0][0],)).fetchone()[0]
+    assert out[0][1] == "failed" and "IRINA TECH" in err and "Close out" in err, err
+
+
+def test_a_wo_gone_for_the_subscriber_too_parks_as_not_found(tmp_path):
+    s = setup(tmp_path)
+
+    class App(FakeApp):
+        def call(self, user, method, path, params=None, body=None, **kw):
+            if method == "GET" and path.startswith("/workorders/"):
+                raise ScError(404, '{"ErrorCodes":[502],"ErrorCode":502}', path)
+            return super().call(user, method, path, params, body, **kw)
+    rt = Runtime(s, {1: App("sub", []), 2: App("prov", [])}, random.Random(1))
+    add_plan(s, "HQ-NYC", "HVAC", 5001, planner.build_plan(random.Random(4), NOW, {}), {**CTX, "provider_id": 2000078685}, NOW)
+    out = Engine(s, make_handlers(rt), clock=lambda: NOW + 10 ** 7, per_tick=50).tick()
+    assert out[0][1] == "failed" and "not found in ServiceChannel" in s.db.execute("SELECT error FROM steps WHERE id=?", (out[0][0],)).fetchone()[0]
 
 
 def test_a_check_in_waits_for_its_new_time_when_a_user_moved_the_date_later(tmp_path):

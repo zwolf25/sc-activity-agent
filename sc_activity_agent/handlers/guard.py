@@ -19,7 +19,9 @@ def preflight(rt, call, wo, step, kind, snap=lambda ts: ts):
     changes nothing: the step runs and its own guard handles it."""
     try:
         w = call(wo, step, "GET", f"/workorders/{wo['sc_id']}") or {}
-    except ScError:
+    except ScError as e:
+        if is_hidden(e):
+            moved_away(rt, wo)
         return False
     st = w.get("Status", {})
     if st.get("Extended") == "CANCELED":
@@ -31,6 +33,28 @@ def preflight(rt, call, wo, step, kind, snap=lambda ts: ts):
         return True
     follow(rt, wo, step, w, snap)
     return False
+
+
+def is_hidden(e):
+    """The user cannot see the WO: ServiceChannel answers 404, or 400 with error 502, "WorkOrder not found"."""
+    return e.status == 404 or (e.status == 400 and '"ErrorCode":502' in str(e.body))
+
+
+def moved_away(rt, wo):
+    """A provider user cannot read its WO. Read it once as the Subscriber: a WO now held by another provider (a person reassigned it) or gone
+    for everyone can never be worked by the plan, so park at once instead of retrying 3 times for ever (WO 370242844, 2026-11-17).
+    Any other outcome changes nothing."""
+    try:
+        app, user = rt.user_for(wo["location"], "sub_note", wo)
+        w = app.call(user, "GET", f"/workorders/{wo['sc_id']}", action="moved_check", wo=wo["sc_id"]) or {}
+    except ScError as e:
+        if is_hidden(e) and e.status != 0:
+            raise Park("The WO is not found in ServiceChannel (deleted?). Close out the WO on the Errors page.") from None
+        return
+    prov = w.get("Provider") or {}
+    want = json.loads(wo["ctx"]).get("provider_id")
+    if want and prov.get("Id") and prov["Id"] != want:
+        raise Park(f"A person moved the WO to provider {prov.get('Name') or prov['Id']} in ServiceChannel, so this provider cannot see it. Close out the WO on the Errors page.")
 
 
 def follow(rt, wo, step, w, snap=lambda ts: ts):
