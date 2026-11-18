@@ -982,6 +982,36 @@ def test_rotate_user_hands_a_step_to_each_other_user_once_then_gives_up(tmp_path
     assert a != b and not rt.rotate_user(wo, st)   # both tried: the step fails for good
 
 
+def test_a_user_a_step_kind_refused_is_tried_last_for_a_week(tmp_path):
+    s = setup(tmp_path)
+    s.db.execute("INSERT INTO users(id,conn_id,username,password,can_do) SELECT 9,conn_id,'sub2',password,can_do FROM users WHERE id=1")
+    s.db.commit()
+    rt = Runtime(s, {1: 1, 2: 2}, random.Random(5))
+    wo = _wo(s, provider_id=2000078685)
+    s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,payload) VALUES(?,0,'review',1,'{}')", (wo["id"],))
+    st = s.db.execute("SELECT * FROM steps").fetchone()
+    a = rt.user_for("HQ-NYC", "review", wo, st)[1][0]
+    rt.rotate_user(wo, st)
+    for i in range(1, 15):   # fresh steps of the same kind never start with the refused user
+        s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,payload) VALUES(?,?,'review',1,'{}')", (wo["id"], i))
+        st2 = s.db.execute("SELECT * FROM steps WHERE seq=?", (i,)).fetchone()
+        assert rt.user_for("HQ-NYC", "review", wo, st2)[1][0] != a
+    s.put("refused", {k: 1.0 for k in s.get("refused")})   # a week later it is a normal candidate again
+    assert rt.refused("review") == set()
+
+
+def test_a_refused_user_is_still_used_when_nobody_else_can(tmp_path):
+    s = setup(tmp_path)
+    rt = Runtime(s, {1: 1, 2: 2}, random.Random(5))
+    wo = _wo(s, provider_id=2000078685)
+    s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,payload) VALUES(?,0,'review',1,'{}')", (wo["id"],))
+    st = s.db.execute("SELECT * FROM steps").fetchone()
+    a = rt.user_for("HQ-NYC", "review", wo, st)[1][0]
+    assert not rt.rotate_user(wo, st)
+    s.db.execute("INSERT INTO steps(wo_id,seq,kind,due_at,payload) VALUES(?,1,'review',1,'{}')", (wo["id"],))
+    assert rt.user_for("HQ-NYC", "review", wo, s.db.execute("SELECT * FROM steps WHERE seq=1").fetchone())[1][0] == a
+
+
 def test_check_in_attaches_a_seeded_asset_once_and_only_when_none_is_on_the_wo(tmp_path):
     s = setup(tmp_path)
     s.put("behavior", {"asset_on_site": 100})

@@ -269,7 +269,12 @@ def create_app(store, engine=None, rt=None):
                           "FROM steps s JOIN work_orders w ON w.id=s.wo_id WHERE s.state='failed' ORDER BY s.due_at").fetchall()
         tz = ZoneInfo(store.get("tz", "America/New_York"))
         return page(request, "errors", groups=error_groups(rows, tz), create_errors=[dict(e, hint=hint(e["error"]), when=stamp(e["at"], tz))
-                                                    for e in store.get("create_errors", [])[::-1]])
+                                                    for e in store.get("create_errors", [])[::-1] if time.time() - e["at"] < 3 * 86400])
+
+    @app.post("/errors/clear-create")
+    def clear_create_errors():
+        store.put("create_errors", [])
+        return RedirectResponse("/errors", status_code=303)
 
     @app.post("/smoke")
     def save_smoke(on: str = Form("off"), now: str = Form("")):

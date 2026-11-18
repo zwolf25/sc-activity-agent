@@ -381,6 +381,18 @@ def test_close_out_ends_a_wos_plan_without_a_call(tmp_path):
     assert {r[0] for r in s.db.execute("SELECT state FROM steps")} == {"skipped"}
 
 
+def test_errors_page_shows_only_recent_create_errors_and_clear_empties_them(tmp_path):
+    import time
+    s = Store(tmp_path)
+    now = time.time()
+    s.put("create_errors", [{"at": now - 10 * 86400, "location": "OLDLOC", "error": "x"}, {"at": now - 60, "location": "NEWLOC", "error": "y"}])
+    c = TestClient(create_app(s))
+    t = c.get("/errors").text
+    assert "NEWLOC" in t and "OLDLOC" not in t
+    c.post("/errors/clear-create")
+    assert s.get("create_errors") == [] and "NEWLOC" not in c.get("/errors").text
+
+
 def test_errors_row_counts_the_steps_waiting_behind_it_and_the_banner_shows_a_network_outage(tmp_path):
     from sc_activity_agent.engine import add_plan
     s = Store(tmp_path)

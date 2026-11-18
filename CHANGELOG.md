@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.22.3 - 2026-11-18
+
+- Fewer failed calls: when a user is refused on a step (403, 921 or an opaque 501) and the step moves to another user, the agent remembers it. For 7 days, new steps of that kind try the other users first and use the refused one only when nobody else can. This stops repeat 921 failures such as the NO CHARGE refusals for one Subscriber user.
+- The Errors page lists work order creation errors from the last 3 days only, and has a Clear button for them. Alerts are unchanged.
+- Restart the agent after updating; nothing pauses and no migration.
+
 ## v0.22.2 - 2026-11-18
 
 - Fixed: when a person reassigns a WO to another provider in ServiceChannel, the old provider's steps now fail once with a plain message ("A person moved the WO to provider X ... Close out the WO") instead of retrying for ever and alerting on every Retry. A WO that no longer exists fails the same way. Use Close out WO on the Errors page to end the plan.

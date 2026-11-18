@@ -7,6 +7,7 @@ from .common import ACTION, Skip
 
 
 LIMIT_TTL = 3600   # how long a user's approval limits are trusted before the profile is read again
+REFUSED_DAYS = 7   # a user a step kind refused is tried last for this long
 LIMIT_OF = {"invoice_decide": ("InvoiceLimit", "invoice"), "proposal_decide": ("ProposalLimit", "proposal")}   # step kind -> profile limit, label
 
 
@@ -73,10 +74,20 @@ class Runtime:
             return False
         p = json.loads(self.store.db.execute("SELECT payload FROM steps WHERE id=?", (step["id"],)).fetchone()[0])
         tried = p.get("tried", []) + ([p["user"]] if p.get("user") else [])
+        if p.get("user"):
+            self.refused(step["kind"], p["user"], note=True)
         if not p.get("user") or not [r for r in self.candidates(wo["location"], step["kind"], json.loads(wo["ctx"])) if r["id"] not in tried]:
             return False
         self.store.db.execute("UPDATE steps SET payload=? WHERE id=?", (json.dumps({**{k: v for k, v in p.items() if k != "user"}, "tried": tried}), step["id"]))
         return True
+
+    def refused(self, kind, uid=None, note=False):
+        """0.22.3: users a step kind refused in the last REFUSED_DAYS days. note=True records `uid`; otherwise returns the set of user ids."""
+        now = time.time()
+        mem = {k: t for k, t in self.store.get("refused", {}).items() if now - t < REFUSED_DAYS * 86400}
+        if note:
+            self.store.put("refused", {**mem, f"{uid}:{kind}": now})
+        return {int(k.split(":")[0]) for k in mem if k.split(":", 1)[1] == kind}
 
     def user_for(self, location, step_kind, wo=None, step=None):
         """Pick a user who can do this action (users.can_do). Provider-side actions are limited to users of the WO's provider
@@ -106,7 +117,9 @@ class Runtime:
             p = json.loads(self.store.db.execute("SELECT payload FROM steps WHERE id=?", (step["id"],)).fetchone()[0])
             u = next((r for r in rows if r["id"] == p.get("user")), None)
             if u is None:
-                u = self.rng.choice([r for r in rows if r["id"] not in p.get("tried", [])] or rows)
+                fresh = [r for r in rows if r["id"] not in p.get("tried", [])] or rows
+                bad = self.refused(step_kind)
+                u = self.rng.choice([r for r in fresh if r["id"] not in bad] or fresh)
                 self.store.db.execute("UPDATE steps SET payload=? WHERE id=?", (json.dumps({**p, "user": u["id"]}), step["id"]))
                 self.store.db.commit()
         u = u or self.rng.choice(rows)
