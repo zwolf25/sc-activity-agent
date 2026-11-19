@@ -17,6 +17,8 @@ def stage(done):
             st = "Scheduled"
         elif kind == "decline":
             st = "Declined"
+        elif kind in ("reassign", "accept"):
+            st = "Scheduled"   # 0.22.4: a declined WO is back on the plan once it is reassigned and accepted
         elif kind == "check_in":
             st = "On site"
         elif kind == "check_out":

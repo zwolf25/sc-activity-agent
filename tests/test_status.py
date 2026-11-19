@@ -27,3 +27,9 @@ def test_in_stage_lists_wos_with_their_next_pending_step(tmp_path):
     rows = status.in_stage(s.db, "Awaiting review")
     assert [(r["sc_id"], r["next_kind"], r["next_due"]) for r in rows] == [(100, "review", 30)]
     assert [r["sc_id"] for r in status.in_stage(s.db, "Scheduled")] == [200]
+
+
+def test_a_declined_wo_is_scheduled_again_once_reassigned_and_accepted():
+    assert stage([("decline", {})]) == "Declined"
+    assert stage([("decline", {}), ("reassign", {})]) == "Scheduled"
+    assert stage([("decline", {}), ("reassign", {}), ("accept", {}), ("prov_note", {})]) == "Scheduled"

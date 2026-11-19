@@ -52,6 +52,7 @@ Zac's new ideas go here first, then get sized and ranked.
 | ID | Item | Version |
 |----|------|---------|
 | B-95 | Confirmed on Prod: no 916 since 11-08, ZW123 create accepted 11-16 | 0.20.9 (confirmed 0.22.3) |
+| B-116 | A declined WO shows as Scheduled again after its reassign and accept steps, not Declined until check-in | 0.22.4 |
 | B-115 | Errors page shows only the last 3 days of creation errors and has a Clear button | 0.22.3 |
 | B-114 | A user a step kind refused is tried last for 7 days (per-user refusal memory), cutting repeat 921 and 403 failures | 0.22.3 |
 | B-113 | A WO a person reassigned to another provider (or deleted) parks its steps once with a Close out message instead of retrying (the first B-106 audit case after 0.22.0) | 0.22.2 |

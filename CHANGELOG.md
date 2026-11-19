@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.22.4 - 2026-11-18
+
+- Fixed: a WO the provider declined stayed under "Declined" on the dashboard until its check-in, even after it was reassigned and accepted. It now shows as Scheduled once the reassign step is done.
+- Restart the agent after updating; nothing pauses and no migration.
+
 ## v0.22.3 - 2026-11-18
 
 - Fewer failed calls: when a user is refused on a step (403, 921 or an opaque 501) and the step moves to another user, the agent remembers it. For 7 days, new steps of that kind try the other users first and use the refused one only when nobody else can. This stops repeat 921 failures such as the NO CHARGE refusals for one Subscriber user.
