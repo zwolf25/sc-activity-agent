@@ -134,13 +134,10 @@ def test_migration_4_drops_the_roles_table_of_a_v3_db(tmp_path):
     assert not s.db.execute("SELECT 1 FROM sqlite_master WHERE name='roles'").fetchone()
 
 
-def test_pick_leaves_out_refrigerant_assets(tmp_path):
+def test_pick_attaches_refrigerant_assets(tmp_path):
     import random
     s = Store(tmp_path)
     for i, (tag, ty) in enumerate([("RTU-1", "RTU"), ("COND-1", "Condenser")]):
         s.db.execute("INSERT INTO assets(id, location, tag, trade, type, created_at) VALUES(?,?,?,?,?,0)", (i + 1, "HQ-NYC", tag, "HVAC", ty))
     s.db.commit()
-    refr = assets._refrigerant_types()
-    assert "RTU" in refr
-    picks = {assets.pick(s, random.Random(n), "HQ-NYC", "HVAC RTU", "HVAC") for n in range(20)}
-    assert 1 not in picks   # the RTU would leave the WO at PENDING REFRIGERANT USE
+    assert {assets.pick(s, random.Random(n), "HQ-NYC", "HVAC RTU", "HVAC") for n in range(20)} == {1}   # B-94: the equipment match, RTU included

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v0.22.6 - 2026-11-27
+
+- The agent attaches refrigerant assets, such as the HVAC RTU, to the work orders it creates again. It answers "no refrigerant used, no leak" on them, which needs a connected Subscriber user. Recording refrigerant as used is not supported yet.
+- Restart the agent after updating; nothing pauses and no migration.
+
 ## v0.22.5 - 2026-11-27
 
 - Fixed: a work order with a refrigerant asset (the HVAC RTU) no longer gets stuck in COMPLETED / PENDING REFRIGERANT USE. At the final check-out the agent now answers ServiceChannel's refrigerant prompt "no refrigerant used, no leak" as the Subscriber, and it does the same for a work order it finds already stuck, so the review and the invoice go through. A work order where refrigerant was really used still needs a person.
