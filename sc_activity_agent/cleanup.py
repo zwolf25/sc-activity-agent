@@ -92,10 +92,12 @@ def finish_plan(store, rt, w, now, accept=False):
         steps.append({"kind": "accept", "due_at": t, "payload": {"situation": "ack"}})
     for kind, lo, hi, payload in (("check_in", 600, 3600, {"visit": 1, "situation": "onsite"}),
                                   ("check_out", 5400, 10800, {"visit": 1, "final": True, "situation": "complete"}),
-                                  ("review", 3600, 28800, {"situation": "review"}), ("invoice_submit", 7200, 21600, {"situation": "invoice"}),
-                                  ("invoice_decide", 3600, 21600, {"approve": True})):
+                                  ("review", 3600, 28800, {"situation": "review"}), ("invoice_submit", 7200, 21600, {"situation": "invoice"})):
         t = planner._fit(t + rng.randint(lo, hi), t, c, tz, rng)
         steps.append({"kind": kind, "due_at": t, "payload": payload})
+    k = planner.review_days(rng, c["invoice_review_days"])
+    t = planner.decision_at(t, k, c, tz, rng)
+    steps.append({"kind": "invoice_decide", "due_at": t, "payload": {"approve": True, "after_days": k}})
     steps.append({"kind": "invoice_pay", "due_at": t + max(2, rng.gauss(c["pay_days"], c["pay_days"] * 0.25)) * 86400, "payload": {}})   # same rule as planner.build_plan; without it the WO sits in Payment due forever
     trade = w.get("Trade") or "General"
     issue = w.get("Problem") or w.get("ProblemDescription") or "reported issue"

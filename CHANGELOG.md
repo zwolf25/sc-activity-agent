@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.24.0 - 2026-11-27
+
+- New Behavior settings, "Average days to approve or reject a proposal" and "Average days to approve or reject an invoice", both 3 by default and adjustable from 1 to 60. They count activity days from submission to the Subscriber's decision; any one decision takes 1 to twice the average minus 1 (1 to 5 days at 3). Before, proposals were decided within hours and invoices within 2 days.
+- Because a visit waits for proposal approval, work orders with a proposal are now visited later, sometimes after their scheduled date.
+- Applies to work orders planned after the update. Existing plans keep their times. The update needs an agent restart; nothing pauses.
+
 ## v0.23.0 - 2026-11-27
 
 - New Behavior setting, "Refrigerant asset on HVAC and Refrigeration WOs %", on by default at 100%. Before the final check-out, a work order with no asset gets one of the agent's refrigerant assets at that location. **This changes work orders in ServiceChannel, including ones the agent picked up; set it to 0 to turn it off.** Today only HVAC rooftop units qualify, so Refrigeration work orders and locations without a seeded rooftop unit get none.

@@ -7,6 +7,7 @@ import pytest
 from sc_activity_agent import planner
 from sc_activity_agent.engine import Engine, add_plan
 from sc_activity_agent.client import Park, ScError
+from sc_activity_agent.handlers.common import hold_decision
 from sc_activity_agent.handlers import Runtime, follow, insert_steps, make_handlers
 from sc_activity_agent.store import Store
 
@@ -37,6 +38,14 @@ class FakeApp:
         return {}
 
 
+def after_plan(s):
+    """A clock just past the last planned step, read live: a late submission moves its decision (and what follows) later."""
+    def clock():
+        s.drop("last_tick")   # the jumps forward are not offline gaps
+        return s.db.execute("SELECT MAX(due_at) FROM steps").fetchone()[0] + 10
+    return clock
+
+
 def setup(tmp_path):
     s = Store(tmp_path)
     s.db.execute("INSERT INTO connections VALUES(1,'subscriber','S','c','x',NULL)")
@@ -56,7 +65,7 @@ def test_full_plan_uses_subscriber_and_provider_users_correctly(tmp_path):
     rt = Runtime(s, {1: FakeApp("sub", calls), 2: FakeApp("prov", calls)}, random.Random(1))
     plan = planner.build_plan(random.Random(4), NOW, {"proposal_rate": 0})
     add_plan(s, "HQ-NYC", "HVAC", 5001, plan, CTX, NOW)
-    e = Engine(s, make_handlers(rt), clock=lambda: plan[-1]["due_at"] + 10, per_tick=50)
+    e = Engine(s, make_handlers(rt), clock=after_plan(s), per_tick=50)
     for _ in range(len(plan) + 3):
         e.tick()
     assert s.db.execute("SELECT COUNT(*) FROM steps WHERE state!='done'").fetchone()[0] == 0
@@ -120,7 +129,7 @@ def test_proposal_is_created_by_provider_and_linked_then_approved_by_subscriber(
     rt = Runtime(s, {1: FakeApp("sub", calls), 2: FakeApp("prov", calls)}, random.Random(1))
     plan = planner.build_plan(random.Random(4), NOW, {"proposal_rate": 100, "proposal_approval": 100})
     add_plan(s, "HQ-NYC", "HVAC", 5001, plan, CTX, NOW)
-    e = Engine(s, make_handlers(rt), clock=lambda: plan[-1]["due_at"] + 10, per_tick=50)
+    e = Engine(s, make_handlers(rt), clock=after_plan(s), per_tick=50)
     for _ in range(len(plan) + 3):
         e.tick()
     assert s.db.execute("SELECT COUNT(*) FROM steps WHERE state!='done'").fetchone()[0] == 0
@@ -141,8 +150,9 @@ def _proposal_plan(tmp_path, pstatus, approval):
     t = [plan[-1]["due_at"] + 10 ** 6]
     e = Engine(s, make_handlers(rt), clock=lambda: t[0], per_tick=50)
     for _ in range(len(plan) + 40):
+        s.drop("last_tick")   # the jumps forward are not offline gaps
         e.tick()
-        t[0] += 10 ** 5   # clear any retry backoff
+        t[0] += 10 ** 6   # clear any retry backoff and any review wait
     return s, calls
 
 
@@ -168,7 +178,7 @@ def test_invoice_already_decided_by_user_is_not_overturned(tmp_path):
     rt = Runtime(s, {1: sub, 2: FakeApp("prov", calls)}, random.Random(1))
     plan = planner.build_plan(random.Random(4), NOW, {"proposal_rate": 0})
     add_plan(s, "HQ-NYC", "HVAC", 5001, plan, CTX, NOW)
-    e = Engine(s, make_handlers(rt), clock=lambda: plan[-1]["due_at"] + 10, per_tick=50)
+    e = Engine(s, make_handlers(rt), clock=after_plan(s), per_tick=50)
     for _ in range(len(plan) + 3):
         e.tick()
     assert not any(c[3].endswith("/approve") and "invoices" in c[3] for c in calls)
@@ -196,7 +206,7 @@ def _run_refused(tmp_path, status):
     rt = Runtime(s, {1: RefusingApp("sub", calls, status), 2: RefusingApp("prov", calls, status)}, random.Random(1))
     plan = planner.build_plan(random.Random(4), NOW, {"proposal_rate": 0})
     add_plan(s, "HQ-NYC", "HVAC", 5001, plan, CTX, NOW)
-    e = Engine(s, make_handlers(rt), clock=lambda: plan[-1]["due_at"] + 10, per_tick=50)
+    e = Engine(s, make_handlers(rt), clock=after_plan(s), per_tick=50)
     for _ in range(len(plan) + 3):
         e.tick()
     return s
@@ -220,7 +230,7 @@ def test_resubmitted_invoice_gets_a_new_number(tmp_path):
     rt = Runtime(s, {1: FakeApp("sub", []), 2: prov}, random.Random(1))
     plan = planner.build_plan(random.Random(4), NOW, {"proposal_rate": 0, "invoice_approval": 0})
     add_plan(s, "HQ-NYC", "HVAC", 5001, plan, CTX, NOW)
-    e = Engine(s, make_handlers(rt), clock=lambda: plan[-1]["due_at"] + 10, per_tick=50)
+    e = Engine(s, make_handlers(rt), clock=after_plan(s), per_tick=50)
     for _ in range(len(plan) + 3):
         e.tick()
     assert prov.invoice_numbers == ["INV-5001-1", "INV-5001-2"]
@@ -237,7 +247,7 @@ def test_approved_invoice_is_paid_once_and_paid_or_rejected_is_left_alone(tmp_pa
         add_plan(s, "HQ-NYC", "HVAC", 5001, plan, CTX, NOW)
         s.db.execute("UPDATE work_orders SET ctx=json_set(ctx,'$.invoice_id',777)")
         s.db.commit()
-        e = Engine(s, make_handlers(rt), clock=lambda: plan[-1]["due_at"] + 10, per_tick=50)
+        e = Engine(s, make_handlers(rt), clock=after_plan(s), per_tick=50)
         for _ in range(len(plan) + 3):
             e.tick()
         assert sum(c[3] == "/invoices/777/Payment" for c in calls) == expect
@@ -1088,7 +1098,7 @@ def test_user_approved_invoice_skips_the_planned_resubmit(tmp_path):
     rt = Runtime(s, {1: sub, 2: prov}, random.Random(1))
     plan = planner.build_plan(random.Random(4), NOW, {"proposal_rate": 0, "invoice_approval": 0})
     add_plan(s, "HQ-NYC", "HVAC", 5001, plan, CTX, NOW)
-    e = Engine(s, make_handlers(rt), clock=lambda: plan[-1]["due_at"] + 10, per_tick=50)
+    e = Engine(s, make_handlers(rt), clock=after_plan(s), per_tick=50)
     for _ in range(len(plan) + 3):
         e.tick()
     assert prov.invoice_numbers == ["INV-5001-1"]   # no resubmit
@@ -1108,7 +1118,7 @@ def test_resubmit_refused_with_1105_is_done_not_failed(tmp_path):
     rt = Runtime(s, {1: FakeApp("sub", []), 2: Exists("prov", [])}, random.Random(1))
     plan = planner.build_plan(random.Random(4), NOW, {"proposal_rate": 0, "invoice_approval": 0})
     add_plan(s, "HQ-NYC", "HVAC", 5001, plan, CTX, NOW)
-    e = Engine(s, make_handlers(rt), clock=lambda: plan[-1]["due_at"] + 10, per_tick=50)
+    e = Engine(s, make_handlers(rt), clock=after_plan(s), per_tick=50)
     for _ in range(len(plan) + 3):
         e.tick()
     assert s.db.execute("SELECT COUNT(*) FROM steps WHERE state='failed'").fetchone()[0] == 0
@@ -1121,7 +1131,7 @@ def _plan_run(tmp_path, prov_cls):
     rt = Runtime(s, {1: sub, 2: prov}, random.Random(1))
     plan = planner.build_plan(random.Random(4), NOW, {"proposal_rate": 0, "invoice_approval": 0})
     add_plan(s, "HQ-NYC", "HVAC", 5001, plan, CTX, NOW)
-    e = Engine(s, make_handlers(rt), clock=lambda: plan[-1]["due_at"] + 10, per_tick=50)
+    e = Engine(s, make_handlers(rt), clock=after_plan(s), per_tick=50)
     for _ in range(len(plan) + 3):
         e.tick()
     return s, calls
@@ -1203,3 +1213,31 @@ def test_final_check_out_adds_a_refrigerant_asset_to_an_rt_wo_without_one(tmp_pa
     assert [b for p, b in sent if p == "/assets/workorders/9/attach"] == ([{"AssetId": 55}] if expected else [])
     if expected:
         assert paths.index("/assets/workorders/9/attach") < paths.index("/workorders/9/universalCheckOut")
+
+
+def test_a_late_submission_moves_the_decision_so_the_review_time_counts_from_it(tmp_path):
+    s = setup(tmp_path)
+    rt = Runtime(s, {1: FakeApp("sub", []), 2: FakeApp("prov", [])}, random.Random(1))
+    plan = planner.build_plan(random.Random(4), NOW, {"proposal_rate": 0})
+    add_plan(s, "HQ-NYC", "HVAC", 5001, plan, CTX, NOW)
+    q = "SELECT * FROM steps WHERE kind=? ORDER BY seq LIMIT 1"
+    sub, dec, pay = (s.db.execute(q, (k,)).fetchone() for k in ("invoice_submit", "invoice_decide", "invoice_pay"))
+    wo = s.db.execute("SELECT * FROM work_orders").fetchone()
+    e = Engine(s, make_handlers(rt), clock=lambda: sub["due_at"])
+    hold_decision(rt, wo, sub, "invoice_decide", e)   # on time: nothing moves
+    assert s.db.execute(q, ("invoice_decide",)).fetchone()["due_at"] == dec["due_at"]
+    late = sub["due_at"] + 10 * 86400
+    e.clock = lambda: late
+    hold_decision(rt, wo, sub, "invoice_decide", e)
+    new, new_pay = s.db.execute(q, ("invoice_decide",)).fetchone(), s.db.execute(q, ("invoice_pay",)).fetchone()
+    k = json.loads(new["payload"])["after_days"]
+    day = lambda t: dt.datetime.fromtimestamp(t, e.zone("HQ-NYC")).date()
+    assert day(new["due_at"]) == planner._biz_day(day(late), k, [0, 1, 2, 3, 4])
+    assert new_pay["due_at"] > new["due_at"] and new_pay["due_at"] >= pay["due_at"]
+
+
+def test_a_user_rejection_gives_the_revised_proposal_its_own_review_wait(tmp_path):
+    s, _ = _proposal_plan(tmp_path, "Rejected", 100)
+    rows = s.db.execute("SELECT kind, due_at, payload FROM steps WHERE kind LIKE 'proposal%' ORDER BY seq").fetchall()
+    added = [(a, b) for a, b in zip(rows[2:], rows[3:]) if a["kind"] == "proposal_create" and b["kind"] == "proposal_decide"]
+    assert added and all(json.loads(b["payload"])["after_days"] >= 1 and b["due_at"] > a["due_at"] for a, b in added)

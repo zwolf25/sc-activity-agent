@@ -1,6 +1,9 @@
 """Shared by the step executors."""
 import datetime as dt
 import json
+from zoneinfo import ZoneInfo
+
+from .. import planner
 
 ACTION = {"accept": "accept", "prov_note": "provider_note", "sub_note": "subscriber_note", "review": "review",
           "proposal_create": "proposal_create", "proposal_decide": "proposal_decide", "check_in": "check_in",
@@ -34,6 +37,47 @@ def insert_steps(store, wo_id, after_seq, steps):
         store.db.execute("INSERT INTO steps(wo_id, seq, kind, due_at, payload) VALUES(?,?,?,?,?)",
                          (wo_id, after_seq + i, kind, due, json.dumps(payload)))
     store.db.commit()
+
+
+def move_after(rt, wo, after_seq, delta, snap):
+    """Move every pending step after `after_seq` later by one shared amount, so their spacing holds. The first one lands in activity hours."""
+    rows = rt.store.db.execute("SELECT id, due_at FROM steps WHERE wo_id=? AND seq>? AND state='pending' ORDER BY seq", (wo["id"], after_seq)).fetchall()
+    if rows and delta > 0:
+        delta = snap(rows[0]["due_at"] + delta) - rows[0]["due_at"]
+        for r in rows:
+            rt.store.db.execute("UPDATE steps SET due_at=? WHERE id=?", (r["due_at"] + delta, r["id"]))
+        rt.store.db.commit()
+
+
+def next_decision(rt, wo, submitted, key):
+    """(due_at, review days) for a Subscriber decision on something submitted at `submitted`. key: the behavior setting with the average."""
+    c = {**planner.DEFAULTS, **rt.store.get("behavior", {})}
+    k = planner.review_days(rt.rng, c[key])
+    return planner.decision_at(submitted, k, c, _tz(rt, wo), rt.rng), k
+
+
+def hold_decision(rt, wo, step, kind, engine):
+    """The review time counts from the real submission. When a retry, a pause or a gap made the submission late, move the planned
+    decision (and everything after it) so the Subscriber still takes its planned number of activity days. Old plans have no after_days."""
+    row = rt.store.db.execute("SELECT * FROM steps WHERE wo_id=? AND seq>? AND kind=? AND state='pending' ORDER BY seq LIMIT 1",
+                              (wo["id"], step["seq"], kind)).fetchone()
+    k = row and json.loads(row["payload"]).get("after_days")
+    if not k:
+        return
+    c = {**planner.DEFAULTS, **rt.store.get("behavior", {})}
+    z = _tz(rt, wo)
+    now = engine.clock()
+    due = planner.decision_at(now, k, c, z, rt.rng)
+    day = lambda ts: dt.datetime.fromtimestamp(ts, ZoneInfo(z)).date()
+    if day(row["due_at"]) < day(due):
+        rt.store.db.execute("UPDATE steps SET due_at=? WHERE id=?", (due, row["id"]))
+        move_after(rt, wo, row["seq"], due - row["due_at"], lambda ts: engine.snap(ts, wo["location"]))
+        rt.store.db.commit()
+
+
+def _tz(rt, wo):
+    r = rt.store.db.execute("SELECT tz FROM locations WHERE store_id=?", (wo["location"],)).fetchone()
+    return (r and r["tz"]) or rt.store.get("tz", "America/New_York")
 
 
 def end_plan(rt, wo):

@@ -3,7 +3,7 @@ import json
 
 from .. import content
 from ..client import ScError
-from .common import insert_steps
+from .common import hold_decision, insert_steps, move_after, next_decision
 
 
 def build(rt, call, ctx_of):
@@ -33,6 +33,7 @@ def build(rt, call, ctx_of):
         c = rt.save_ctx(wo, proposal_id=pid, amount=f"${hours * 95 + part + travel:,.2f}")
         text = content.note("provider", "proposal", c, rt.rng)
         call(wo, step, "POST", f"/workorders/{wo['sc_id']}/notes", body={"Note": text, "NotifyFollowers": False, "DoNotSendEmail": True})
+        hold_decision(rt, wo, step, "proposal_decide", engine)
 
     def proposal_decide(engine, wo, step):
         """Subscriber links the proposal to the WO (subscriber-only call), then approves or rejects it.
@@ -49,10 +50,13 @@ def build(rt, call, ctx_of):
             if n > 3:
                 raise ScError(409, f"proposal {pid} was rejected {n} times by the user; the plan needs attention", "/proposals")
             rt.save_ctx(wo, revisions=n)
-            gap = rt.rng.randint(3600, 4 * 3600)
+            snap = lambda ts: engine.snap(ts, wo["location"])
+            again = snap(step["due_at"] + rt.rng.randint(3600, 4 * 3600))
+            due, k = next_decision(rt, wo, again, "proposal_review_days")
+            move_after(rt, wo, step["seq"], due - step["due_at"], snap)   # the visit waits for the revised proposal's decision
             insert_steps(rt.store, wo["id"], step["seq"], [
-                ("proposal_create", step["due_at"] + gap, {"situation": "proposal"}),
-                ("proposal_decide", step["due_at"] + gap + rt.rng.randint(1800, 4 * 3600), {"approve": True})])
+                ("proposal_create", again, {"situation": "proposal"}),
+                ("proposal_decide", due, {"approve": True, "after_days": k})])
             return
         call(wo, step, "PUT", f"/proposals/{pid}/assignWO", body=int(wo["sc_id"]))
         text = content.note("subscriber", "proposal_ok" if p["approve"] else "proposal_no", c, rt.rng)

@@ -1,6 +1,8 @@
 import json
 import random
 import re
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -41,6 +43,29 @@ def test_proposal_rate_and_check_in_after_proposal_approval():
         approved = [s for s in p if s["kind"] == "proposal_decide" and s["payload"]["approve"]][-1]
         first_in = next(s for s in p if s["kind"] == "check_in")
         assert first_in["due_at"] > approved["due_at"]
+
+
+def test_review_decisions_average_the_set_activity_days_from_submission():
+    tz = ZoneInfo("America/New_York")
+    day = lambda t: datetime.fromtimestamp(t, tz).date()
+    for kind, submit in (("proposal_decide", "proposal_create"), ("invoice_decide", "invoice_submit")):
+        key = kind.split("_")[0] + "_review_days"
+        for avg in (1, 3, 6):
+            waits = []
+            for p in plans(600, proposal_rate=100, proposal_approval=50, invoice_approval=50, **{key: avg}):
+                last = None
+                for s in p:
+                    if s["kind"] == submit:
+                        last = day(s["due_at"])
+                    elif s["kind"] == kind:
+                        n, d = 0, last
+                        while d < day(s["due_at"]):
+                            d += timedelta(days=1)
+                            n += d.weekday() < 5
+                        assert 1 <= n <= 2 * avg - 1
+                        waits.append(n)
+            assert abs(sum(waits) / len(waits) - avg) < 0.25
+    assert planner.DEFAULTS["proposal_review_days"] == planner.DEFAULTS["invoice_review_days"] == 3
 
 
 def test_first_time_fix_controls_visit_count():

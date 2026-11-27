@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 DEFAULTS = {
     "wo_per_month": 120,
     "proposal_rate": 10, "proposal_approval": 90, "invoice_approval": 95,
+    "proposal_review_days": 3, "invoice_review_days": 3,   # average activity days from submission to the Subscriber's decision
     "sub_notes": 2.0, "prov_notes": 3.0,
     "late_checkin": 15, "late_days": 2,
     "time_on_site_hrs": 2.0, "pay_days": 30, "multi_tech": 5, "emergency_hours": 8, "decline": 0, "reassign": 0, "invoice_rate_flaw": 0, "invoice_hours_flaw": 0, "no_show": 0, "reschedule": 0, "first_time_fix": 80,
@@ -28,6 +29,17 @@ def _biz_day(d, n, days):
 def _at(day, hour_float, tz):
     h = int(hour_float)
     return datetime.combine(day, dtime(h, int((hour_float - h) * 60)), tzinfo=ZoneInfo(tz)).timestamp()
+
+
+def review_days(rng, avg):
+    """Activity days one Subscriber decision takes: 1 to 2*avg-1, so the mean is avg."""
+    return rng.randint(1, max(1, int(avg) * 2 - 1))
+
+
+def decision_at(submitted, days, c, tz, rng):
+    """A random time inside activity hours, `days` activity days after the day of submission."""
+    day = _biz_day(datetime.fromtimestamp(submitted, ZoneInfo(tz)).date(), days, c["days"])
+    return _at(day, c["hours_start"] + rng.random() * (c["hours_end"] - c["hours_start"]), tz)
 
 
 def _fit(ts, prev, c, tz, rng):
@@ -102,14 +114,19 @@ def build_plan(rng, now, cfg, tz="America/New_York", eta=None):
 
     if has_proposal:
         # check-in is blocked until the proposal is approved, so the proposal precedes the first visit
-        p_at = now + rng.randint(3600, 4 * 3600)
-        add("proposal_create", p_at, situation="proposal")
-        if rng.random() * 100 < c["proposal_approval"]:
-            add("proposal_decide", p_at + rng.randint(1800, 4 * 3600), approve=True)
-        else:
-            add("proposal_decide", p_at + rng.randint(1800, 4 * 3600), approve=False)
-            add("proposal_create", p_at + 86400, situation="proposal")  # revised proposal
-            add("proposal_decide", p_at + 86400 + rng.randint(1800, 4 * 3600), approve=True)
+        # fitted here, not only in _fit_all, so the review time counts from the real submission time
+        p_at = _fit(now + rng.randint(3600, 4 * 3600), now, c, tz, rng)
+
+        def propose(at, approve):
+            add("proposal_create", at, situation="proposal")
+            k = review_days(rng, c["proposal_review_days"])
+            add("proposal_decide", decision_at(at, k, c, tz, rng), approve=approve, after_days=k)
+
+        ok = rng.random() * 100 < c["proposal_approval"]
+        propose(p_at, ok)
+        if not ok:   # revised proposal, a few hours after the rejection
+            d = steps[-1]["due_at"]
+            propose(_fit(d + rng.randint(3600, 4 * 3600), d, c, tz, rng), True)
         t = max(t, steps[-1]["due_at"] + 3600)
         day = datetime.fromtimestamp(t, ZoneInfo(tz)).date()
         if day.weekday() not in c["days"]:
@@ -148,20 +165,25 @@ def build_plan(rng, now, cfg, tz="America/New_York", eta=None):
             add("prov_note", out + 60, situation="parts")
 
     final_out = max(s["due_at"] for s in steps if s["kind"] == "check_out")
-    review_at = final_out + rng.randint(3600, 86400)
+    review_at = _fit(final_out + rng.randint(3600, 86400), final_out, c, tz, rng)
     add("review", review_at, situation="review")
-    inv_at = review_at + rng.randint(7200, 2 * 86400)  # invoices follow the review
+    inv_at = _fit(review_at + rng.randint(7200, 2 * 86400), review_at, c, tz, rng)  # invoices follow the review
     roll = rng.random() * 100   # B-12: a flawed first invoice is always rejected, then resubmitted correctly
     flaw = "rate" if roll < c["invoice_rate_flaw"] else "hours" if roll < c["invoice_rate_flaw"] + c["invoice_hours_flaw"] else None
     add("invoice_submit", inv_at, situation="invoice", **({"flaw": flaw} if flaw else {}))
+
+    def decide(at, approve, **extra):
+        k = review_days(rng, c["invoice_review_days"])
+        add("invoice_decide", decision_at(at, k, c, tz, rng), approve=approve, after_days=k, **extra)
+        return steps[-1]["due_at"]
+
     if not flaw and rng.random() * 100 < c["invoice_approval"]:
-        dec_at = inv_at + rng.randint(3600, 2 * 86400)
-        add("invoice_decide", dec_at, approve=True)
+        dec_at = decide(inv_at, True)
     else:
-        add("invoice_decide", inv_at + rng.randint(3600, 86400), approve=False, **({"flaw": flaw} if flaw else {}))
-        add("invoice_submit", inv_at + 2 * 86400, situation="invoice_fix")
-        dec_at = inv_at + 3 * 86400
-        add("invoice_decide", dec_at, approve=True)
+        d = decide(inv_at, False, **({"flaw": flaw} if flaw else {}))
+        again = _fit(d + rng.randint(3600, 86400), d, c, tz, rng)
+        add("invoice_submit", again, situation="invoice_fix")
+        dec_at = decide(again, True)
 
     # notes sprinkled between creation and the final invoice decision
     lo, hi = now + 600, steps[-1]["due_at"]

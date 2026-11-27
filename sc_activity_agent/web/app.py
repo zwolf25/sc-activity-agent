@@ -43,6 +43,7 @@ SLIDERS = [("wo_per_month", "Work orders per month", "Per enabled location, spre
            ("reschedule", "Reschedules %", "The provider moves the scheduled date 1 to 3 business days later than the original date", 0, 100, 1),
            ("proposal_rate", "Proposal rate %", "Share of WOs that get a proposal", 0, 100, 1),
            ("proposal_approval", "Proposal approval %", "Rest are rejected", 0, 100, 1),
+           ("proposal_review_days", "Average days to approve or reject a proposal", "Activity days from submission to the Subscriber's decision (any one takes 1 to twice this, minus 1)", 1, 60, 1),
            ("late_checkin", "Late check-in %", "Provider arrives after the scheduled date", 0, 100, 1),
            ("asset_on_site", "Provider attaches an asset on site %", "Of the work orders created without an asset, the share where the provider attaches one between check-in and check-out: the asset for the issue's equipment, or any seeded asset in the WO's trade at the location", 0, 100, 1),
            ("late_days", "Average days late", "", 1, 7, 1),
@@ -56,6 +57,7 @@ SLIDERS = [("wo_per_month", "Work orders per month", "Per enabled location, spre
            ("invoice_rate_flaw", "Invoices with a wrong rate %", "The provider bills labor above the agreed rate. The Subscriber sees the rate flag, rejects, and the provider resubmits at the agreed rate", 0, 100, 1),
            ("invoice_hours_flaw", "Invoices billing extra hours %", "The provider bills more labor hours than the time on site. The Subscriber rejects, and the provider resubmits with the hours on site", 0, 100, 1),
            ("invoice_approval", "Invoice approval %", "Rest are rejected and resubmitted", 0, 100, 1),
+           ("invoice_review_days", "Average days to approve or reject an invoice", "Activity days from submission to the Subscriber's decision (any one takes 1 to twice this, minus 1)", 1, 60, 1),
            ("pay_days", "Average days to pay", "After the invoice is approved (30 = Net 30 terms)", 1, 90, 1),
            ("hours_start", "Activity starts (hour)", "Local time at the location", 0, 23, 1),
            ("hours_end", "Activity ends (hour)", "", 1, 24, 1)]

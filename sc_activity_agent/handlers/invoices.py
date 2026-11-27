@@ -4,7 +4,7 @@ import json
 
 from .. import content
 from ..client import ScError
-from .common import _iso, insert_steps
+from .common import _iso, hold_decision, insert_steps, move_after, next_decision
 
 
 def build(rt, call, ctx_of):
@@ -89,6 +89,7 @@ def build(rt, call, ctx_of):
         if agreed:
             rt.store.put("agreed_rates", {**rates, key: agreed})
         rt.save_ctx(wo, invoice_id=(r or {}).get("Id"), amount=f"${total:,.2f}", invoice_count=n, agreed_rate=agreed or c.get("agreed_rate"))
+        hold_decision(rt, wo, step, "invoice_decide", engine)
 
     def invoice_flag(wo, inv):
         """What the Subscriber sees on an invoice: the API's rate flag, or more labor hours than the time on site (the API has no hours check)."""
@@ -112,10 +113,13 @@ def build(rt, call, ctx_of):
         flag = invoice_flag(wo, inv or {})
         if p["approve"] and flag and (c.get("invoice_count") or 1) < 3:   # the plan meant to approve, but the invoice carries a flag: reject, and the provider resubmits
             p = {**p, "approve": False, "flaw": flag}
-            gap = rt.rng.randint(86400, 2 * 86400)
+            snap = (lambda ts: engine.snap(ts, wo["location"])) if engine else (lambda ts: ts)
+            again = snap(step["due_at"] + rt.rng.randint(3600, 86400))
+            due, k = next_decision(rt, wo, again, "invoice_review_days")
+            move_after(rt, wo, step["seq"], due - step["due_at"], snap)   # payment waits for the second decision
             insert_steps(rt.store, wo["id"], step["seq"], [
-                ("invoice_submit", step["due_at"] + gap, {"situation": "invoice_fix"}),
-                ("invoice_decide", step["due_at"] + gap + rt.rng.randint(3600, 86400), {"approve": True})])
+                ("invoice_submit", again, {"situation": "invoice_fix"}),
+                ("invoice_decide", due, {"approve": True, "after_days": k})])
         situation = "invoice_ok" if p["approve"] else f"invoice_no_{p['flaw']}" if p.get("flaw") else "invoice_no"
         text = content.note("subscriber", situation, c, rt.rng)
         if p["approve"]:
