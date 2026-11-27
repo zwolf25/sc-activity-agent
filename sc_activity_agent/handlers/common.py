@@ -18,6 +18,15 @@ def _iso(ts):
     return dt.datetime.fromtimestamp(ts, dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def answer_refrigerant(rt, wo):
+    """Answer the refrigerant prompt "no refrigerant used, no leak" on the WO. Only a Subscriber user may (a Provider gets 804, SB2 2026-11-27).
+    Before check-out it keeps the WO out of PENDING REFRIGERANT USE; after, it lets the review and the invoice through (the status text
+    stays PENDING until the review, so never read it back as proof)."""
+    app, user = rt.user_for(wo["location"], "sub_note", wo)
+    app.call(user, "PUT", f"/workorders/{wo['sc_id']}/UpdateWorkOrderLeakInspectionInfo", params={"refrigerantWasUsed": "false", "leakWasDetected": "false"},
+             body={}, action="rt_answer", wo=wo["sc_id"], write=True)
+
+
 def insert_steps(store, wo_id, after_seq, steps):
     """Add steps right after `after_seq` of a WO, shifting later steps down. steps: [(kind, due_at, payload)]."""
     store.db.execute("UPDATE steps SET seq=seq+? WHERE wo_id=? AND seq>?", (len(steps), wo_id, after_seq))

@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 from .. import assets, content, photos, planner
 from ..client import ScError
-from .common import _iso, insert_steps
+from .common import _iso, answer_refrigerant, insert_steps
 
 
 def build(rt, call, ctx_of, answer_checklists):
@@ -113,6 +113,8 @@ def build(rt, call, ctx_of, answer_checklists):
         text = content.note("provider", p["situation"], ctx_of(wo), rt.rng)
         # the first tech out of a crew visit must not complete the WO, but only if the second tech really checked in
         partial = bool(p.get("partial")) and f"{p['visit']}.1" in ctx_of(wo).get("techs", {})
+        if p["final"] and not partial:
+            prevent_refrigerant_hold(wo, step)
         checkio(f"/workorders/{wo['sc_id']}/universalCheckOut",
                 {"Latitude": loc["lat"], "Longitude": loc["lon"], "CheckOutTime": _iso(step["due_at"]),
                  "PrimaryStatus": "Completed" if p["final"] and not partial else "PartsOnOrder",   # Completed closes the WO and blocks the second tech's check-out (921)
@@ -120,6 +122,16 @@ def build(rt, call, ctx_of, answer_checklists):
                  "Resolution": text, "TechsCount": 1}, wo, step)
         if p["final"] and not partial and not p.get("tech", 0):
             attach_after(wo, step)
+
+    def prevent_refrigerant_hold(wo, step):
+        """B-94: a WO with a refrigerant asset ends COMPLETED / PENDING REFRIGERANT USE unless the prompt is answered while the tech is on site.
+        Fail-soft: a refusal only leaves the hold, which the next step's preflight clears (shortcut: one extra WO read per final check-out)."""
+        try:
+            if ((call(wo, step, "GET", f"/workorders/{wo['sc_id']}") or {}).get("Asset") or {}).get("UsesRefrigerant"):
+                answer_refrigerant(rt, wo)
+        except ScError as e:
+            if e.status == 0:
+                raise   # paused
 
     def attach_after(wo, step):
         """B-53: the provider's closing note carries the after photo, at the Behavior "after photo" rate (0 by default). The check-out already

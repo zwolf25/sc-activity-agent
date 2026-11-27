@@ -638,11 +638,58 @@ def test_preflight_parks_the_plan_on_a_status_or_provider_it_does_not_know(tmp_p
         follow(rt, _row(s), s.db.execute("SELECT * FROM steps").fetchone(), {"Provider": {"Id": 777}})
 
 
-def test_preflight_parks_a_wo_on_the_refrigerant_hold_with_one_clear_message(tmp_path):
+def test_preflight_answers_the_refrigerant_prompt_as_the_subscriber_and_lets_the_step_run(tmp_path):
     s, rt = _follow_setup(tmp_path, Status={"Primary": "COMPLETED", "Extended": "PENDING REFRIGERANT USE"})
+    calls = rt.apps[1].calls
     out = Engine(s, make_handlers(rt), clock=lambda: NOW + 10 ** 7, per_tick=50).tick()
-    err = s.db.execute("SELECT error FROM steps WHERE id=?", (out[0][0],)).fetchone()[0]
-    assert out[0][1] == "failed" and "REFRIGERANT" in err and "Close out" in err and len(err) <= 200
+    assert out and all(o[1] != "failed" for o in out)
+    answers = [c for c in calls if c[3].endswith("/UpdateWorkOrderLeakInspectionInfo")]
+    assert answers and {c[0] for c in answers} == {"sub"}   # the Provider is refused with 804
+
+
+def test_a_step_that_still_fails_on_the_refrigerant_hold_fails_at_once(tmp_path):
+    s, rt = _follow_setup(tmp_path, Status={"Primary": "COMPLETED", "Extended": "PENDING REFRIGERANT USE"})
+    for app in rt.apps.values():
+        base = app.call
+
+        def call(user, method, path, params=None, body=None, _b=base, **kw):
+            if path.endswith("/notes") or path.endswith("/accept"):
+                raise ScError(400, '{"ErrorCode":940,"ErrorMessage":"The RefrigerantWasUsed option should be set"} REFRIGERANT', path)
+            return _b(user, method, path, params, body, **kw)
+        app.call = call
+    e = Engine(s, make_handlers(rt), clock=lambda: NOW + 10 ** 7, per_tick=50)
+    out = e.tick() + e.tick()   # the accept is moot on a COMPLETED WO; the next step (a note) hits the hold
+    assert [o[1] for o in out] == ["done", "failed"]
+
+
+def test_final_check_out_on_a_refrigerant_asset_answers_the_prompt_first(tmp_path):
+    answers = []
+    s = setup(tmp_path)
+    s.db.execute("UPDATE locations SET subscriber_id=5 WHERE store_id='HQ-NYC'")
+    wo = _wo(s, provider_id=2000078685, techs={"1.0": 2})
+    s.db.execute("UPDATE work_orders SET trade='HVAC' WHERE id=?", (wo["id"],))
+    s.db.commit()
+    wo = s.db.execute("SELECT * FROM work_orders WHERE id=?", (wo["id"],)).fetchone()
+    order = []
+
+    def prov(user, method, path, params=None, body=None, **kw):
+        order.append(path)
+        return {"Status": {"Primary": "IN PROGRESS"}, "Provider": {"Id": 2000078685}, "Asset": {"UsesRefrigerant": 1}} if path == "/workorders/9" else {}
+
+    def sub(user, method, path, params=None, body=None, **kw):
+        order.append(path)
+        answers.append((method, params))
+        return None
+    rt = Runtime(s, {1: FakeApp("sub", []), 2: FakeApp("prov", [])}, random.Random(1))
+    rt.apps[2].call, rt.apps[1].call = prov, sub
+    make_handlers(rt)["check_out"](None, wo, {"kind": "check_out", "due_at": NOW, "payload": json.dumps({"visit": 1, "final": True, "situation": "complete"})})
+    assert answers == [("PUT", {"refrigerantWasUsed": "false", "leakWasDetected": "false"})]
+    assert order.index("/workorders/9/UpdateWorkOrderLeakInspectionInfo") < order.index("/workorders/9/universalCheckOut")
+
+
+def test_check_out_without_a_refrigerant_asset_sends_no_answer(tmp_path):
+    s, wo, sent = _checkout(tmp_path, on=False)
+    assert not [x for x in sent if "LeakInspection" in x[1]]
 
 
 def test_a_wo_a_person_moved_to_another_provider_parks_at_once_not_after_retries(tmp_path):
