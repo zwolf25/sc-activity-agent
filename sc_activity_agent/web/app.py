@@ -49,6 +49,7 @@ SLIDERS = [("wo_per_month", "Work orders per month", "Per enabled location, spre
            ("first_time_fix", "First-time fix %", "Rest need 2 or 3 visits", 0, 100, 1),
            ("time_on_site_hrs", "Average time on site (hours)", "Check-in to check-out per visit", 0.5, 8, 0.5),
            ("multi_tech", "Two-technician visits %", "Share of visits worked by 2 technicians (needs 2 check-in techs on the provider)", 0, 100, 1),
+           ("rt_asset", "Refrigerant asset on HVAC and Refrigeration WOs %", "Share of the HVAC and Refrigeration work orders without an asset that get one of the agent's refrigerant assets at the location just before the final check-out. None is attached when the location has none for the trade (today only HVAC rooftop units are refrigerant assets)", 0, 100, 1),
            ("photo_after", "After photo on closing note %", "Share of finished work orders where the provider posts a work-complete note with a photo of the finished work, from the same scene as the before photo", 0, 100, 1),
            ("star_rating", "Star rating on review %", "Share of reviews that carry a star rating. The rest are a plain confirm with a note. Unsatisfactory work % below splits the rated ones", 0, 100, 1),
            ("rework", "Unsatisfactory work % of rated reviews", "Share of rated reviews that get 1 or 2 stars and a comment (the rest get 3 to 5). The WO is marked Unsatisfactory; the WO goes back to In Progress, the provider returns onsite to finish, and the Subscriber reviews again", 0, 100, 1),

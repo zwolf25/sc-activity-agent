@@ -662,19 +662,20 @@ def test_a_step_that_still_fails_on_the_refrigerant_hold_fails_at_once(tmp_path)
     assert [o[1] for o in out] == ["done", "failed"]
 
 
-def test_final_check_out_on_a_refrigerant_asset_answers_the_prompt_first(tmp_path):
+@pytest.mark.parametrize("trade,asset", [("HVAC", None), ("PLUMBING", {"UsesRefrigerant": 1})])
+def test_final_check_out_answers_the_refrigerant_prompt_first(tmp_path, trade, asset):
     answers = []
     s = setup(tmp_path)
     s.db.execute("UPDATE locations SET subscriber_id=5 WHERE store_id='HQ-NYC'")
     wo = _wo(s, provider_id=2000078685, techs={"1.0": 2})
-    s.db.execute("UPDATE work_orders SET trade='HVAC' WHERE id=?", (wo["id"],))
+    s.db.execute("UPDATE work_orders SET trade=? WHERE id=?", (trade, wo["id"]))
     s.db.commit()
     wo = s.db.execute("SELECT * FROM work_orders WHERE id=?", (wo["id"],)).fetchone()
     order = []
 
     def prov(user, method, path, params=None, body=None, **kw):
         order.append(path)
-        return {"Status": {"Primary": "IN PROGRESS"}, "Provider": {"Id": 2000078685}, "Asset": {"UsesRefrigerant": 1}} if path == "/workorders/9" else {}
+        return {"Status": {"Primary": "IN PROGRESS"}, "Provider": {"Id": 2000078685}, "Asset": asset} if path == "/workorders/9" else {}
 
     def sub(user, method, path, params=None, body=None, **kw):
         order.append(path)
@@ -1177,3 +1178,28 @@ def test_b110_text_names_the_wo_so_two_wos_of_one_trade_differ():
             out["b"].add(content.note(role, sit, b, random.Random(seed)))
         assert any("walk-in cooler" in t or "Store 12" in t for t in out["a"]), (role, sit)
         assert not any("rooftop unit" in t for t in out["a"])
+
+
+@pytest.mark.parametrize("trade,pct,live,expected", [("HVAC", 100, {}, True), ("HVAC", 0, {}, False), ("PLUMBING", 100, {}, False),
+                                                    ("HVAC", 100, {"AssetCount": 1}, False), ("REFRIGERATION", 100, {}, False)])
+def test_final_check_out_adds_a_refrigerant_asset_to_an_rt_wo_without_one(tmp_path, trade, pct, live, expected):
+    s = setup(tmp_path)
+    s.put("behavior", {"rt_asset": pct})
+    s.db.execute("UPDATE locations SET subscriber_id=5 WHERE store_id='HQ-NYC'")
+    s.db.execute("INSERT INTO assets(id,location,tag,trade,type,created_at) VALUES(55,'HQ-NYC','R1','HVAC','RTU',0)")
+    wo = _wo(s, provider_id=2000078685, techs={"1.0": 2})
+    s.db.execute("UPDATE work_orders SET trade=? WHERE id=?", (trade, wo["id"]))
+    s.db.commit()
+    wo = s.db.execute("SELECT * FROM work_orders WHERE id=?", (wo["id"],)).fetchone()
+    sent = []
+
+    def prov(user, method, path, params=None, body=None, **kw):
+        sent.append((path, body))
+        return {"Status": {"Primary": "IN PROGRESS"}, "Provider": {"Id": 2000078685}, **live} if path == "/workorders/9" else {}
+    rt = Runtime(s, {1: FakeApp("sub", []), 2: FakeApp("prov", [])}, random.Random(1))
+    rt.apps[2].call = prov
+    make_handlers(rt)["check_out"](None, wo, {"kind": "check_out", "due_at": NOW, "payload": json.dumps({"visit": 1, "final": True, "situation": "complete"})})
+    paths = [p for p, _ in sent]
+    assert [b for p, b in sent if p == "/assets/workorders/9/attach"] == ([{"AssetId": 55}] if expected else [])
+    if expected:
+        assert paths.index("/assets/workorders/9/attach") < paths.index("/workorders/9/universalCheckOut")

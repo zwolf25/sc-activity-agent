@@ -91,6 +91,7 @@ Use `--data-dir` (or `SC_AGENT_DATA`) to choose where an instance keeps its data
 - The agent never retries a failed work order create, because ServiceChannel leaves a VOID shell behind.
 - Before each create the agent checks that the location's dashboard can resolve the issue, and redraws if not.
 - Pause blocks every write.
+- By default the agent adds one of its refrigerant assets to an HVAC or Refrigeration work order that has none, just before the final check-out, including work orders it picked up. To turn this off, set "Refrigerant asset on HVAC and Refrigeration WOs %" on the Behavior page to 0.
 - Daily limits (Settings page, default 40 work orders and 3000 API calls a day, 0 = off) pause the agent and send an alert when reached.
 - The API cannot set VOID. Cleanup cancels a work order as Completed / Canceled.
 - **Seed assets.** `agent assets plan --location HQ-NYC` lists the assets the agent would create (HVAC, Electrical and Plumbing, only where your provider is Rank 1; `--trade` overrides). `agent assets seed --location HQ-NYC --yes` creates them at 5 a minute; `audit` compares counts with the target; `enrich --yes` fills empty fields on assets the agent created. Rerunning creates only what is missing. On Production, first add the location with `agent set assets.approved_locations '["HQ-NYC"]'`.

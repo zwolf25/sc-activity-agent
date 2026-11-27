@@ -124,14 +124,38 @@ def build(rt, call, ctx_of, answer_checklists):
             attach_after(wo, step)
 
     def prevent_refrigerant_hold(wo, step):
-        """B-94: a WO with a refrigerant asset ends COMPLETED / PENDING REFRIGERANT USE unless the prompt is answered while the tech is on site.
-        Fail-soft: a refusal only leaves the hold, which the next step's preflight clears (shortcut: one extra WO read per final check-out)."""
+        """B-94: an HVAC or refrigeration WO, with or without an asset (SB2 2026-11-27, Prod PM WOs), or a WO with a refrigerant asset can end
+        COMPLETED / PENDING REFRIGERANT USE unless the prompt is answered while the tech is on site.
+        Fail-soft: a refusal only leaves the hold, which the next step's preflight clears."""
         try:
-            if ((call(wo, step, "GET", f"/workorders/{wo['sc_id']}") or {}).get("Asset") or {}).get("UsesRefrigerant"):
+            if (wo["trade"] or "").upper() in ("HVAC", "REFRIGERATION"):
+                attach_rt_asset(wo, step)
+                answer_refrigerant(rt, wo)
+            elif ((call(wo, step, "GET", f"/workorders/{wo['sc_id']}") or {}).get("Asset") or {}).get("UsesRefrigerant"):
                 answer_refrigerant(rt, wo)
         except ScError as e:
             if e.status == 0:
                 raise   # paused
+
+    def attach_rt_asset(wo, step):
+        """B-117: before the final check-out, an RT WO with no asset gets a seeded refrigerant asset (Behavior slider, default 100). It does not
+        prevent the hold. A refusal only skips the attach, never the answer that follows."""
+        pct = {**planner.DEFAULTS, **rt.store.get("behavior", {})}["rt_asset"]
+        if ctx_of(wo).get("asset_id") or rt.rng.random() * 100 >= pct:
+            return
+        asset = assets.pick_refrigerant(rt.store, rt.rng, wo["location"], wo["trade"])
+        if not asset:
+            return
+        try:
+            live = call(wo, step, "GET", f"/workorders/{wo['sc_id']}") or {}
+            if live.get("Asset") or live.get("AssetCount"):
+                return   # never add to or replace what is on the WO
+            app, user = rt.user_for(wo["location"], "check_out", wo, step)
+            app.call(user, "PUT", f"/assets/workorders/{wo['sc_id']}/attach", action="asset_attach", wo=wo["sc_id"], write=True, body={"AssetId": asset})
+            rt.save_ctx(wo, asset_id=asset)
+        except ScError as e:
+            if e.status == 0:
+                raise
 
     def attach_after(wo, step):
         """B-53: the provider's closing note carries the after photo, at the Behavior "after photo" rate (0 by default). The check-out already

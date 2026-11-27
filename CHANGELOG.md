@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## v0.23.0 - 2026-11-27
+
+- New Behavior setting, "Refrigerant asset on HVAC and Refrigeration WOs %", on by default at 100%. Before the final check-out, a work order with no asset gets one of the agent's refrigerant assets at that location. **This changes work orders in ServiceChannel, including ones the agent picked up; set it to 0 to turn it off.** Today only HVAC rooftop units qualify, so Refrigeration work orders and locations without a seeded rooftop unit get none.
+- Fixed: HVAC and Refrigeration work orders with no asset, such as preventive maintenance work orders, now get the "no refrigerant used" answer before the final check-out, so they should not stop at PENDING REFRIGERANT USE.
+- Restart the agent after updating; nothing pauses and no migration.
+
 ## v0.22.6 - 2026-11-27
 
 - The agent attaches refrigerant assets, such as the HVAC RTU, to the work orders it creates again. It answers "no refrigerant used, no leak" on them, which needs a connected Subscriber user. Recording refrigerant as used is not supported yet.

@@ -35,6 +35,13 @@ def pick(store, rng, store_id, item, trade=None):
     return rng.choice(own) if own else rng.choice([r["id"] for r in rows if trade and r["trade"] == trade.upper()] or [None])
 
 
+def pick_refrigerant(store, rng, store_id, trade):
+    """The id of a seeded refrigerant asset of `trade` at the location, or None."""
+    types = {e["type"] for e in load_catalog()["entries"] if e.get("refrigerant")}
+    rows = store.db.execute("SELECT id, type FROM assets WHERE location=? AND trade=?", (store_id, trade.upper())).fetchall()
+    return rng.choice([r["id"] for r in rows if r["type"] in types] or [None])
+
+
 def load_catalog():
     return json.loads(CATALOG.read_text())
 
