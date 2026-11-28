@@ -205,12 +205,14 @@ class Seeder:
     def approved(self, loc):
         return self.store.get("env") != "prod" or loc["store_id"] in self.store.get("assets", {}).get("approved_locations", [])
 
-    def seed(self, loc, items, new_types, rate):
+    def seed(self, loc, items, new_types, rate, stop=lambda: False):
         app, user = self.who(loc)
         brands, trade_ids = self.brands(loc), {}
         for t in self.types(loc):
             trade_ids.setdefault(t["PrimaryTrade"].upper(), t["TradeId"])
         for name, trade in new_types:
+            if stop():
+                return 0
             r = app.call(user, "POST", "/assettypes", body={"Name": name, "PrimaryTrade": trade, "TradeId": trade_ids[trade], "IsActive": True, "IsCircuit": False},
                          action="create_asset_type", write=True)
             tid = r.get("Id") if isinstance(r, dict) else None
@@ -226,6 +228,8 @@ class Seeder:
         types = {(t["Name"].lower(), t["PrimaryTrade"].upper()): t["Id"] for t in self.types(loc)}
         made = 0
         for it in items:
+            if stop():   # checked before each write, so Cancel creates nothing more; assets already created stay
+                break
             body = {"LocationId": loc["db_id"], "StoreId": loc["store_id"], "Tag": it["tag"], "AssetTag": it["tag"], "Active": True,
                     "AssetTypeId": types[(it["type"].lower(), it["trade"])], "BrandId": brands[it["brand"].lower()], "Manufacturer": it["brand"],
                     "UsesRefrigerant": it["refrigerant"], **{f: it[k] for f, k in EMPTY_FIELDS.items()}}
@@ -273,14 +277,14 @@ def _locs(store, args):
     return rows or sys.exit("No such enabled location. Give --location <store id> or --all.")
 
 
-def seed_location(store, rt, store_id, rate=5):
+def seed_location(store, rt, store_id, rate=5, stop=lambda: False):
     """Seed one enabled location (what `agent assets seed --yes --location` does) and return how many assets were created.
     The web button calls this; callers own the Production approval."""
     from .creator import Creator
     loc = store.db.execute("SELECT * FROM locations WHERE store_id=? AND enabled=1", (store_id,)).fetchone()
     s = Seeder(store, rt, Creator(store, rt, rt.rng))
     items, new_types, _ = s.build(loc)
-    return s.seed(loc, items, new_types, rate) if items else 0
+    return s.seed(loc, items, new_types, rate, stop) if items else 0
 
 
 def cmd(args, store):

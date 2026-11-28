@@ -37,7 +37,7 @@ def run(store, rt):
             add(label, bool(r["list"]), f"{r['name'] or r['id']}: {r['list']}" if r["list"] else
                 f"Dashboard {r['id']} has no issue list for this Subscriber ID. Check the Subscriber ID on Connections, or assign a dashboard with an issue list to {r['user']} in ServiceChannel.")
     if not sid and store.db.execute("SELECT 1 FROM connections WHERE side='subscriber'").fetchone():
-        add("Issue list dashboard", False, "Enter the Subscriber ID on Connections and press Check dashboard.")
+        add("Issue list dashboard", False, "Enter the Subscriber ID on Connections and press Save and check users.")
     for p in store.db.execute("SELECT name FROM connections WHERE side='provider' AND provider_id IS NULL"):
         add(f"Provider ID: {p['name']}", False, "Delete this connection and add it again with its numeric Provider ID.")
     locs = store.db.execute("SELECT * FROM locations WHERE enabled=1 ORDER BY store_id").fetchall()

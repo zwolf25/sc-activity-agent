@@ -292,3 +292,38 @@ Provider app and user (SydeTech, Production app does not exist on SB2; a separat
 - Attach while ON SITE (2026-11-27, WO 370471185, no asset): Provider `PUT /assets/workorders/{id}/attach` 200, then answer, check-out (PENDING CONFIRMATION) and review (CONFIRMED). Afterwards `GET /workorders/{id}` shows `Asset.Id` but `AssetCount` is still 0, so `AssetCount` alone does not prove a WO has no asset.
 - Production (2026-11-27, WO 371532011, checked out 2026-11-24): answer 204, review 400 error 921 "Cannot update work order in 'completed' status."; status unchanged. Cause unknown. Of 19 held HVAC WOs read at HQ-NYC, 14 had Source PM and 5 were API-created; all had `AssetCount` 0.
 - Production (2026-11-27, WO 371638863, stuck): the agent's Subscriber answer returned 204 and the review 200; live status COMPLETED / CONFIRMED.
+
+## Demo cleanup spike, Phase 0 reads (Production, 2026-11-27, GET only)
+Subscriber 2014917582 (the Production instance uses this ID); `/odata/locations` counts 52. "Old" = `CallDate` / `PostedDate` / `CreatedDate` before 2026-07-28.
+- **All history is listable with a one-sided filter.** `/odata/workorders?$filter=CallDate lt <4 months ago>` returns records back to 2019-05-29. Adding a lower bound (`CallDate gt <1 year ago>`) limits the result to that range. An upper bound older than about a year (`CallDate lt <366 days ago>`) returns 0, not an error. So never use an old cutoff as the only way to find old records: a cutoff over 12 months returns nothing.
+- **Old active WOs: 21,819** (OPEN 15,102, ON HOLD 0, the rest IN PROGRESS by subtraction). 4,857 of them are from the last 12 months. 21,817 had no update in 30 days.
+- Old COMPLETED WOs: 360 (the first page was mostly CONFIRMED). PENDING REFRIGERANT USE: 57. PENDING CONFIRMATION: 0 old, 9 of any age. First page of 4-12 months also showed PENDING COMPLIANCE DETAILS.
+- Old invoices: 8 OPEN, 0 On Hold (back to 2019). Old proposals: 34 Open, 6 On Hold (back to 2020).
+- Links: an invoice row has `WoTrackingNumber`. Proposals support `$expand=WorkOrder`.
+- Paging: deep `$skip` is unreliable (21750 timed out at 90 s; 5000 worked). Keyset paging works: `$filter=Id gt <last> and CallDate lt <cutoff> and (...)&$orderby=Id asc`, 1-2 s a page, no overlap between two pages. 50 rows a page, about 437 pages.
+- Batched re-read works: `(Id eq a or Id eq b ...) and CallDate lt <cutoff>` returned 25 of 25. 50 per call is untested. Keep a date filter: without one the list covers only 90 days.
+- One proposal query timed out once and succeeded on a later run.
+- No bulk work order status endpoint found in the swagger (paths searched for bulk, batch, void).
+- Not run: the SB2 write tests (changed dates, emails, side effects of rejects, cancel with a pending invoice, MLI invoices), and whether the Subscriber user sees every location (52 counted, not compared with another source).
+
+## Demo cleanup write tests (SB2, 2026-11-27, throwaway WOs 370471818 to 370471821, 370471822, 370471825 to 370471827, 370471833)
+All WOs: GENERAL MAINTENANCE at HQ-NYC, created through the API. Subscriber user made every status change and reject.
+- **Cancel** (OPEN or IN PROGRESS to COMPLETED/CANCELED): `CompletedDate` becomes the time of the cancel, `UpdatedDate` moves, **NTE changes 500 to 0**, a note is added. `CallDate` and `ScheduledDate` did not change. Expect mass cancels to look like completions dated that day.
+- **Confirm from PENDING CONFIRMATION:** `CompletedDate` unchanged.
+- **Confirm from blank sub-status or from PENDING COMPLIANCE DETAILS:** both return 200 and end CONFIRMED, but `CompletedDate` is reset to the time of the confirm. Both starting states were set by API on a WO with no real compliance requirement, so a WO held by a real requirement may still refuse.
+- `GET /workorders/statuses` lists COMPLETED sub-statuses including blank, PENDING COMPLIANCE DETAILS and OPEN LEAK RECORD.
+- **ON HOLD** cannot be set: 400 error 904 "Invalid WorkOrder status". No ON HOLD record exists on SB2, so its cancel is untested.
+- **Invoiced WO:** COMPLETED/CANCELED returns 400 error 921 "Cannot update invoiced work order." while the invoice is OPEN. `PUT /invoices/{id}/reject?isNotifyProvider=false` then returns 204. Reject invoices before WOs.
+- **Invoice reject** does not change WO status; the WO loses `IsInvoiced` and its `Invoice` block, and `UpdatedDate` moves.
+- **Proposal reject** (reason 7, `useProposalAlertEmails=false`) **changes the WO:** IN PROGRESS / WAITING FOR APPROVAL went back to IN PROGRESS / DISPATCH CONFIRMED. A later WO re-check must compare the primary status, not the sub-status or `UpdatedDate`.
+- Not tested: MLI invoices, ON HOLD cancel, email delivery (decision 7). Refrigerant hold: see the RT spike above.
+
+## Demo cleanup read-only preview on SB2 (2026-11-28)
+- **`LocationId` is 0 on some reads.** `GET /workorders/{id}` and a proposal's `$expand=WorkOrder` returned `LocationId: 0` for the old WOs checked. `/odata/workorders` filtered by Id (`(Id eq a or ...) and CallDate lt <tomorrow>`, `$select=Id,ScheduledDate,LocationId`) returns the correct value, back to 2019. The GET also has `Location` (`Id`, `SubscriberId`, `StoreId`) and `Subscriber` objects. The first version used `LocationId` from the expanded proposal and the invoice's GET, so it skipped every proposal and invoice. It now reads the WO list.
+- Full preview: 45.1 minutes, 52 locations, 21,943 WOs (21,866 cancel, 57 refrigerant then confirm, 20 confirm). Estimate 22,878 calls, 38.13 hours, 4 nights. This run came before the fix. A recheck of only the proposal and invoice part, after the fix, listed 28 proposals and 8 invoices. 12 more proposals have no linked WO id and are skipped.
+- Invoice `WoTrackingNumber` matches the WO id. The invoices OData list accepts `Id gt` paging and Status 'On Hold'.
+
+## Demo cleanup live run on SB2 through the module (2026-11-28, throwaway records only)
+- `scripts/live_sb2_demo_cleanup.py` run: WOs 370506121 and 370506124 cancelled (COMPLETED/CANCELED). WOs 370506122 (blank sub-status) and 370506123 (PENDING COMPLIANCE DETAILS) confirmed. Proposal 27237514 rejected.
+- **SB2 auto-approves invoices.** "Auto Approval Process" approved the $50 invoice 182250476 about 4.5 minutes after it was created. That was before the run. The script had listed it as APPROVED, so the reject was sent and returned 400 error 503 "Invalid invoice status". The real preview lists only Open and On Hold invoices. The script now lists invoices as Open.
+- Retest (WO 370506137): the invoice list returns `Status` "OPEN" (upper case). Invoice 182250477 was rejected through the module. The approved invoice 182250476, listed as Open, was skipped by the re-read: "status is now APPROVED".

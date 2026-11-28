@@ -17,6 +17,12 @@ PAGE, MAX = 50, 500   # ponytail: one preview lists at most MAX WOs; run it agai
 NOTE = "Cancelled by SC Activity Agent clean-up (no activity for {days} days)"
 
 
+def demo_busy(store):
+    """B-119: Demo cleanup and this clean-up never write at the same time."""
+    from . import demo_cleanup   # imported here: demo_cleanup imports this module
+    return demo_cleanup.live()
+
+
 def settings(store):
     return {**DEFAULTS, **store.get("cleanup", {})}
 
@@ -160,7 +166,7 @@ def sweep(store, rt, clock=time.time):
     now = clock()
     day = dt.datetime.fromtimestamp(now, ZoneInfo(store.get("tz", "America/New_York")))
     if mode == "off" or store.get("paused_at") is not None or day.weekday() not in store.get("days", [0, 1, 2, 3, 4]) or now - store.get("last_sweep", 0) < 20 * 3600 \
-            or (store.get("cleanup_run") or {}).get("running"):
+            or (store.get("cleanup_run") or {}).get("running") or demo_busy(store):
         return []
     store.put("last_sweep", now)
     prev = preview(store, rt, clock)

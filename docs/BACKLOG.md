@@ -51,6 +51,7 @@ Zac's new ideas go here first, then get sized and ranked.
 ## Done
 | ID | Item | Version |
 |----|------|---------|
+| B-119 | Demo cleanup: one-time, Production-only job that clears old work orders, proposals and invoices at all of the Subscriber's locations, with preview and nightly runs | 0.25.0 |
 | B-118 | Settings for the Subscriber's average time to approve or reject proposals and invoices (activity days from submission, default 3 each, 1 to 60) | 0.24.0 |
 | B-95 | Confirmed on Prod: no 916 since 11-08, ZW123 create accepted 11-16 | 0.20.9 (confirmed 0.22.3) |
 | B-116 | A declined WO shows as Scheduled again after its reassign and accept steps, not Declined until check-in | 0.22.4 |

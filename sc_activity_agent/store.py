@@ -61,6 +61,14 @@ MIGRATIONS = [
     # 4 (B-76): roles was only read by migration 1. An older build that runs on this database again would create it empty
     # and, since roles live on the user since 0.6.0, ignore it, so a downgrade is safe.
     "DROP TABLE IF EXISTS roles;",
+    # 5 (B-119): the frozen work list of a Demo cleanup job, one row per record, so a job can stop and resume.
+    """
+    CREATE TABLE IF NOT EXISTS demo_cleanup_items(
+      id INTEGER PRIMARY KEY, kind TEXT NOT NULL, rid INTEGER NOT NULL, wo_id INTEGER, location TEXT, status TEXT NOT NULL,
+      action TEXT NOT NULL, created TEXT, provider TEXT, 
+      state TEXT NOT NULL DEFAULT 'pending', reason TEXT NOT NULL DEFAULT '', done_at REAL, UNIQUE(kind, rid));
+    CREATE INDEX IF NOT EXISTS demo_cleanup_state ON demo_cleanup_items(state, kind, rid);
+    """,
 ]
 
 

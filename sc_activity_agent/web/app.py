@@ -132,7 +132,7 @@ def create_app(store, engine=None, rt=None):
         failed = db.execute("SELECT COUNT(*) FROM steps WHERE state='failed'").fetchone()[0]
         base = dict(request=request, nav=NAV, here=name, env=store.get("env"), version=__version__,
                     paused=store.get("paused_at") is not None, failed=failed,
-                    port=store.get("port"), twin_port=store.get("twin_port"), setup=setup_checks(), update=update.pending(store), update_busy=bool(update.in_progress(store)), asset_todo=assets.unseeded(store), asset_seed={k: v for k, v in store.get("assets_seed", {}).items() if v["state"] == "error" or v["state"] == "running" and time.time() - v["at"] < 1800}, cap_hit=store.get("cap_hit") if store.get("paused_at") is not None else None, net_down=stamp(store.get("net_down"), ZoneInfo(store.get("tz", "America/New_York"))) if store.get("net_down") else None)
+                    port=store.get("port"), twin_port=store.get("twin_port"), setup=setup_checks(), update=update.pending(store), update_busy=bool(update.in_progress(store)), asset_todo=assets.unseeded(store), asset_seed={k: v for k, v in store.get("assets_seed", {}).items() if v["state"] == "error" or v["state"] in ("running", "cancelling") and time.time() - v["at"] < 1800}, cap_hit=store.get("cap_hit") if store.get("paused_at") is not None else None, net_down=stamp(store.get("net_down"), ZoneInfo(store.get("tz", "America/New_York"))) if store.get("net_down") else None)
         return tpl.TemplateResponse(request, f"{name}.html", {**base, **ctx})
 
     def missing_actions():
@@ -158,7 +158,7 @@ def create_app(store, engine=None, rt=None):
         return [("Subscriber connection with a user", has("subscriber"), "/connections",
                  "Add the Subscriber integration app (Client ID and secret) and a Subscriber user. Both come from ServiceChannel; the app must be registered in this environment.", True),
                 ("Subscriber ID and dashboard checked", bool(store.get("subscriber_id")) and bool(dash_rows) and all(r["id"] is not None for r in dash_rows), "/connections",
-                 "On Connections, enter the numeric Subscriber ID and press Check dashboard. The agent draws problems from the issue list of the Subscriber user's own dashboard.", True),
+                 "On Connections, enter the numeric Subscriber ID and press Save and check users. The agent draws problems from the issue list of the Subscriber user's own dashboard.", True),
                 ("Provider connection with a user", has("provider"), "/connections",
                  "Add a Provider integration app and a Provider user. A Provider that is Rank 1 for a trade at your location receives the Work Orders.", True),
                 ("Every Provider has its numeric Provider ID", not no_pid, "/connections",
@@ -229,7 +229,7 @@ def create_app(store, engine=None, rt=None):
         shown = mon + timedelta(days=7 if w == "next" else 0)
         rows, total, pages, cur = status.week(db, tz, hide_done=bool(hide_done), hide_skipped=bool(hide_skipped), page=page_no, weeks_ahead=int(w == "next"))
         z = ZoneInfo(tz)
-        week = [dict(r, when=stamp(r["due_at"], z), detail=status.detail(r["kind"], json.loads(r["payload"]))) for r in rows]
+        week = [dict(r, when=stamp(r["due_at"], z), detail="Trade and issue are picked at creation" if r["kind"] == "create_wo" else status.detail(r["kind"], json.loads(r["payload"]))) for r in rows]
         return page(request, "dashboard", stages=status.by_stage(db), week=week, total=total, pages=pages, cur=cur, w=w, span=f"{shown:%b %d} to {shown + timedelta(days=6):%b %d}", hide_done=bool(hide_done), hide_skipped=bool(hide_skipped),
                     gaps=[dict(g, i=i, text=gap_text(g, z)) for i, g in enumerate(store.get("gaps", [])) if not g["acked"]],
                     blocked=[p["name"] for p in pair_status() if p["state"] == "blocked"])
@@ -319,25 +319,32 @@ def create_app(store, engine=None, rt=None):
 
     def run_seed(sid):
         from ..cli import build_engine
-        state = store.get("assets_seed", {})
+        cancelled = lambda: store.get("assets_seed", {}).get(sid, {}).get("state") == "cancelling"
         try:
-            n = assets.seed_location(store, rt or build_engine(store, with_rt=True)[1], sid)
-            state[sid] = {"state": "done", "created": n, "at": time.time()}
+            n = assets.seed_location(store, rt or build_engine(store, with_rt=True)[1], sid, stop=cancelled)
+            result = {"state": "cancelled" if cancelled() else "done", "created": n}
         except Exception as e:   # shown in the banner with a Retry button; the log has the traceback
-            state[sid] = {"state": "error", "error": str(e)[:200], "at": time.time()}
-        store.put("assets_seed", state)
+            result = {"state": "error", "error": str(e)[:200]}
+        store.put("assets_seed", {**store.get("assets_seed", {}), sid: {**result, "at": time.time()}})   # re-read: Cancel writes here too
 
     @app.post("/assets/seed/{sid}")
     def assets_seed(sid: str, request: Request):
         """Seed button: the click is the one-time Production approval for this location (assets.approved_locations)."""
         state = store.get("assets_seed", {})
         loc = db.execute("SELECT 1 FROM locations WHERE store_id=? AND enabled=1", (sid,)).fetchone()
-        if loc and not (state.get(sid, {}).get("state") == "running" and time.time() - state[sid]["at"] < 1800):   # a second click must not start a second seeder
+        if loc and not (state.get(sid, {}).get("state") in ("running", "cancelling") and time.time() - state[sid]["at"] < 1800):   # a second click must not start a second seeder
             cfg = store.get("assets", {})
             cfg["approved_locations"] = sorted({*cfg.get("approved_locations", []), sid})
             store.put("assets", cfg)
             store.put("assets_seed", {**state, sid: {"state": "running", "at": time.time()}})
             background(run_seed, sid)
+        return RedirectResponse(request.headers.get("referer") or "/dashboard", 303)
+
+    @app.post("/assets/cancel/{sid}")
+    def assets_cancel(sid: str, request: Request):
+        state = store.get("assets_seed", {})
+        if state.get(sid, {}).get("state") == "running":
+            store.put("assets_seed", {**state, sid: {**state[sid], "state": "cancelling"}})
         return RedirectResponse(request.headers.get("referer") or "/dashboard", 303)
 
     @app.post("/assets/dismiss")
@@ -422,6 +429,8 @@ def create_app(store, engine=None, rt=None):
     from . import routes_cleanup, routes_locations
     routes_locations.register(app, store, rt, db, page, sub_app, stamp)
     routes_cleanup.register(app, store, rt, db, page, background, stamp)
+    from . import routes_demo
+    routes_demo.register(app, store, rt, db, page, stamp)
 
     from . import routes_settings
     routes_settings.register(app, background, db, engine, page, rt, store)

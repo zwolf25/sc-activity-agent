@@ -5,7 +5,7 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 
-from . import update
+from . import demo_cleanup, update
 
 KEEP = ("env", "port", "twin_port")   # locked per data folder at init; the console could not start without them
 
@@ -35,6 +35,8 @@ def busy(store):
     """Why a reset must wait, or ''."""
     if (store.get("cleanup_run") or {}).get("running"):
         return "A clean-up is running. Wait for it to finish."
+    if demo_cleanup.live():
+        return "Demo cleanup is working. Stop it first, or wait."
     if update.in_progress(store):
         return "An update is installing."
     return ""
@@ -104,6 +106,7 @@ def restore_live(store, name, rt=None, engine=None):
     for k, v in kept.items():
         if v is not None:
             store.put(k, v)
+    demo_cleanup.halt(store, "Stopped by a database restore. Run a new preview before resuming.")   # an old job must not restart by itself
     if rt is not None:
         rt.apps.clear()
     if engine is not None:

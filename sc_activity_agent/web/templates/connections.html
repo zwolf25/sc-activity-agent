@@ -2,7 +2,7 @@
 <div class="banner warn">This instance is <b>{{ 'SB2' if env == 'sb2' else 'Production' }}</b>. The environment was chosen when it was set up and cannot be changed here.</div>
 {% if msg %}<div class="note">{{ msg }}</div>{% endif %}
 <div class="card"><h3>Subscriber ID</h3>
-<p>New WOs use the issue list of each Subscriber user's own dashboard, the one ServiceChannel applies when it creates a WO. It shows on the user's row below. A user without a dashboard cannot be set to Create WOs. The Subscriber ID is used to find the user's issue list.</p>
+<p>New WOs use the issue list of each Subscriber user's own dashboard, the one ServiceChannel applies when it creates a WO. It shows in the Dashboard column below. A user without a dashboard cannot be set to Create WOs. The Subscriber ID is used to find the user's issue list.</p>
 <form method="post" action="/dashboards/load" class="row" style="justify-content:flex-start;flex-wrap:wrap">
 <label class="f">Subscriber ID<input type="text" name="subscriber_id" value="{{ subscriber_id }}" required></label><button class="primary">Save and check users</button></form></div>
 {% if env != 'sb2' %}<div class="card"><h3>Test instance (advanced)</h3>
@@ -13,17 +13,19 @@
 {% for c in conns %}<div class="card"><div class="row"><h3>{{ c.side }} · {{ c.name }}</h3>
 <form method="post" action="/connections/{{ c.id }}/delete"><button class="sm">Remove</button></form></div>
 <div class="mono">Client ID {{ c.client_id }}{% if c.provider_id %} · Provider {{ c.provider_id }}{% endif %}</div>
-<table class="users"><thead><tr><th>User</th><th>Label</th><th>Can do</th><th></th></tr></thead><tbody>
-{% for u in c.users %}<tr{% if c.side == 'subscriber' %} class="pair"{% endif %}><td>{{ u.username }}</td>
+<table class="users"><thead><tr><th>User</th><th>Label</th><th>Can do</th>{% if c.side == 'subscriber' %}<th>Dashboard</th>{% endif %}<th></th></tr></thead><tbody>
+{% for u in c.users %}<tr><td>{{ u.username }}</td>
 <td><form method="post" action="/users/{{ u.id }}/label" class="lbl"><input type="text" name="label" value="{{ u.label }}" placeholder="e.g. Maria, HVAC tech"><button class="sm">Save</button></form></td>
 <td><details class="ms"><summary>{% if not u.can_do %}Nothing ticked{% elif u.can_do|length == c.actions|length %}All {{ c.actions|length }} actions{% else %}{{ u.can_do|length }} of {{ c.actions|length }} actions{% endif %}</summary>
 <form method="post" action="/users/{{ u.id }}/can-do" class="pop">{% for key, label in c.actions %}<label class="chk"><input type="checkbox" name="can_do" value="{{ key }}" {{ 'checked' if key in u.can_do }}> {{ label }}</label>{% endfor %}<button class="sm primary">Save</button></form></details>
 {% if not u.can_do %}<small class="muted">Does nothing until something is ticked.</small>{% endif %}</td>
+{% if c.side == 'subscriber' %}{% set d = dashboard.get(u.username) %}<td class="dash"><form method="post" action="/users/{{ u.id }}/check-dashboard">
+{% if not d %}<span class="muted">Not checked yet</span>{% elif d.id is none %}<b class="bad-text">No dashboard</b>{% else %}<b title="Dashboard ID {{ d.id }}">{{ d.name or d.id }}</b>{% endif %}
+<button class="link" title="Check dashboard" aria-label="Check dashboard for {{ u.username }}">&#8635;</button>
+{% if d and d.id is none %}{% if d.error %}<small class="muted">{{ d.error }}</small>{% endif %}{% elif d and d.list %}<small class="muted" title="Issue list">{{ d.list }}</small>{% elif d and subscriber_id %}<small class="muted">No issue list for this Subscriber ID</small>{% endif %}</form></td>{% endif %}
 <td><div class="acts"><form method="post" action="/users/{{ u.id }}/test"><button class="sm">Test</button></form>
 <form method="post" action="/users/{{ u.id }}/delete"><button class="sm">Remove</button></form></div></td></tr>
-{% if c.side == 'subscriber' %}{% set d = dashboard.get(u.username) %}<tr class="dash"><td colspan="4"><form method="post" action="/users/{{ u.id }}/check-dashboard" class="dashrow"><span class="muted">Dashboard:</span>
-<span>{% if not d %}<span class="muted">not checked yet</span>{% elif d.id is none %}<b class="bad-text">No dashboard</b>{% if d.error %} <span class="muted">{{ d.error }}</span>{% endif %}{% else %}<b>{{ d.name or d.id }}</b> ({{ d.id }}){% if d.list %} <span class="muted">&middot; issue list</span> {{ d.list }}{% elif subscriber_id %} <span class="muted">&middot; no issue list for this Subscriber ID</span>{% endif %}{% endif %}</span>
-<button class="sm">Check dashboard</button></form></td></tr>{% endif %}{% endfor %}</tbody></table>
+{% endfor %}</tbody></table>
 <form method="post" action="/connections/{{ c.id }}/users" class="row" style="justify-content:flex-start;flex-wrap:wrap">
 <label class="f">Username<input type="text" name="username" required></label><label class="f">Password<input type="password" name="password" required></label>
 <label class="f">Label<input type="text" name="label"></label><button class="primary">Add user</button></form></div>{% endfor %}

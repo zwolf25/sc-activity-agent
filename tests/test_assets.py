@@ -49,7 +49,7 @@ def test_migration_from_v1_db(tmp_path):
     c.commit()
     c.close()
     s = Store(tmp_path)
-    assert s.db.execute("PRAGMA user_version").fetchone()[0] == 4
+    assert s.db.execute("PRAGMA user_version").fetchone()[0] == 5
     s.db.execute("SELECT * FROM assets")
     assert not s.db.execute("SELECT 1 FROM sqlite_master WHERE name='contracts'").fetchone()
 
@@ -130,7 +130,7 @@ def test_migration_4_drops_the_roles_table_of_a_v3_db(tmp_path):
     c.commit()
     c.close()
     s = Store(tmp_path)
-    assert s.db.execute("PRAGMA user_version").fetchone()[0] == 4
+    assert s.db.execute("PRAGMA user_version").fetchone()[0] == 5
     assert not s.db.execute("SELECT 1 FROM sqlite_master WHERE name='roles'").fetchone()
 
 

@@ -46,7 +46,7 @@ class Later(Exception):
 class ScError(Exception):
     def __init__(self, status, body, path=""):
         super().__init__(f"{status} {path}: {str(body)[:300]}")
-        self.status, self.body = status, body
+        self.status, self.body, self.path = status, body, path
 
 
 def multipart(parts):

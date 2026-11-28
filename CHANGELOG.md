@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## v0.25.0 - 2026-11-28
+
+- Dashboard: the This week table now also lists the work orders the agent has timed for today but not created yet.
+- Connections page: each user now fits on one row. The Subscriber user's dashboard and issue list have their own Dashboard column, and a refresh icon replaces the Check dashboard button. The dashboard ID shows on hover.
+- Asset seeding banner: Seed and Dismiss sit together on the right. While seeding runs, the progress message replaces that banner, and a Cancel button replaces Seed and Dismiss. Cancel stops before the next asset; assets already created stay in ServiceChannel.
+- New: **Demo cleanup** (Cleanup page, Production only). A one-time job for a demo environment full of old records, at all of the Subscriber's locations (the Subscriber ID saved on Connections). It rejects old open proposals and invoices, cancels old open, in-progress and on-hold work orders, and confirms old completed work orders that wait on a step. You choose the age (default 4 months), preview (reads only, with a CSV), then start one run: every night until done (default 20:00 to 06:00) or right away with a record limit. **Changes in ServiceChannel cannot be undone.** A cancelled work order gets today's completion date and an NTE of 0, so dashboards can show a spike. It never touches the agent's own work orders, records with the protect label, future scheduled work, or anything updated in the last 30 days.
+- Demo cleanup calls do not count toward the daily API call limit. While it works, the daily clean-up, Clean up now and factory reset wait.
+- Database migration 5 adds the Demo cleanup work list. Restart the agent after updating.
+- Fixed: "Refresh now" on the Locations page could show "Internal Server Error" (`database is locked`). The same fault could make work order creation fail and lose that scheduled work order, and could affect the Subscriber dashboard check when there are two or more Subscriber users. A database query stayed open during ServiceChannel calls, so the next write failed if another part of the agent had written in the meantime.
+
 ## v0.24.0 - 2026-11-27
 
 - New Behavior settings, "Average days to approve or reject a proposal" and "Average days to approve or reject an invoice", both 3 by default and adjustable from 1 to 60. They count activity days from submission to the Subscriber's decision; any one decision takes 1 to twice the average minus 1 (1 to 5 days at 3). Before, proposals were decided within hours and invoices within 2 days.

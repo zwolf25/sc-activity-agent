@@ -1,6 +1,7 @@
 import random
+import threading
 
-from sc_activity_agent import assets
+from sc_activity_agent import assets, creator
 from sc_activity_agent.client import ScError
 from sc_activity_agent.creator import Creator
 from sc_activity_agent.store import Store
@@ -208,3 +209,41 @@ def test_alert_after_three_failed_creates_in_a_row(tmp_path, monkeypatch):
         s.put("create_slots", {"day": {"HQ": "2025-10-27"}, "due": [{"loc": "HQ", "at": 0}]})
         c.tick()
     assert sent == [3] and s.get("create_streak") == 3
+
+
+def test_api_loops_survive_another_connection_writing(tmp_path):
+    # a query left open across API calls pins an old snapshot: the next write fails at once with "database is locked"
+    s, app, c = setup(tmp_path)
+    s.db.execute("INSERT INTO connections VALUES(3,'provider','P2','c','x',88)")   # two rows, so each loop still has one unread
+    s.db.execute("INSERT INTO locations(store_id,db_id,subscriber_id,name,lat,lon,tz) VALUES('HQ2',10,5,'HQ2',1,2,'America/New_York')")
+    s.db.commit()
+    other, real = Store(tmp_path), app.call
+
+    def busy(*a, **kw):
+        t = threading.Thread(target=lambda: other.log(action="other"))   # its own connection, like the engine thread
+        t.start()
+        t.join()
+        r = real(*a, **kw)
+        s.log(action="create_lookup")
+        return r
+    app.call = busy
+    assert c.resync(s.db.execute("SELECT * FROM locations").fetchall()[0]) == {"DOORS"}
+    s.drop("rank1")
+    assert c.tick() == [("HQ", 9001)]
+
+
+def test_check_users_survives_another_connection_writing(tmp_path, monkeypatch):
+    s, *_ = setup(tmp_path)
+    s.db.execute("INSERT INTO users(id,conn_id,username,password,can_do) VALUES(2,1,'sub2',?,'[]')", (s.enc("pw"),))
+    s.db.execute("UPDATE connections SET client_secret=?", (s.enc("x"),))
+    s.db.commit()
+    s.put("env", "sb2")
+    other = Store(tmp_path)
+
+    def check(store, *a):
+        t = threading.Thread(target=lambda: other.log(action="other"))
+        t.start()
+        t.join()
+        store.log(action="dashboard")
+    monkeypatch.setattr(creator, "check_user", check)
+    assert len(creator.check_users(s, 5, NOW)) == 2

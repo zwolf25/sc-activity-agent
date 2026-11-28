@@ -10,9 +10,10 @@
 <label class="tog"><input type="checkbox" name="hide_done" value="1" {{ 'checked' if hide_done }} onchange="this.form.submit()"> Hide done</label>
 <label class="tog"><input type="checkbox" name="hide_skipped" value="1" {{ 'checked' if hide_skipped }} onchange="this.form.submit()"> Hide skipped</label></form></div>
 <table><thead><tr><th>When</th><th>Action</th><th>WO</th><th>Location</th><th>Context</th><th>Status</th></tr></thead><tbody>
-{% for r in week %}<tr><td class="mono">{{ r.when }}</td><td>{{ r.kind.replace('_', ' ') }}</td><td class="mono">{{ r.sc_id or '' }}</td><td>{{ r.location }}</td><td>{{ r.detail }}</td>
+{% for r in week %}<tr><td class="mono">{{ r.when }}</td><td>{{ 'create WO' if r.kind == 'create_wo' else r.kind.replace('_', ' ') }}</td><td class="mono">{{ r.sc_id or '' }}</td><td>{{ r.location }}</td><td>{{ r.detail }}</td>
 <td><span class="pill {{ {'done': 'good', 'failed': 'bad'}.get(r.state, '') }}">{{ r.state }}</span></td></tr>{% else %}<tr><td colspan="6">Nothing planned {{ 'next' if w == 'next' else 'this' }} week.</td></tr>{% endfor %}
 </tbody></table>
+<small class="muted">New work orders show on the day they are created: the agent picks each day's times that day, so later days are not listed yet.</small>
 {% if pages > 1 %}<div class="row"><span class="mono">Page {{ cur }} of {{ pages }} ({{ total }} steps)</span><span>
 {% if cur > 1 %}<a href="?page={{ cur - 1 }}&w={{ w }}&f=1{{ '&hide_done=1' if hide_done }}{{ '&hide_skipped=1' if hide_skipped }}"><button type="button" class="sm">Previous</button></a>{% endif %}
 {% if cur < pages %}<a href="?page={{ cur + 1 }}&w={{ w }}&f=1{{ '&hide_done=1' if hide_done }}{{ '&hide_skipped=1' if hide_skipped }}"><button type="button" class="sm">Next</button></a>{% endif %}</span></div>{% endif %}

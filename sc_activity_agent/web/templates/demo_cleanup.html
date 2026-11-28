@@ -1,0 +1,59 @@
+{% extends "base.html" %}{% block body %}
+{% set what = {'proposal: reject': 'Proposals: reject', 'invoice: reject': 'Invoices: reject', 'wo: cancel': 'Work orders: cancel', 'wo: confirm': 'Work orders: confirm completion', 'wo: refrigerant_confirm': 'Work orders: answer the refrigerant question, then confirm'} %}
+<style>.dc p,.dc ul,.dc h4{margin:0}.dc input[type=number],.dc input[type=time],.dc input:not([type]){font:inherit;background:var(--surface);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:6px 9px}.dc a{color:var(--accent)}.dc summary{cursor:pointer}.dc form.grp{display:flex;flex-direction:column;gap:12px;align-items:flex-start}.dc form.grp .row{justify-content:flex-start}</style>
+<div class="dc" style="display:flex;flex-direction:column;gap:14px">
+<div class="banner warn"><b>Changes in ServiceChannel cannot be undone.</b> There is no delete: records stay in search and history.</div>
+{% if msg %}<div class="note">{{ msg }}</div>{% endif %}
+<div class="card"><h2>Demo cleanup</h2>
+<p>A one-time job that clears old records the agent did not create, at <b>all</b> of your Subscriber's locations.</p>
+<details {{ 'open' if not c.total }}><summary>What it changes, side effects and what it skips</summary>
+<ul><li>Open proposals and invoices are rejected.</li><li>Open, in-progress and on-hold work orders are cancelled.</li><li>Completed work orders waiting on a step are confirmed.</li><li>Approved, paid and closed records are not touched.</li>
+<li><b>Side effect:</b> ServiceChannel dates a cancelled work order's completion on the day you cancel it and sets its NTE to 0, so dashboards can show a spike. Confirming a work order with a compliance hold or no sub-status also moves its completion date to today.</li>
+<li><b>Always skipped:</b> work orders the agent created or picked up, records with the protect label, work scheduled in the future, and anything updated in the last 30 days.</li></ul></details>
+{% if asleep_risk %}<div class="banner warn">Keep this Mac awake is off on the Settings page. The job only runs while the Mac is awake.</div>{% endif %}
+{% if paused_by_user and j.state in ('running', 'scheduled') %}<div class="banner warn">The agent is paused, so the job is waiting. Press Resume at the top of the page.</div>{% endif %}
+{% if blocked %}<div class="banner warn">A Clean-up is running. Demo cleanup waits until it finishes.</div>{% endif %}
+
+{% if j.state in ('previewing', 'running', 'scheduled') %}
+<h3>{{ {'previewing': 'Building the preview', 'running': 'Running now', 'scheduled': 'Scheduled every night'}[j.state] }}</h3>
+{% if j.state == 'previewing' %}<p>Reading from ServiceChannel only. This can take about 45 minutes. {{ j.found or 0 }} record(s) listed so far. Refresh this page for progress.</p>
+{% else %}<p>{{ "{:,}".format(c.done) }} done, {{ "{:,}".format(c.skipped) }} skipped, {{ c.error }} error(s), {{ "{:,}".format(c.pending) }} left of {{ "{:,}".format(c.total) }}.{% if j.state == 'scheduled' %} Runs {{ j.start }} to {{ j.end }}, every night, until none are left. About {{ (quick if j.fast else normal)[2] }} night(s) to go.{% if j.limit %} At most {{ j.limit }} records a night.{% endif %}{% if live %} Working now.{% endif %}{% endif %} Refresh this page for progress.</p>{% endif %}
+{% if j.state != 'previewing' and c.total %}<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="{{ c.total }}" aria-valuenow="{{ c.total - c.pending }}"><i style="width:{{ (100 * (c.total - c.pending) / c.total)|round(1) }}%"></i></div>{% endif %}
+{% if j.message %}<div class="note">{{ j.message }}</div>{% endif %}
+<form method="post" action="/demo-cleanup/stop"><button class="kill">Stop</button></form>
+{% else %}
+{% if j.state == 'done' %}<h3>Finished</h3><p>{{ "{:,}".format(c.done) }} done, {{ "{:,}".format(c.skipped) }} skipped, {{ c.error }} error(s).</p>{% endif %}
+{% if j.message %}<div class="note">{{ j.message }}</div>{% endif %}
+<details {{ 'open' if not c.total or (expired and not j.started_at) }}><summary><b>{{ 'Start over with a new preview' if c.total else '1. Preview (reads only, changes nothing)' }}</b></summary>
+<p>{% if subscriber_id %}Subscriber <b>{{ subscriber_id }}</b>, from <a href="/connections">Connections</a>.{% else %}No Subscriber ID is saved. <a href="/connections">Add it on Connections</a> first.{% endif %}</p>
+<form method="post" action="/demo-cleanup/preview" class="inl">
+<label>Older than <input type="number" name="months" min="1" max="60" value="{{ j.months or 4 }}" style="width:5em" required> months</label>
+<label>Never touch label <input type="text" name="protect" value="{{ protect }}"></label>
+<button {{ 'disabled' if live or not subscriber_id }}>{{ 'New preview' if c.total else 'Preview' }}</button></form>
+{% if c.total %}<p class="muted">A new preview replaces the current list and its results. Download the CSV first if you want to keep them.</p>{% endif %}</details>
+{% endif %}</div>
+
+{% if j.state in ('ready', 'stopped', 'error') and j.preview_at and c.pending %}<div class="card"><h3>2. {{ 'Resume' if j.started_at else 'Run the cleanup' }}</h3>
+{% if not j.started_at and expired %}<p>This preview is more than 24 hours old. Run a new preview.</p>
+{% else %}{% if j.started_at %}<p><b>{{ "{:,}".format(c.done) }}</b> done, {{ "{:,}".format(c.skipped) }} skipped, {{ c.error }} error(s), <b>{{ "{:,}".format(c.pending) }}</b> left.{% if c.error %} Records with errors are not tried again.{% endif %}</p>{% endif %}
+<form method="post" action="/demo-cleanup/run" class="grp">
+<label class="chk"><input type="radio" name="mode" value="nightly" {{ 'checked' if j.mode != 'now' }}> <span><b>Every night until done</b><br><span class="muted">Runs all seven nights inside the window, then stops by itself. A missed night continues the next night. Records that age in later are never added.</span></span></label>
+<div class="hours"><label>From <input type="time" name="start" value="{{ start }}" required></label><label>to <input type="time" name="end" value="{{ end }}" required></label></div>
+<label class="chk"><input type="radio" name="mode" value="now" {{ 'checked' if j.mode == 'now' }}> <span><b>Run now</b><br><span class="muted">Starts right away and stops after the record limit. Press Resume to continue.</span></span></label>
+<label>Record limit (per night, or per Run now) <input type="number" name="limit" min="0" value="{{ j.limit if j.limit else '' }}" placeholder="blank" style="width:7em"></label>
+<p class="muted">Blank means no limit for the nightly job, and {{ run_limit }} for Run now.</p>
+<label class="chk"><input type="checkbox" name="fast" value="1" {{ 'checked' if j.fast }}> <span>Fast mode<br><span class="muted">Pauses the agent while the job works, then resumes it. 15 calls a minute instead of 10.</span></span></label>
+<label class="chk"><input type="checkbox" name="understood" value="1"> <span>I reviewed the preview. I understand these changes cannot be undone.</span></label>
+<div class="row"><span class="muted">The Mac must stay on power with the lid open.</span><button class="kill">{{ 'Resume' if j.started_at else 'Start' }}</button></div></form>{% endif %}</div>{% endif %}
+
+{% if groups %}<div class="card"><h3>Preview from {{ previewed }}: {{ "{:,}".format(c.total) }} record(s) at up to {{ j.locations }} location(s)</h3>
+<p>Older than {{ j.months }} month(s), by creation date. Age and skip rules were applied at preview time. Each record is read again just before it is changed.</p>
+<p><a href="/demo-cleanup/items.csv">Download the full list (CSV)</a>. Keep a copy: it is the only record of each earlier status.</p>
+{% for title, rows in groups %}<details {{ 'open' if loop.first }}><summary>By {{ title|lower }}</summary><table data-page="10"><thead><tr><th>{{ title }}</th><th>Records</th></tr></thead><tbody>{% for k, n in rows %}<tr><td>{{ what.get(k, k) or '(none)' }}</td><td>{{ "{:,}".format(n) }}</td></tr>{% endfor %}</tbody></table></details>{% endfor %}
+{% if j.skips %}<h4>Skipped by the preview</h4><ul>{% for k, n in j.skips.items() %}<li>{{ "{:,}".format(n) }}: {{ k }}</li>{% endfor %}</ul>{% endif %}
+{% if c.pending %}<p>Still to do: <b>{{ "{:,}".format(c.pending) }}</b> record(s), about {{ "{:,}".format(normal[0]) }} API calls. Normal speed: about {{ normal[1]|round(1) }} hours, {{ normal[2] }} night(s) of {{ start }} to {{ end }}. Fast mode: about {{ quick[1]|round(1) }} hours, {{ quick[2] }} night(s).</p>{% endif %}</div>{% endif %}
+
+{% if problems %}<div class="card"><h3>Latest errors</h3>{% for p in problems %}<div class="note">{{ p.kind }} {{ p.rid }}: {{ p.reason }}</div>{% endfor %}</div>{% endif %}
+<p><a href="/cleanup">Back to Cleanup</a></p>
+</div>
+{% endblock %}

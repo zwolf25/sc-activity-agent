@@ -59,7 +59,7 @@ def check_users(store, subscriber_id, now, force=True):
     return [check_user(store, ScApp(store.get("env"), r["client_id"], store.dec(r["client_secret"]), store=store, role="subscriber"),
                        (r["username"], store.dec(r["password"])), subscriber_id, now, force)
             for r in store.db.execute("SELECT u.username, u.password, c.client_id, c.client_secret FROM users u JOIN connections c ON c.id=u.conn_id "
-                                      "WHERE c.side='subscriber' ORDER BY u.id")]
+                                      "WHERE c.side='subscriber' ORDER BY u.id").fetchall()]   # fetchall: see our_trades
 
 
 FAIL_ALERT = 3   # B-86: failed creates in a row before an alert is sent
@@ -115,7 +115,8 @@ class Creator:
             return set(hit["trades"]) - set(self.store.get("rank1_foreign", {}).get(loc["store_id"], []))
         owners = {}   # trade -> provider id, so a WO's provider-side steps run as that provider's users
         get = lambda p: self._get(loc, p)
-        for c in self.store.db.execute("SELECT provider_id FROM connections WHERE side='provider' AND provider_id IS NOT NULL"):
+        # fetchall: a query left open across API calls pins an old snapshot, and the next api_log write fails with "database is locked"
+        for c in self.store.db.execute("SELECT provider_id FROM connections WHERE side='provider' AND provider_id IS NOT NULL").fetchall():
             for t in generator.rank_one_trades(get, loc["subscriber_id"], c["provider_id"], loc["db_id"]):
                 owners.setdefault(t, c["provider_id"])
         trades = set(owners) - set(self.store.get("rank1_foreign", {}).get(loc["store_id"], []))
@@ -198,7 +199,7 @@ class Creator:
         if self.store.get("paused_at") is not None:
             return []
         out = []
-        for loc in self.store.db.execute("SELECT * FROM locations WHERE enabled=1"):
+        for loc in self.store.db.execute("SELECT * FROM locations WHERE enabled=1").fetchall():   # fetchall: see our_trades
             slots = self._roll_day(loc)
             due = [s for s in slots["due"] if s["loc"] == loc["store_id"] and s["at"] <= self.clock()]
             if not due or out:

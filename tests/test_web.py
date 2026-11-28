@@ -521,7 +521,7 @@ def test_subscriber_user_without_a_dashboard_cannot_create_wos(tmp_path, monkeyp
     assert s.get("dashboard_info")["yes"]["id"] == 2752
     c.post("/users/2/can-do", data={"can_do": ["create_wo"]})
     assert json.loads(s.db.execute("SELECT can_do FROM users WHERE id=2").fetchone()["can_do"]) == ["create_wo"]
-    assert "No dashboard" in c.get("/connections").text and "<b>PM</b> (2752)" in c.get("/connections").text
+    assert "No dashboard" in c.get("/connections").text and '<b title="Dashboard ID 2752">PM</b>' in c.get("/connections").text
 
 
 def test_old_list_shaped_dashboard_info_does_not_break_pages(tmp_path):
@@ -544,7 +544,7 @@ def test_seed_button_approves_the_location_and_seeds_in_the_background(tmp_path,
     s.db.execute("INSERT INTO locations(store_id, db_id, subscriber_id, name) VALUES('HQ-NYC', 1, 2, 'HQ')")
     s.put("rank1", {"HQ-NYC": {"at": 0, "trades": ["HVAC"], "owners": {}}})
     s.db.commit()
-    monkeypatch.setattr(assets, "seed_location", lambda store, rt, sid: 12)
+    monkeypatch.setattr(assets, "seed_location", lambda store, rt, sid, stop: 12)
     assert "/assets/seed/HQ-NYC" in c.get("/dashboard").text
     c.post("/assets/seed/HQ-NYC", headers={"referer": "/dashboard"})
     for _ in range(50):
@@ -555,3 +555,46 @@ def test_seed_button_approves_the_location_and_seeds_in_the_background(tmp_path,
     assert s.get("assets")["approved_locations"] == ["HQ-NYC"]
     c.post("/assets/seed/NOPE")   # unknown location: nothing approved
     assert s.get("assets")["approved_locations"] == ["HQ-NYC"]
+
+
+def test_seeding_banner_swaps_the_buttons_for_cancel(tmp_path, monkeypatch):
+    import threading
+    import time
+    from sc_activity_agent import assets
+    s, c = client(tmp_path)
+    s.db.execute("INSERT INTO locations(store_id, db_id, subscriber_id, name) VALUES('HQ-NYC', 1, 2, 'HQ')")
+    s.put("rank1", {"HQ-NYC": {"at": 0, "trades": ["HVAC"], "owners": {}}})
+    s.db.commit()
+    go = threading.Event()
+
+    def seeder(store, rt, sid, stop):
+        go.wait(5)
+        return 0 if stop() else 12
+
+    monkeypatch.setattr(assets, "seed_location", seeder)
+    c.post("/assets/seed/HQ-NYC")
+    page = c.get("/dashboard").text
+    assert "Seeding assets at HQ-NYC" in page and "/assets/cancel/HQ-NYC" in page
+    assert "/assets/seed/HQ-NYC" not in page and "/assets/dismiss" not in page
+    c.post("/assets/cancel/HQ-NYC")
+    page = c.get("/dashboard").text
+    assert "Cancelling seeding at HQ-NYC" in page and "/assets/cancel/" not in page
+    go.set()
+    for _ in range(50):
+        if s.get("assets_seed")["HQ-NYC"]["state"] == "cancelled":
+            break
+        time.sleep(0.1)
+    assert s.get("assets_seed")["HQ-NYC"]["state"] == "cancelled"
+    assert "/assets/seed/HQ-NYC" in c.get("/dashboard").text   # nothing was created, so the prompt returns
+
+
+def test_dashboard_week_lists_work_orders_still_to_be_created(tmp_path):
+    import time
+    s, c = client(tmp_path)
+    s.db.execute("INSERT INTO locations(store_id, db_id, subscriber_id, name, enabled) VALUES('HQ-NYC', 1, 2, 'HQ', 1)")
+    s.db.execute("INSERT INTO locations(store_id, db_id, subscriber_id, name, enabled) VALUES('OFF', 2, 2, 'Off', 0)")
+    assert "create WO" not in c.get("/dashboard").text   # no creation times yet
+    s.put("create_slots", {"day": {}, "due": [{"loc": "HQ-NYC", "at": time.time()}, {"loc": "OFF", "at": time.time()}]})
+    page = c.get("/dashboard?f=1&hide_done=1&hide_skipped=1").text
+    assert page.count("<td>create WO</td>") == 1 and "HQ-NYC" in page and ">OFF<" not in page
+    assert "create WO" not in c.get("/dashboard?w=next").text

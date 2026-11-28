@@ -18,7 +18,9 @@ def limits(store):
 def used(store, now=None):
     now = now or time.time()
     day = datetime.fromtimestamp(now, ZoneInfo(store.get("tz", "America/New_York"))).replace(hour=0, minute=0, second=0, microsecond=0)
-    r = store.db.execute("SELECT COUNT(*) AS calls, COALESCE(SUM(action='create_wo' AND http<400), 0) AS wos FROM api_log WHERE ts>=?",
+    # Demo cleanup is a job the user started; its thousands of calls must not pause the agent (B-119)
+    r = store.db.execute("SELECT COALESCE(SUM(substr(COALESCE(action,''), 1, 5) != 'demo_'), 0) AS calls, "
+                         "COALESCE(SUM(action='create_wo' AND http<400), 0) AS wos FROM api_log WHERE ts>=?",
                          (day.timestamp(),)).fetchone()
     return {"wo_per_day": r["wos"], "calls_per_day": r["calls"]}
 

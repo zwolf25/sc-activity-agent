@@ -56,6 +56,7 @@ main{min-width:0}
 .bar.upd i{width:35%;animation:upd 1.4s ease-in-out infinite alternate}@keyframes upd{from{margin-left:0}to{margin-left:65%}}@media(prefers-reduced-motion:reduce){.bar.upd i{animation:none;width:100%}}
 .bar.good i{background:var(--good)}.bar.warn i{background:var(--warn)}
 .row{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.banner.row>span:first-child{margin-right:auto}
 .tbl{overflow-x:auto}
 table.nowrapcols{min-width:0}table.nowrapcols td,table.nowrapcols th{white-space:nowrap}table.nowrapcols .w{white-space:normal;overflow-wrap:anywhere;min-width:12ch}table.nowrapcols td.call{min-width:24ch}
 table{border-collapse:collapse;width:100%;min-width:560px}
@@ -110,15 +111,15 @@ tr[hidden]{display:none}
 .call{word-break:break-all;min-width:240px}
 .users td{vertical-align:middle}
 .users .acts{display:flex;gap:6px}
-.users tr.pair td{border-bottom:0}
-.users tr.dash td{padding-top:0}
-.dashrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}
-.dashrow button{margin-left:auto}
+.users td.dash{font-size:13px;overflow-wrap:anywhere;min-width:150px}
+.users td.dash small{display:block}
+button.link{background:none;border:0;padding:0 4px;color:var(--accent)}
+.users .acts{justify-content:flex-end}
 .bad-text{color:var(--bad,#b42318)}
 .users .lbl{display:flex;gap:6px;align-items:center}
-.users .lbl input{min-width:160px}
+.users .lbl input{min-width:100px}
 details.ms{position:relative}
-details.ms summary{cursor:pointer;list-style:none;border:1px solid var(--line);border-radius:6px;padding:6px 9px;background:var(--surface);min-width:170px;display:flex;justify-content:space-between;gap:8px}
+details.ms summary{cursor:pointer;list-style:none;border:1px solid var(--line);border-radius:6px;padding:6px 9px;background:var(--surface);min-width:150px;display:flex;justify-content:space-between;gap:8px}
 details.ms summary::-webkit-details-marker{display:none}
 details.ms summary::after{content:"\25BE";color:var(--muted)}
 details.ms .pop{position:absolute;z-index:5;top:100%;left:0;margin-top:4px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px;min-width:230px;box-shadow:0 4px 14px rgba(0,0,0,.2)}

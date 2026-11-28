@@ -44,7 +44,7 @@ def register(app, store, rt, db, page, background, stamp):
 
     @app.post("/cleanup/now")
     def cleanup_now(confirm: str = Form("")):
-        if not (rt and confirm) or (store.get("cleanup_run") or {}).get("running"):
+        if not (rt and confirm) or (store.get("cleanup_run") or {}).get("running") or cleanup_mod.demo_busy(store):
             return RedirectResponse("/cleanup?msg=Tick the box to confirm (or a clean-up is already running)", 303)
         background(cleanup_mod.now, store, rt)
         return RedirectResponse("/cleanup?msg=Clean-up started. Refresh this page for progress", 303)
@@ -54,7 +54,7 @@ def register(app, store, rt, db, page, background, stamp):
         run = store.get("cleanup_run") or {}
         if not (rt and confirm and (store.get("cleanup_preview") or {}).get("items")):
             return RedirectResponse("/cleanup?msg=Tick the box to confirm, after a preview that found work orders", 303)
-        if run.get("running"):
+        if run.get("running") or cleanup_mod.demo_busy(store):
             return RedirectResponse("/cleanup?msg=A clean-up is already running", 303)
         background(cleanup_mod.run, store, rt)
         return RedirectResponse("/cleanup?msg=Clean-up started. Refresh this page for progress", 303)

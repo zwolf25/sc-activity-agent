@@ -109,7 +109,7 @@ def register(app, db, missing_actions, no_tech, page, rt, store):
             row = (store.get("dashboard_info") or {}).get(u["username"]) if isinstance(store.get("dashboard_info"), dict) else None
             if not row or row["id"] is None:
                 picked.remove("create_wo")
-                msg = f"?msg={quote(u['username'] + ' has no dashboard, so Create WOs was not ticked. Press Check dashboard on that user, or assign a dashboard to the user in ServiceChannel.')}"
+                msg = f"?msg={quote(u['username'] + ' has no dashboard, so Create WOs was not ticked. Press the refresh icon (Check dashboard) on that user, or assign a dashboard to the user in ServiceChannel.')}"
         db.execute("UPDATE users SET can_do=? WHERE id=?", (json.dumps(picked), uid))
         db.commit()
         return RedirectResponse("/connections" + msg, 303)

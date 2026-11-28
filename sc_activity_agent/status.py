@@ -90,14 +90,20 @@ def week_start(tz="America/New_York", now=None):
     return (d - dt.timedelta(days=d.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
 
 
+# the week table: planned steps, plus the creations the agent has timed but not made yet (the creator's `create_slots` setting)
+PLANNED = ("(SELECT s.id, s.kind, s.state, s.due_at, s.payload, w.sc_id, w.location FROM steps s JOIN work_orders w ON w.id=s.wo_id "
+           "UNION ALL SELECT 0, 'create_wo', 'pending', json_extract(j.value, '$.at'), '{}', NULL, json_extract(j.value, '$.loc') "
+           "FROM settings c, json_each(c.value, '$.due') j WHERE c.key='create_slots' "
+           "AND json_extract(j.value, '$.loc') IN (SELECT store_id FROM locations WHERE enabled=1)) s")
+
+
 def week(db, tz="America/New_York", now=None, hide_done=False, hide_skipped=True, page=1, size=10, weeks_ahead=0):
-    """Steps planned for the local calendar week (Monday to Sunday), `weeks_ahead` weeks from now, oldest first; skipped steps (their WO was cancelled or ended) can be hidden: (rows, total, pages, page)."""
+    """Steps and pending WO creations planned for the local calendar week (Monday to Sunday), `weeks_ahead` weeks from now, oldest first; skipped steps (their WO was cancelled or ended) can be hidden: (rows, total, pages, page)."""
     mon = week_start(tz, now) + dt.timedelta(days=7 * weeks_ahead)
     lo, hi = mon.timestamp(), (mon + dt.timedelta(days=7)).timestamp()
     where = "s.due_at>=? AND s.due_at<?" + (" AND s.state!='skipped'" if hide_skipped else "") + (" AND s.state!='done'" if hide_done else "")
-    total = db.execute(f"SELECT COUNT(*) FROM steps s WHERE {where}", (lo, hi)).fetchone()[0]
+    total = db.execute(f"SELECT COUNT(*) FROM {PLANNED} WHERE {where}", (lo, hi)).fetchone()[0]
     pages = max(1, -(-total // size))
     page = min(max(1, page), pages)
-    rows = db.execute(f"SELECT s.kind, s.state, s.due_at, s.payload, w.sc_id, w.location FROM steps s JOIN work_orders w ON w.id=s.wo_id "
-                      f"WHERE {where} ORDER BY s.due_at, s.id LIMIT ? OFFSET ?", (lo, hi, size, (page - 1) * size)).fetchall()
+    rows = db.execute(f"SELECT s.kind, s.state, s.due_at, s.payload, s.sc_id, s.location FROM {PLANNED} WHERE {where} ORDER BY s.due_at, s.id LIMIT ? OFFSET ?", (lo, hi, size, (page - 1) * size)).fetchall()
     return rows, total, pages, page
